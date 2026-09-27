@@ -268,6 +268,17 @@
   .ovb{flex:1;overflow:auto;padding:12px 16px 30px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .ovf{display:flex;justify-content:space-between;gap:8px;padding:12px 14px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line-soft)}
   .ovf .btn{flex:1;min-height:46px}
+  /* apartment: the plan stays in view; phone = plan on top and the controls scroll under it */
+  #apt.split #aptBody{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) minmax(0,44%);grid-template-areas:"tabs" "plan" "ctl";overflow:hidden;padding:0}
+  #apt.split .apttabs{grid-area:tabs;padding:10px 16px 8px!important}
+  #apt.split .aptplan{grid-area:plan;position:relative;margin:0 12px 10px;padding:4px;min-height:0;display:flex}
+  #apt.split .aptplan svg{width:100%;height:100%;max-height:none}
+  #apt.split .aptctl{grid-area:ctl;overflow:auto;padding:2px 16px 24px;border-top:1px solid var(--line-soft);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  #apt .aptbig{position:absolute;top:8px;left:8px;min-height:34px;padding:0 12px;font-size:13px;background:var(--paper);box-shadow:var(--lift-1,0 1px 4px rgba(0,0,0,.12))}
+  #apt.split.big #aptBody{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"plan"}
+  #apt.split.big .apttabs,#apt.split.big .aptctl,#apt.big .ovf{display:none!important}
+  #apt.split.big .aptplan{margin:8px}
+  .chipbtn.on{border-color:var(--brass);background:#FDFAF4;box-shadow:0 0 0 2px var(--brass-soft)}
   .progress{height:4px;background:var(--line-soft)}
   .progress div{height:4px;background:var(--pri);width:0;transition:width .3s}
   #shot{position:fixed;inset:0;background:rgba(20,26,24,.85);z-index:12;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
@@ -307,7 +318,10 @@
     #panel header{padding:14px 14px 10px 12px;min-height:64px}
     .ovl{align-items:center;padding:24px}
     .dlg{width:min(680px,100%);height:auto;max-height:min(880px,100%);border-radius:var(--r-xl);box-shadow:var(--lift-2)}
-    #apt .dlg{width:min(1100px,100%);height:100%}
+    #apt .dlg{width:min(1400px,100%);height:100%}
+    #apt.split #aptBody{grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"tabs tabs" "ctl plan"}
+    #apt.split .aptctl{border-top:0;border-left:1px solid var(--line-soft);padding:2px 16px 24px 18px}
+    #apt.split .aptplan{margin:0 12px 12px}
     #wiz .dlg{width:min(760px,100%);height:100%}
     .tplgrid{grid-template-columns:repeat(4,1fr)}
     .rtypes{grid-template-columns:repeat(4,1fr)}

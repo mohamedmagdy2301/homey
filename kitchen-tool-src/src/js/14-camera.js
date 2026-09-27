@@ -28,7 +28,7 @@ function updateCam(){
   { const wf=FP.on?75:55; if(camera.fov!==wf){ camera.fov=wf; camera.updateProjectionMatrix(); } }
   if(FP.on){ FP.pitch=Math.max(-1.2,Math.min(1.1,FP.pitch)); camera.position.set(FP.x,1.6,FP.z);
     camera.lookAt(FP.x+Math.sin(FP.yaw)*Math.cos(FP.pitch),1.6+Math.sin(FP.pitch),FP.z+Math.cos(FP.yaw)*Math.cos(FP.pitch)); }
-  else { sph.phi=Math.max(0.03,Math.min(1.62,sph.phi)); sph.r=Math.max(0.5,Math.min(20,sph.r));
+  else { sph.phi=Math.max(0.03,Math.min(1.62,sph.phi)); sph.r=Math.max(0.5,Math.min(APT3D?60:20,sph.r));
   camera.position.set(target.x+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta), target.y+sph.r*Math.cos(sph.phi), target.z+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta));
   camera.lookAt(target); }
   const showL=!FP.on&&sph.r>3.6; root.children.forEach(o=>{ if(o.userData.label) o.visible=showL&&!o.userData.hid; });

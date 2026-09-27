@@ -65,6 +65,15 @@ with sync_playwright() as p:
     ev("()=>exitApt3D()")
     r = ev("()=>{ const s=SHARED[0]; APT.doors=[{a:s.b,b:s.a,pos:20,w:80}]; const n=aptDoorLinks().length; const t=APT.wallT; APT.wallT=60; aptRecalc(); aptDoorLinks(); const kept=APT.doors.length; APT.wallT=t; aptRecalc(); return [n, kept]; }")
     check("apartment: door (either direction) survives rooms moving apart", r[0] == 1 and r[1] == 1, r)
+    pg.on("dialog", lambda d: d.accept())
+    r = ev("""async()=>{ window._aptBak=JSON.stringify(APT); await openApt(); await applyAptTpl(APT_TPLS[2]); const out=APTLINKS.filter(L=>!L.B).map(L=>SNAP[L.A].roomType);
+      const svg=document.getElementById('aptSvg'), ctl=document.querySelector('#apt .aptctl'), pl=document.querySelector('#apt .aptplan').getBoundingClientRect();
+      return [APT.rooms.length, APTLINKS.filter(L=>L.B).length, out, APT.rooms.some(r=>r.id===PROJ.id)===(cfg.roomType==='kitchen'), document.getElementById('apt').classList.contains('split'), pl.height>200, !!ctl&&getComputedStyle(ctl).overflowY, +svg.querySelector('.rn').getAttribute('font-size')*svg.getScreenCTM().a]; }""")
+    check("apartment template: 6 rooms, every room door opens on the hall, only the front door leads out", r[0] == 6 and r[1] == 5 and r[2] == ["hall"] and r[3], r)
+    check("apartment plan stays pinned above its own scrolling controls, room names readable", r[4] and r[5] and r[6] == "auto" and 9 <= r[7] <= 15, r)
+    r = ev("()=>{ document.querySelector('#apt .aptbig').click(); const a=[document.getElementById('apt').classList.contains('big'), getComputedStyle(document.querySelector('#apt .aptctl')).display, document.querySelector('#apt .aptplan').getBoundingClientRect().height]; document.querySelector('#apt .aptbig').click(); return a; }")
+    check("apartment plan enlarges to fill the screen", r[0] and r[1] == "none" and r[2] > 550, r)
+    ev("async()=>{ APT=JSON.parse(_aptBak); await saveApt(); await refreshSnaps(); aptRecalc(); closeApt(); }"); pg.wait_for_timeout(800)
     r = ev("()=>{ pushHist(); cfg.roomW+=10; document.getElementById('undo').click(); const h=hist.length, rd=redo.length, c=JSON.stringify(cfg); openWizard(true); pushHist(); applyTemplate(cfg,'b_std',false); build(); closeWizard(false); return [hist.length===h, JSON.stringify(cfg)===c, rd===1&&redo.length===1]; }")
     check("cancelling the wizard restores cfg and undo/redo history", r[0] and r[1] and r[2], r)
     # --- number input: Arabic digits, "٫"/",", units, clamping ---
