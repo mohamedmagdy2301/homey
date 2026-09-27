@@ -79,6 +79,11 @@ with sync_playwright() as p:
     check("apartment: resizing a room pushes the next room in its row, and undo puts both back", r == [50, 50, True, 1, True, True], r)
     r = ev("""async()=>{ const k=APT.rooms.find(r=>SNAP[r.id].name==='أوضة أطفال'); await aptEditRoom(k.id,d=>{ d.name='أوضة <يوسف>'; }); await saveApt(); const a=[SNAP[k.id].name, projIndex.find(p=>p.id===k.id).name]; await aptUndo(); return [...a, SNAP[k.id].name]; }""")
     check("apartment: rename a room (cleaned) and undo it", r == ["أوضة يوسف", "أوضة يوسف", "أوضة أطفال"], r)
+    r = ev("""async()=>{ const k=APT.rooms.find(r=>SNAP[r.id].name==='أوضة أطفال'); APT.dimMode='net'; aptSel=k.id; renderApt(); const f=()=>[...document.querySelectorAll('#apt .card.sel .ctl.rng input.num')].map(x=>+x.value), lbl=()=>document.querySelector('#aptSvg g[data-room="'+k.id+'"] .rd').textContent;
+      await aptResize(k,'x',300,false); const a=[Math.round(SNAP[k.id].RW*100), f()[0], lbl().split('×').map(Number).includes(300)];
+      APT.dimMode='brick'; await saveApt(); renderApt(); const b=[f()[0], lbl().split('×').map(Number).includes(306), document.querySelector('#apt .aptarea').textContent.includes('على الطوب')];
+      APT.dimMode='net'; await saveApt(); renderApt(); return [...a,...b]; }""")
+    check("apartment: sizes switch - 300 typed as clear is 300 on the plan; on the brick it reads 306", r == [300, 300, True, 306, True, True], r)
     n0 = ev("()=>{ aptSel=null; renderApt(); return (APT.doors||[]).length; }"); pg.wait_for_timeout(300)
     bb = pg.locator("#aptSvg [data-sh]").first.bounding_box(); pg.mouse.click(bb["x"]+bb["width"]/2, bb["y"]+bb["height"]/2); pg.wait_for_timeout(600)
     r = ev("()=>[(APT.doors||[]).length, APTLINKS.filter(L=>L.apt).length, document.querySelectorAll('#aptSvg [data-h]').length, document.querySelector('#apt .aptarea').textContent.includes('م²')]")

@@ -1466,7 +1466,11 @@ async function aptUndo(){ const e=APT_UNDO.pop(); if(!e) return;
   if(e.rooms) await stSet("kproj:index",projIndex); APT_LAST=JSON.stringify(APT); await stSet("kapt:main",APT);
   try{ await refreshSnaps(); }catch(err){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); } APT_SVC=aptServices(); renderApt(); hint("↶ رجعت خطوة"); }
 const roomIco=sn=>sn.cfg&&sn.cfg.template==="r_balcony"?"🌿":({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"");
-const aptArea=sn=>(sn.q&&+sn.q.floorA)||sn.RW*sn.RL;
+const aptArea=sn=>(sn.q&&+sn.q.floorA)||sn.RW*sn.RL; /* clear floor */
+const aptBrick=()=>APT.dimMode==="brick", aptFin=sn=>aptBrick()?2*((+sn.cfg.plaster||0)+(+sn.cfg.tileT||0)):0; /* cm added to each size when shown on the brick */
+const aptDims=sn=>{ const e=aptFin(sn); return [Math.round(sn.RW*100)+e,Math.round(sn.RL*100)+e]; };
+const aptAreaM=sn=>{ const e=aptFin(sn)/100; return aptArea(sn)+(sn.RW+e)*(sn.RL+e)-sn.RW*sn.RL; };
+const aptDimWord=()=>aptBrick()?"على الطوب":"صافي";
 async function aptEditRoom(id,fn){ // change a room's saved design (size, name) from the apartment screen, then re-snapshot just that room
   let d; if(id===PROJ.id) d={name:PROJ.name,cfg:clone(cfg)}; else { const rd=await stRead("kproj:"+id); if(rd.err||!rd.v){ hint("مقدرتش أقرا الأوضة من الحفظ، جرّب تاني",4000); return false; } d=rd.v; }
   APT_ROOMS_PREV=APT_ROOMS_PREV||{}; if(!(id in APT_ROOMS_PREV)) APT_ROOMS_PREV[id]=clone(d);
@@ -1478,7 +1482,7 @@ async function aptEditRoom(id,fn){ // change a room's saved design (size, name) 
 const sizeKey=(r,axis)=>(axis==="x")===(r.rot%180===0)?"roomW":"roomL"; /* the room's own width/length that runs along the plan's x or z */
 const finOf=(sn,k)=>sn.cfg[k]-Math.round((k==="roomW"?sn.RW:sn.RL)*100); /* entered size minus the clear size (plaster + tiles when sizes are on the brick) */
 async function aptResize(r,axis,net,fromStart){ // net = new clear size in cm across the plan; the other edge stays, rooms after it in the same row move along
-  const sn=SNAP[r.id], k=sizeKey(r,axis), sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700}, v=Math.max(sc.min,Math.min(sc.max,Math.round(net+finOf(sn,k))));
+  const sn=SNAP[r.id], k=sizeKey(r,axis), sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700}, mn=sn.roomType==="hall"?(k==="roomW"?70:60):sc.min, v=Math.max(mn,Math.min(sc.max,Math.round(net+finOf(sn,k))));
   if(v===sn.cfg[k]) { renderApt(); return; }
   const R0=roomRectW(r), old=axis==="x"?R0.x1-R0.x0:R0.z1-R0.z0; if(!await aptEditRoom(r.id,d=>{ d.cfg[k]=v; })) return;
   const R1=roomRectW(r), dl=Math.round(((axis==="x"?R1.x1-R1.x0:R1.z1-R1.z0)-old)*100), off0=r.rel?(r.rel.off||0):0;
@@ -1588,7 +1592,7 @@ function aptPlanSVG(){
     for(const f of sn.feats){ if(f.type!=="window") continue; const {p0,p1}=wallWorld(r,sn,f.wall,f.a0,f.a1); s+=`<line x1="${p0[0]*S}" y1="${p0[1]*S}" x2="${p1[0]*S}" y2="${p1[1]*S}" stroke="#6fb6e0" stroke-width="${g+2}"/>`; }
     const cx=(R.x0+R.x1)/2*S, cy=(R.z0+R.z1)/2*S, rw=(R.x1-R.x0)*S;
     s+=`<rect class="lbg" x="${cx}" y="${cy}" width="0" height="0" rx="6" fill="#fff" fill-opacity=".82"/><text class="rn" x="${cx}" y="${cy}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="${Math.max(18,Math.min(34,rw/6))}" fill="#2d5f7a" font-weight="bold">${esc(sn.name)}</text>`;
-    s+=`<text class="rd" x="${cx}" y="${cy+28}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</text><text class="ra" x="${cx}" y="${cy+50}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptArea(sn).toFixed(1)} م²</text></g>`; }
+    s+=`<text class="rd" x="${cx}" y="${cy+28}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptDims(sn).join("×")}</text><text class="ra" x="${cx}" y="${cy+50}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptAreaM(sn).toFixed(1)} م²</text></g>`; }
   { let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const r of rs){ const R=roomRectW(r); a=Math.min(a,R.x0);b=Math.min(b,R.z0);c=Math.max(c,R.x1);d=Math.max(d,R.z1); } const g=APT.wallT/100; a-=g;b-=g;c+=g;d+=g; const o=0.32, t=0.1;
     const ln=(x1,y1,x2,y2)=>`<line x1="${x1*S}" y1="${y1*S}" x2="${x2*S}" y2="${y2*S}" stroke="#56606a" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
     s+=ln(a,b-o,c,b-o)+ln(a,b-o-t,a,b-o+t)+ln(c,b-o-t,c,b-o+t)+`<text x="${(a+c)/2*S}" y="${(b-o-0.06)*S}" text-anchor="middle" font-size="16" data-px="11" fill="#56606a">${(c-a).toFixed(2)} م</text>`;
@@ -1620,7 +1624,7 @@ function renderApt(){
   if(withPlan){ const pl=document.createElement("div"); pl.className="planbox aptplan"; pl.innerHTML=aptPlanSVG(); body.appendChild(pl); bindAptSvg();
     const bg=document.createElement("button"); bg.className="btn aptbig"; bg.textContent=aptBig?"✕ صغّر":"⛶ كبّر المسقط"; bg.onclick=()=>{ aptBig=!aptBig; ov.classList.toggle("big",aptBig); bg.textContent=aptBig?"✕ صغّر":"⛶ كبّر المسقط"; fitAptLabels(); }; pl.appendChild(bg);
     const ub=document.createElement("button"); ub.className="btn aptundo"; ub.textContent="↶ تراجع"; ub.disabled=!APT_UNDO.length; ub.onclick=()=>aptUndo(); pl.appendChild(ub);
-    const rsA=APT.rooms.filter(r=>SNAP[r.id]); if(rsA.length>1){ const ar=document.createElement("div"); ar.className="aptarea"; ar.textContent=`📐 ${rsA.reduce((a,r)=>a+aptArea(SNAP[r.id]),0).toFixed(1)} م² صافي`; pl.appendChild(ar); } }
+    const rsA=APT.rooms.filter(r=>SNAP[r.id]); if(rsA.length>1){ const ar=document.createElement("div"); ar.className="aptarea"; ar.textContent=`📐 ${rsA.reduce((a,r)=>a+aptAreaM(SNAP[r.id]),0).toFixed(1)} م² ${aptDimWord()}`; pl.appendChild(ar); } }
   const box=document.createElement("div"); box.className="aptctl"; body.appendChild(box); const saveCtl=ctlEl; ctlEl=box;
   const sv=APT_SVC;
   if(aptTab==="المسقط") arrangeUI(box);
@@ -1692,7 +1696,8 @@ function aptRszMove(pt){ // live preview while a handle is dragged: the moving e
   const x0=ax==="x"?a0:z.R.x0*100, x1=ax==="x"?a1:z.R.x1*100, z0=ax==="z"?a0:z.R.z0*100, z1=ax==="z"?a1:z.R.z1*100;
   z.pv.setAttribute("x",x0); z.pv.setAttribute("y",z0); z.pv.setAttribute("width",x1-x0); z.pv.setAttribute("height",z1-z0);
   const cx=(x0+x1)/2, k=z.tx.getAttribute("font-size"); z.tx.setAttribute("x",cx); z.tx.setAttribute("y",(z0+z1)/2);
-  z.tx.innerHTML=`<tspan x="${cx}">${Math.round(x1-x0)}×${Math.round(z1-z0)}</tspan><tspan x="${cx}" dy="1.25em">${((x1-x0)*(z1-z0)/1e4).toFixed(1)} م²</tspan>`; }
+  const e=aptFin(SNAP[z.r.id]), W=Math.round(x1-x0)+e, H=Math.round(z1-z0)+e;
+  z.tx.innerHTML=`<tspan x="${cx}">${W}×${H}</tspan><tspan x="${cx}" dy="1.25em">${(W*H/1e4).toFixed(1)} م²</tspan>`; }
 // ---------- simpler apartment arranging: "next to" + doors between rooms ----------
 const SIDES=[["right","يمينها"],["left","شمالها"],["bottom","تحتها"],["top","فوقها"]];
 let SHARED=[];
@@ -1763,6 +1768,7 @@ function arrangeUI(box){
   const rs=APT.rooms.filter(r=>SNAP[r.id]); if(aptSel&&!rs.some(r=>r.id===aptSel)) aptSel=null;
   const head=t=>{ const h=document.createElement("div"); h.className="head"; h.textContent=t; box.appendChild(h); }, note=t=>{ const n=document.createElement("div"); n.className="note"; n.textContent=t; box.appendChild(n); return n; };
   const tplGrid=()=>{ const g=document.createElement("div"); g.className="tplgrid"; for(const T of APT_TPLS){ const b=document.createElement("button"); b.className="btn tpl"; b.innerHTML=`<b>${T.n}</b><small style="color:var(--muted)">${T.sub}</small>`; b.onclick=()=>applyAptTpl(T); g.appendChild(b); } box.appendChild(g); };
+  fieldRow(box,"المقاسات",choice([["net","صافي بعد التشطيب"],["brick","على الطوب"]],APT.dimMode==="brick"?"brick":"net",async v=>{ APT.dimMode=v; await saveApt(); renderApt(); },"المقاسات"));
   if(rs.length<=1){ head("🏢 ابدأ بقالب شقة"); note("اختار شكل قريب من شقتك: طرقة في النص والأوض حواليها بأبوابها. بعد كده عدّل مقاس كل أوضة ومكانها."); tplGrid(); head("أو ابني الشقة أوضة أوضة"); }
   else { note("دوس على أوضة في المسقط عشان تعدّلها، أو اسحبها بصباعك. الخط الأخضر المتقطع = حيطة مشتركة ممكن تحط فيها باب، والبرتقاني = باب لبرة.");
     const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=roomIco(sn)+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
@@ -1775,11 +1781,11 @@ function arrangeUI(box){
   ar.append(ps,ab); if(rs.length<=1) box.appendChild(ar);
   // the selected room: where it sits, rotate, design, remove
   rs.forEach((r,i)=>{ if(r.id!==aptSel) return; const sn=SNAP[r.id]; const card=document.createElement("div"); card.className="card"+(aptSel===r.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${roomIco(sn)} ${esc(sn.name)}</b><small style="color:#66716C">${aptArea(sn).toFixed(1)} م²</small></div>`;
+    card.innerHTML=`<div class="ch"><b>${roomIco(sn)} ${esc(sn.name)}</b><small style="color:#66716C">${aptAreaM(sn).toFixed(1)} م² ${aptDimWord()}</small></div>`;
     card.onclick=e=>{ if(e.target.closest("select,input,button")) return; aptSel=r.id; renderApt(); };
-    { const brick=sn.cfg.dimsOn==="brick"; for(const [ax,lab] of [["x","العرض ↔"],["z","الطول ↕"]]){ const k=sizeKey(r,ax), sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700};
-        aRange(card,lab+(brick?" (على الطوب)":""),sc.min,sc.max,sn.cfg[k],"سم",v=>aptResize(r,ax,v-finOf(sn,k),false)); }
-      const n=document.createElement("div"); n.className="note"; n.textContent=`الصافي بعد التشطيب ${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)} سم. تقدر كمان تشد الدواير البرتقاني على المسقط.`; card.appendChild(n); }
+    { const [dw,dl]=aptDims(sn), e=aptFin(sn), ff=2*((+sn.cfg.plaster||0)+(+sn.cfg.tileT||0)); for(const [ax,lab] of [["x","العرض ↔"],["z","الطول ↕"]]){ const d=(ax==="x")===(r.rot%180===0)?dw:dl;
+        aRange(card,`${lab} (${aptDimWord()})`,50,800,d,"سم",v=>aptResize(r,ax,v-e,false)); }
+      const n=document.createElement("div"); n.className="note"; n.textContent=(aptBrick()?`الصافي بعد التشطيب ${dw-e}×${dl-e} سم`:`على الطوب ${dw+ff}×${dl+ff} سم`)+` (المحارة والسيراميك ${ff/2} سم من كل حيطة). تقدر كمان تشد الدواير البرتقاني على المسقط.`; card.appendChild(n); }
     if(i===0){ const n=document.createElement("div"); n.className="note"; n.textContent="📍 دي الأوضة الأساس، الباقي بيترص حواليها."; card.appendChild(n); }
     else { const others=rs.filter(x=>x!==r).map(x=>[x.id,SNAP[x.id].name]); const rel=r.rel||{to:rs[0].id,side:"right",off:0};
       const upd=async()=>{ r.rel=rel; aptRecalc(); await saveApt(); renderApt(); };
@@ -1815,8 +1821,8 @@ function arrangeUI(box){
     box.appendChild(card); }
   if(rs.length>1){ head("➕ ضيف أوضة"); box.appendChild(ar);
     const tb=document.createElement("button"); tb.className="btn"; tb.style.width="100%"; tb.textContent=aptTplOpen?"✕ اقفل القوالب":"🏢 ابدأ من جديد بقالب شقة"; tb.onclick=()=>{ aptTplOpen=!aptTplOpen; renderApt(); }; box.appendChild(tb); if(aptTplOpen) tplGrid();
-    head("📐 المساحة"); const net=rs.reduce((a,r)=>a+aptArea(SNAP[r.id]),0), g=APT.wallT/100, gross=rs.reduce((a,r)=>{ const sn=SNAP[r.id]; return a+(sn.RW+g)*(sn.RL+g); },0);
-    const sm=document.createElement("div"); sm.className="sum"; sm.innerHTML=`صافي الأرضيات: <b>${net.toFixed(1)} م²</b><br>بالحيطان اللي بين الأوض: حوالي <b>${gross.toFixed(0)} م²</b><br><small>${rs.map(r=>`${esc(SNAP[r.id].name)} ${aptArea(SNAP[r.id]).toFixed(1)}`).join(" • ")}</small>`; box.appendChild(sm);
+    head("📐 المساحة"); const net=rs.reduce((a,r)=>a+aptArea(SNAP[r.id]),0), brk=rs.reduce((a,r)=>{ const sn=SNAP[r.id], e=2*((+sn.cfg.plaster||0)+(+sn.cfg.tileT||0))/100; return a+aptArea(sn)+(sn.RW+e)*(sn.RL+e)-sn.RW*sn.RL; },0), g=APT.wallT/100, gross=rs.reduce((a,r)=>{ const sn=SNAP[r.id]; return a+(sn.RW+g)*(sn.RL+g); },0);
+    const sm=document.createElement("div"); sm.className="sum"; sm.innerHTML=`صافي الأرضيات: <b>${net.toFixed(1)} م²</b><br>على الطوب: <b>${brk.toFixed(1)} م²</b><br>بالحيطان اللي بين الأوض: حوالي <b>${gross.toFixed(0)} م²</b><br><small>${rs.map(r=>`${esc(SNAP[r.id].name)} ${aptAreaM(SNAP[r.id]).toFixed(1)}`).join(" • ")} (${aptDimWord()})</small>`; box.appendChild(sm);
     fieldRow(box,"مساحة العقد",numIn(APT.contract||0,0,2000,"م²",async v=>{ APT.contract=v; await saveApt(); renderApt(); },1,null,"مساحة العقد"));
     if(APT.contract>0) note(`الفرق بين العقد وصافي الأرضيات ${(APT.contract-net).toFixed(1)} م². ده عادةً الحيطان الخارجية ونصيب الشقة من السلم والمداخل والمناور.`);
     head("الحيطان"); }
