@@ -58,7 +58,7 @@ const DEFAULT = {
   pLower:0, pUpper:0, pTall:0, pMarble:0,
   units:{}, openDoors:false, fridgeHinge:"a1",
   showPts:true, ptLabels:false, water:{wall:"L",pos:150,y:55}, drain:{wall:"L",pos:150},
-  apps:[], custom:[], steps:{}, dragOn:true, showTri:true, openCab:false, roomType:"kitchen", bfix:[], furn:[], rtype:"", cSofa:"#8a9aa8", cRug:"#b98d6a", pFloor:0, pPaint:0, pSkirt:0, paintCoats:2, gyps:"cove", chand:false, curtains:false, cCurtain:"#d8cbb6", accent:"", accentT:"wood", cAccent:"#8a6a4a", corner:"door", gbType:"tray", gbDrop:12, gbBand:30, gbPerSide:"", gbCenter:0, gbLed:"", gbLedCol:"warm", gbSpots:0, gbSpotsAt:"band", pGbFlat:0, pGbCove:0, cCeil:"#fbfbfa", tileTop:"ceil", wallTile:"30x60", floorTile:"60x60", cTile:"#e9e6e1", wpUp:30, wpShower:200, waste:10, pTile:0, pWP:0, pLabor:0
+  apps:[], custom:[], hiddenUnits:[], steps:{}, dragOn:true, showTri:true, openCab:false, roomType:"kitchen", bfix:[], furn:[], rtype:"", cSofa:"#8a9aa8", cRug:"#b98d6a", pFloor:0, pPaint:0, pSkirt:0, paintCoats:2, gyps:"cove", chand:false, curtains:false, cCurtain:"#d8cbb6", accent:"", accentT:"wood", cAccent:"#8a6a4a", corner:"door", gbType:"tray", gbDrop:12, gbBand:30, gbPerSide:"", gbCenter:0, gbLed:"", gbLedCol:"warm", gbSpots:0, gbSpotsAt:"band", pGbFlat:0, pGbCove:0, cCeil:"#fbfbfa", tileTop:"ceil", wallTile:"30x60", floorTile:"60x60", cTile:"#e9e6e1", wpUp:30, wpShower:200, waste:10, pTile:0, pWP:0, pLabor:0
 };
 Object.assign(DEFAULT,TEMPLATES.mine.make(180,400)); DEFAULT.place.f="N:rc";
 const VARIANTS = {
@@ -112,6 +112,7 @@ function migrate(o){
     c.custom=(o.custom||[]).map(x=>({...x,wall:x.wall==="RC"?"RT":x.wall}));
   }
   for(const k of ["wallCfg","place","island","water","drain"]) if(!c[k]) c[k]=clone(DEFAULT[k]);
+  c.hiddenUnits=Array.isArray(c.hiddenUnits)?c.hiddenUnits.filter(x=>typeof x==="string"):[];
   if(o.gbType==null&&o.ceiling){ if(o.ceiling==="none") c.gbType="hide"; else if(o.ceiling==="flat") c.gbType="slab"; else { const g=o.gyps||(o.roomType==="room"?"cove":"band"); if(g==="flat"){ c.gbType="flat"; c.gbDrop=15; } else { c.gbType="tray"; c.gbBand=g==="cove"?45:g==="tray"?90:30; c.gbLed=(g==="cove"||g==="tray")?"1":""; c.gbDrop=12; } } }
   fixNums(c); return c;
 }

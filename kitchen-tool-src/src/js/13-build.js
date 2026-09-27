@@ -13,7 +13,7 @@ function build(){
   scene.remove(root); root=new THREE.Group(); scene.add(root);
   H=cfg.ceil/100; geo();
   TRI=null; BATH=null; BATH_DRAIN=null; ACC={lower:0,upper:0,tall:0,marble:0}; UNITS=[]; POINTS=[]; unitCount={}; DOORCHK=[]; KEY=null; OPT=null; curWall=null; curSide=null;
-  cfg.units=cfg.units||{}; cfg.custom=cfg.custom||[]; cfg.apps=(cfg.apps||[]).filter(a=>APPS[a.type]); cfg.seq=cfg.seq||{};
+  cfg.units=cfg.units||{}; cfg.custom=cfg.custom||[]; cfg.apps=(cfg.apps||[]).filter(a=>APPS[a.type]); cfg.seq=cfg.seq||{}; cfg.hiddenUnits=cfg.hiddenUnits||[]; HIDDEN=new Set(cfg.hiddenUnits);
   FEATS=(cfg.feats||[]).filter(f=>f.type!=="cut").map(netFeat); netCuts(); WALLS=makeWalls();
   mats(); room();
   const warn=[]; const R=cfg.roomType==="bath"?buildBath(warn):cfg.roomType==="hall"?buildHall(warn):cfg.roomType==="room"?buildRoom(warn):buildKitchen(warn);
@@ -105,7 +105,7 @@ function buildKitchen(warn){
     } else if(c.type==="shallow"){ segs.forEach(([a,b],k)=>{ KEY=`${w}-b:${k}`; base(fr.f,a,b,fr.back,dep); counterLen+=b-a; }); }
     else if(c.type==="pantry"){ segs.forEach(([a,b],k)=>{ KEY=`${w}-p:${k}`; tall(fr.f,a,b,fr.back,dep,0,capUp(w,a,b,H-0.01)); (tallByWall[w]=tallByWall[w]||[]).push([a,b]); }); }
     else if(c.type==="shelves"){ const ys=[1.3,1.65,2.0,2.35].filter(y=>y<H-0.15); segs.forEach(([a,b])=>{ const u=newUnit("shelf",fr.f,a,b,fr.back,Math.min(dep,0.3),ys[0],ys[ys.length-1]+0.03,{front:`${ys.length} رفوف`}); curUid=u.id; for(const y of ys) place(fr.f,a,b,fr.back,fr.back+Math.min(dep,0.3)*dirOf(fr.f),y,y+0.03,MAT.wood); curUid=null; }); }
-    else if(c.type==="bar"){ segs.forEach(([a,b])=>{ newUnit("bar",fr.f,a,b,fr.back,0.4,0,1.06,{front:"بار فطار"}); const dr=dirOf(fr.f);
+    else if(c.type==="bar"){ segs.forEach(([a,b])=>{ const bu=newUnit("bar",fr.f,a,b,fr.back,0.4,0,1.06,{front:"بار فطار"}); const dr=dirOf(fr.f); if(HIDDEN.has(bu.id)) return;
       place(fr.f,a,b,fr.back,fr.back+0.4*dr,1.02,1.06,MAT.counter); ACC.marble+=b-a; place(fr.f,a+0.1,a+0.14,fr.back+0.02*dr,fr.back+0.06*dr,0,1.02,MAT.handle); place(fr.f,b-0.14,b-0.1,fr.back+0.02*dr,fr.back+0.06*dr,0,1.02,MAT.handle);
       const n=Math.max(1,Math.floor((b-a)/0.55)); for(let i=0;i<n;i++){ const s=a+(i+0.5)*(b-a)/n; cylAt(fr.f,s,fr.back+0.62*dr,0.72,0.17,0.05,MAT.wood); cylAt(fr.f,s,fr.back+0.62*dr,0.36,0.02,0.7,MAT.handle); } counterLen+=b-a; }); }
     for(let i=before;i<UNITS.length;i++){ const u=UNITS[i]; if(u.wall!==w) continue; if(u.y0<1.0) keepLow.push(rectAO(w,u.a0,u.a1,0,u.depth)); if(u.y1>US+0.1) keepUp.push(rectAO(w,u.a0,u.a1,0,u.depth)); }
@@ -120,14 +120,14 @@ function buildKitchen(warn){
       if(any){ warn.push(`في ركن ${WNAME[A]} مع ${WNAME[Bw]} فيه ${KN[any.kind]||"جهاز"}، هيبقى صعب يتفتح. الأحسن يبقى دولاب ركن، اسحب الجهاز لمكان تاني`); continue; }
       const cu=UNITS.find(u=>u.wall===A&&(u.kind==="base"||u.kind==="sink")&&u.y1<=ch+0.02&&(atStart?u.a0<0.05:u.a1>LA-0.05)); if(!cu||cu.corner) continue;
       cu.corner=cfg.corner; const fr=wallFrame(A), dr=dirOf(fr.f), front=fr.back+0.6*dr, b0=atStart?cu.a0:cu.a1-0.62, b1=atStart?cu.a0+0.62:cu.a1, wdt=cu.a1-cu.a0;
-      curSide=A; curUid=cu.id; place(fr.f,b0,b1,front+0.021*dr,front+0.025*dr,0.11,ch-0.05,MAT.base); curUid=null; curSide=null;
+      if(!HIDDEN.has(cu.id)){ curSide=A; curUid=cu.id; place(fr.f,b0,b1,front+0.021*dr,front+0.025*dr,0.11,ch-0.05,MAT.base); curUid=null; curSide=null; }
       const nm={blind:"ركن مقفول",door:"باب ركن مكسور",carousel:"كاروسيل",magic:"ماجيك كورنر"}[cfg.corner]; cu.acc=cu.acc||""; cu.label=`دولاب ركن (${nm})`;
       const need=cfg.corner==="magic"?1.0:cfg.corner==="carousel"?0.9:cfg.corner==="door"?0.8:0; if(need&&wdt<need-0.01) warn.push(`دولاب الركن ${Math.round(wdt*100)} سم، ${nm} محتاج ${Math.round(need*100)} سم على الأقل`);
       if(cfg.corner==="blind") warn.push(`الركن بين ${WNAME[A]} و${WNAME[Bw]} ${Math.round(0.62*100)} سم مقفول (ركن ميت)، جرب كاروسيل أو ماجيك كورنر من تاب التخزين`); } } }
   // ================= hood =================
   if(stoveRange){ const [a,b]=stoveRange, m=(a+b)/2, fr=wallFrame(stoveWall); curSide=stoveWall; curWall=stoveWall; const dr=dirOf(fr.f), bk=fr.back;
-    if(cfg.hood==="chimney"){ const hu=newUnit("hood",fr.f,a,b,bk,0.5,US+0.12,H,{front:"شفاط مدخنة"}); curUid=hu.id; place(fr.f,a,b,bk,bk+0.5*dr,US+0.12,US+0.22,MAT.steel); place(fr.f,m-0.14,m+0.14,bk,bk+0.25*dr,US+0.22,H,MAT.steel); curUid=null; }
-    if(cfg.hood==="built"){ const hu=newUnit("hood",fr.f,a,b,bk,0.38,US+0.18,US+0.28,{front:"شفاط بلت إن"}); curUid=hu.id; place(fr.f,a+0.01,b-0.01,bk,bk+0.38*dr,US+0.18,US+0.28,MAT.steel); curUid=null; }
+    if(cfg.hood==="chimney"){ const hu=newUnit("hood",fr.f,a,b,bk,0.5,US+0.12,H,{front:"شفاط مدخنة"}); curUid=hu.id; if(!HIDDEN.has(hu.id)){ place(fr.f,a,b,bk,bk+0.5*dr,US+0.12,US+0.22,MAT.steel); place(fr.f,m-0.14,m+0.14,bk,bk+0.25*dr,US+0.22,H,MAT.steel); } curUid=null; }
+    if(cfg.hood==="built"){ const hu=newUnit("hood",fr.f,a,b,bk,0.38,US+0.18,US+0.28,{front:"شفاط بلت إن"}); curUid=hu.id; if(!HIDDEN.has(hu.id)) place(fr.f,a+0.01,b-0.01,bk,bk+0.38*dr,US+0.18,US+0.28,MAT.steel); curUid=null; }
     curSide=null; curWall=null; }
   // ================= uppers =================
   for(const w of order){
@@ -160,7 +160,7 @@ function buildKitchen(warn){
   // ================= spice shelves on columns =================
   if(cfg.colShelves) for(const f of FEATS) if(f.type==="column"&&f.dep>=0.25&&f.a1-f.a0>=0.4){ const fr=wallFrame(f.wall); curSide=f.wall; curWall=f.wall;
     const u=newUnit("shelf",fr.f,f.a0+0.04,f.a1-0.04,fr.back,f.dep+0.14,1.25,Math.min(H-0.2,2.47),{front:"على وش البروز"}); curUid=u.id;
-    for(let y=1.25;y<Math.min(H-0.2,2.5);y+=0.3) boxAO(f.wall,f.a0+0.04,f.a1-0.04,f.dep,f.dep+0.14,y,y+0.02,MAT.wood); curUid=null; curSide=null; curWall=null; }
+    if(!HIDDEN.has(u.id)) for(let y=1.25;y<Math.min(H-0.2,2.5);y+=0.3) boxAO(f.wall,f.a0+0.04,f.a1-0.04,f.dep,f.dep+0.14,y,y+0.02,MAT.wood); curUid=null; curSide=null; curWall=null; }
   // ================= niches =================
   for(const nf of FEATS.filter(f=>f.type==="niche"||f.type==="corridor")){
     const id="N:"+nf.id, fr=nicheFrame(nf), mid=(fr.a0+fr.a1)/2; curSide=fr.host; curWall=id;
@@ -173,7 +173,7 @@ function buildKitchen(warn){
       appLabel(`غسالة ${cfg.washerW}×${cfg.washerD}`,fr.f,mid,0.4,1.1); if(cfg.nicheTop){ KEY=id+"-top"; tall(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,0.4,1.45,H-0.01); } }
     else if(nf.use==="pantry"&&fr.floor){ KEY=id+"-tall"; tall(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,Math.min(0.6,fr.depth),0,nf.type==="niche"?Math.min(H-0.01,nf.y1-0.01):H-0.01); }
     else if(nf.use==="shelves"){ const y0=nf.type==="niche"?nf.y0:0.3, y1=nf.type==="niche"?nf.y1:H-0.2, n=Math.max(2,Math.floor((y1-y0)/0.35)); const u=newUnit("shelf",fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,Math.min(0.4,fr.depth),y0,y1,{front:`${n} رفوف`}); curUid=u.id;
-      for(let i=0;i<n;i++){ const y=y0+0.02+i*(y1-y0-0.06)/Math.max(1,n-1); place(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,fr.back+Math.min(0.4,fr.depth)*dirOf(fr.f),y,y+0.025,MAT.wood); } curUid=null; }
+      if(!HIDDEN.has(u.id)) for(let i=0;i<n;i++){ const y=y0+0.02+i*(y1-y0-0.06)/Math.max(1,n-1); place(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,fr.back+Math.min(0.4,fr.depth)*dirOf(fr.f),y,y+0.025,MAT.wood); } curUid=null; }
     for(const a of apps){ if(a.loc!==id) continue; const T=APPS[a.type]; if(T.cls==="slot"||T.cls==="tall"){ const u=appUnit(fr.f,mid-a.w/200,mid+a.w/200,fr.back,a,false); u.movable=null; } }
     curSide=null; curWall=null;
   }
@@ -200,7 +200,9 @@ function buildKitchen(warn){
   for(const cu of cfg.custom){ if(!W4.includes(cu.wall)) continue;
     const fr=frameOf(cu.wall), cL=wlen(cu.wall), cw=Math.min(cu.w/100,cL), a0=Math.max(0,Math.min(cL-cw,cu.pos/100)), a1=a0+cw, dp=cu.d/100; /* keep it on the wall */ curSide=fr.side; curWall=cu.wall;
     OPT={front:cu.front,n:cu.n,shelves:cu.shelves,acc:cu.acc}; KEY=cu.id;
-    if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
+    if(cu.type==="lower"&&cu.shape==="corner45"){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutSize||30)/100)),false); counterLen+=a1-a0; }
+    else if(cu.type==="tall"&&cu.shape==="corner45"){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutSize||30)/100)),true,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100))); }
+    else if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
     else if(cu.type==="upper") uppers(fr.f,a0,a1,fr.back,cu.y/100,capUp(cu.wall,a0,a1,Math.min(H-0.01,(cu.y+cu.h)/100)),dp);
     else if(cu.type==="tall") tall(fr.f,a0,a1,fr.back,dp,0,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100)));
     else if(cu.type==="shelf"){ const n=Math.max(1,+cu.shelves||3); const u=newUnit("shelf",fr.f,a0,a1,fr.back,dp,cu.y/100,Math.min(H-0.01,(cu.y+cu.h)/100),{front:`${n} رفوف`}); const pu=curUid; curUid=u.id;
@@ -262,6 +264,7 @@ function buildKitchen(warn){
 }
 function finishBuild(warn,walkCm,counterLen,US){
   // ================= numbering, overlaps =================
+  UNITS=UNITS.filter(u=>!HIDDEN.has(u.id));
   const WO={W:0,L:1,RT:2,D:3,IS:4};
   UNITS.sort((p,q)=>(WO[p.wall]??5)-(WO[q.wall]??5)||String(p.wall).localeCompare(String(q.wall))||(p.y0>=1.2)-(q.y0>=1.2)||(WALLS[p.wall]?WALLS[p.wall].xs(q.a0+(q.a1-q.a0)/2)-WALLS[p.wall].xs(p.a0+(p.a1-p.a0)/2):0));
   UNITS.forEach((u,i)=>u.n=i+1);

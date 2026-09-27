@@ -142,8 +142,24 @@ function renderControls(){
 
 
 }
+const DETACHABLE=new Set(["base","upper","tall","shelf"]);
+function unitToCustom(u){ // a plain box-shaped auto unit -> an independent, freely editable cfg.custom item with the same footprint
+  const type=u.kind==="base"?"lower":u.kind, valid=(FRONTS[type==="lower"?"base":type]||[]).map(([v])=>v);
+  const front=type==="shelf"?"open":(valid.includes(u.front)?u.front:"auto");
+  return {id:"c"+Math.random().toString(36).slice(2,7),type,wall:u.wall,pos:Math.round(u.a0*100),w:Math.round((u.a1-u.a0)*100),d:Math.round(u.depth*100),
+    h:type==="lower"?90:Math.round((u.y1-u.y0)*100),y:Math.round(u.y0*100),front,n:"",shelves:3,acc:u.acc||""};
+}
+function detachUnit(u){ const c=unitToCustom(u);
+  if(u.movable&&u.movable.obj==="custom") cfg.custom=cfg.custom.filter(x=>x.id!==u.movable.id);
+  else cfg.hiddenUnits=[...(cfg.hiddenUnits||[]),u.id];
+  cfg.custom=[...(cfg.custom||[]),c]; return c.id; }
+function splitUnit(u){ const base=unitToCustom(u), w1=Math.max(15,Math.floor(base.w/2)), w2=Math.max(15,base.w-w1);
+  const c1={...base,id:"c"+Math.random().toString(36).slice(2,7),w:w1}, c2={...base,id:"c"+Math.random().toString(36).slice(2,7),pos:base.pos+w1,w:w2};
+  if(u.movable&&u.movable.obj==="custom") cfg.custom=cfg.custom.filter(x=>x.id!==u.movable.id);
+  else cfg.hiddenUnits=[...(cfg.hiddenUnits||[]),u.id];
+  cfg.custom=[...(cfg.custom||[]),c1,c2]; return c1.id; }
 function unitsBox(){
-  const n=document.createElement("div"); n.className="note"; n.textContent="دوس على أي دولاب في الـ3D وهيتحدد هنا، أو اختار من القايمة. غيّر نوع الواجهة لكل وحدة لوحدها.";
+  const n=document.createElement("div"); n.className="note"; n.textContent="دوس على أي دولاب في الـ3D وهيتحدد هنا، أو اختار من القايمة. غيّر نوع الواجهة لكل وحدة لوحدها. 🗑 بتشيل الوحدة (مكانها هيفضل فاضي)، ✏️ بتفصلها عشان تعدل مقاسها وشكلها لوحدها، ➗ بتقسمها لوحدتين جنب بعض.";
   ctlEl.appendChild(n);
   let lastWall=null;
   for(const u of UNITS){
@@ -153,7 +169,8 @@ function unitsBox(){
     r.innerHTML=`<span class="n">${u.n}</span><span class="t">${u.label||KN[u.kind]||u.kind}<small>عرض ${w} • ارتفاع ${hh} • عمق ${Math.round(u.depth*100)} سم</small></span>`;
     r.querySelector(".t").onclick=()=>{ selectUnit(u.id,false); renderControls(); const rr=ctlEl.querySelector(`[data-uid="${u.id}"]`); if(rr) rr.scrollIntoView({block:"nearest"}); };
     if(CABK.has(u.kind)&&!cfg.openCab){ const ob=document.createElement("button"); ob.className="btn"+(OPENSET.has(u.id)?" on":""); ob.textContent="🚪"; ob.setAttribute("aria-label","افتح الدولاب"); ob.onclick=()=>{ OPENSET.has(u.id)?OPENSET.delete(u.id):OPENSET.add(u.id); SEL=u.id; build(); renderControls(); }; r.appendChild(ob); }
-    const opts=FRONTS[u.kind];
+    const customEntry=u.movable&&u.movable.obj==="custom"?(cfg.custom||[]).find(x=>x.id===u.movable.id):null, isCorner45=customEntry&&customEntry.shape==="corner45";
+    const opts=isCorner45?null:FRONTS[u.kind];
     if(opts){ const sel=document.createElement("select"); for(const [v,t] of opts){ const o=document.createElement("option"); o.value=v; o.textContent=t; sel.appendChild(o); }
         const cur=cfg.units[u.id]; sel.value=(typeof cur==="string"?cur:(cur&&cur.front))||(u.kind==="sink"?"doors":"auto");
       sel.onchange=()=>{ pushHist(); setUnitOpt(u.id,{front:sel.value}); SEL=u.id; build(); };
@@ -164,10 +181,25 @@ function unitsBox(){
         mk([["","الرفوف: تلقائي"],["1","رف 1"],["2","2 رف"],["3","3 رفوف"],["4","4 رفوف"],["5","5 رفوف"]],o.shelves||"",v=>setUnitOpt(u.id,{shelves:v}),"الرفوف");
         mk(ACCS.map(([k,t])=>[k,k?t:"إكسسوار: من غير"]),o.acc||"",v=>setUnitOpt(u.id,{acc:v}),"إكسسوار");
         r.appendChild(det); } }
+    const acts=document.createElement("div"); acts.className="uacts";
+    const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑"; del.setAttribute("aria-label","احذف الوحدة");
+    del.onclick=()=>{ pushHist();
+      if(u.movable&&u.movable.obj==="apps") cfg.apps=cfg.apps.filter(x=>x.id!==u.movable.id);
+      else if(u.movable&&u.movable.obj==="custom") cfg.custom=cfg.custom.filter(x=>x.id!==u.movable.id);
+      else cfg.hiddenUnits=[...(cfg.hiddenUnits||[]),u.id];
+      if(SEL===u.id) SEL=null; build(); renderControls(); hint("اتشالت الوحدة ✓"); };
+    acts.appendChild(del);
+    if(DETACHABLE.has(u.kind)&&!u.movable){ const ed=document.createElement("button"); ed.className="btn"; ed.textContent="✏️ تعديل حر"; ed.setAttribute("aria-label","افصل الوحدة وعدّلها لوحدها");
+      ed.onclick=()=>{ pushHist(); const id=detachUnit(u); SEL=id; OPENC.add(id); build(); renderControls(); hint("بقت وحدة مستقلة، عدّلها من كارت الوحدات الإضافية ✓"); }; acts.appendChild(ed); }
+    if(DETACHABLE.has(u.kind)&&!isCorner45){ const sp=document.createElement("button"); sp.className="btn"; sp.textContent="➗ قسّم"; sp.setAttribute("aria-label","قسم الوحدة لوحدتين");
+      sp.onclick=()=>{ pushHist(); const id=splitUnit(u); SEL=id; build(); renderControls(); hint("اتقسمت لوحدتين ✓"); }; acts.appendChild(sp); }
+    r.appendChild(acts);
     ctlEl.appendChild(r);
   }
   const b=document.createElement("button"); b.className="btn"; b.style.marginTop="10px"; b.textContent="رجّع كل الوحدات تلقائي";
   b.onclick=()=>{ pushHist(); cfg.units={}; build(); }; ctlEl.appendChild(b);
+  if((cfg.hiddenUnits||[]).length){ const rb=document.createElement("button"); rb.className="btn"; rb.style.marginTop="8px"; rb.textContent="↩️ رجّع كل الوحدات المحذوفة";
+    rb.onclick=()=>{ pushHist(); cfg.hiddenUnits=[]; build(); renderControls(); }; ctlEl.appendChild(rb); }
 }
 function fieldRow(parent,label,el,out){ const row=document.createElement("div"); row.className="ctl"+(el.kind==="stack"?" stack":""); const lb=document.createElement("label"); lb.textContent=label; row.appendChild(lb); row.appendChild(el); if(out) row.appendChild(out); parent.appendChild(row); return row; }
 // one picker for every option list: a switch for yes/no, segmented buttons for a few short options, a dropdown otherwise
@@ -265,16 +297,27 @@ function customBox(){
   for(const c of cfg.custom||[]){ const u=UNITS.find(x=>x.id===c.id); const card=document.createElement("div"); card.className="card"+(c.id===SEL?" sel":"");
     const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<span class="n">${u?u.n:"?"}</span><b>${TN[c.type]}</b><small>${shortWall(c.wall)} • ${c.w} سم</small>`;
     const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.custom=cfg.custom.filter(x=>x.id!==c.id); build(); renderControls(); };
-    hd.onclick=e=>{ if(e.target!==del) selectUnit(c.id,false); }; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,c.id);
+    hd.appendChild(del);
+    if(u&&c.shape!=="corner45"){ const sp=document.createElement("button"); sp.className="btn"; sp.textContent="➗"; sp.setAttribute("aria-label","قسم الوحدة لوحدتين");
+      sp.onclick=e=>{ e.stopPropagation(); pushHist(); const id=splitUnit(u); SEL=id; build(); renderControls(); hint("اتقسمت لوحدتين ✓"); }; hd.appendChild(sp); }
+    hd.onclick=e=>{ if(!e.target.closest("button")) selectUnit(c.id,false); }; card.appendChild(hd); foldCard(card,hd,c.id);
     objSelect(card,c,"wall","الحيطة",W4OPT());
     objRange(card,c,"pos","بعدها عن الركن",0,Math.round(wallLen(c.wall)*100)-c.w,1);
     objRange(card,c,"w","العرض",15,250,1); objRange(card,c,"d","العمق",10,70,1);
     if(c.type!=="lower") objRange(card,c,"h","الارتفاع",15,Math.round(H*100),1);
     if(c.type==="upper"||c.type==="shelf") objRange(card,c,"y","بتبدأ من ارتفاع",20,Math.round(H*100)-20,1);
-    if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));
-      objSelect(card,c,"n","عدد الضلف / الأدراج",[["","تلقائي"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]]); }
-    if(c.type==="shelf"||c.front==="open") objSelect(card,c,"shelves","عدد الرفوف",[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"]]);
-    objSelect(card,c,"acc","إكسسوار",ACCS);
+    if(c.type==="lower"||c.type==="tall") objSelect(card,c,"shape","الشكل",[["rect","مستطيل عادي"],["corner45","ركن بزاوية 45° (قطع الجانب)"]]);
+    const corner45=c.shape==="corner45";
+    if(corner45){ if(!c.cutSide) c.cutSide="a1";
+      objSelect(card,c,"cutSide","الجنب اللي بيتقطع",[["a1","الآخر (بعيد عن أول الحيطة)"],["a0","الأول (قريب من أول الحيطة)"]]);
+      objRange(card,c,"cutSize","مقاس القطع",15,Math.max(16,Math.min(c.w,c.d)-5),1);
+      const cn=document.createElement("div"); cn.className="note"; cn.textContent="واجهة الوحدة هتتقطع بزاوية 45° من الجنب ده، زي دولاب الركن القديم."; card.appendChild(cn);
+    } else {
+      if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));
+        objSelect(card,c,"n","عدد الضلف / الأدراج",[["","تلقائي"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]]); }
+      if(c.type==="shelf"||c.front==="open") objSelect(card,c,"shelves","عدد الرفوف",[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"]]);
+      objSelect(card,c,"acc","إكسسوار",ACCS);
+    }
     ctlEl.appendChild(card); }
   const h2=document.createElement("div"); h2.className="head"; h2.textContent="🗄 كل الوحدات"; ctlEl.appendChild(h2);
 }

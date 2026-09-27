@@ -229,6 +229,8 @@
   .urow select{max-width:44%}
   .urow .btn{min-height:36px}
   .urow .det{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 2px 34px}
+  .urow .uacts{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;padding:2px 0 0}
+  .urow .uacts .btn{min-height:32px;padding:0 10px;font-size:12px}
   .tbl{overflow-x:auto;border-radius:var(--r)}
   .tbl table{border-collapse:collapse;font-size:12.5px;min-width:560px;width:100%;font-variant-numeric:tabular-nums}
   .tbl th,.tbl td{border:1px solid var(--line);padding:6px 7px;text-align:center}
@@ -450,7 +452,7 @@ const DEFAULT = {
   pLower:0, pUpper:0, pTall:0, pMarble:0,
   units:{}, openDoors:false, fridgeHinge:"a1",
   showPts:true, ptLabels:false, water:{wall:"L",pos:150,y:55}, drain:{wall:"L",pos:150},
-  apps:[], custom:[], steps:{}, dragOn:true, showTri:true, openCab:false, roomType:"kitchen", bfix:[], furn:[], rtype:"", cSofa:"#8a9aa8", cRug:"#b98d6a", pFloor:0, pPaint:0, pSkirt:0, paintCoats:2, gyps:"cove", chand:false, curtains:false, cCurtain:"#d8cbb6", accent:"", accentT:"wood", cAccent:"#8a6a4a", corner:"door", gbType:"tray", gbDrop:12, gbBand:30, gbPerSide:"", gbCenter:0, gbLed:"", gbLedCol:"warm", gbSpots:0, gbSpotsAt:"band", pGbFlat:0, pGbCove:0, cCeil:"#fbfbfa", tileTop:"ceil", wallTile:"30x60", floorTile:"60x60", cTile:"#e9e6e1", wpUp:30, wpShower:200, waste:10, pTile:0, pWP:0, pLabor:0
+  apps:[], custom:[], hiddenUnits:[], steps:{}, dragOn:true, showTri:true, openCab:false, roomType:"kitchen", bfix:[], furn:[], rtype:"", cSofa:"#8a9aa8", cRug:"#b98d6a", pFloor:0, pPaint:0, pSkirt:0, paintCoats:2, gyps:"cove", chand:false, curtains:false, cCurtain:"#d8cbb6", accent:"", accentT:"wood", cAccent:"#8a6a4a", corner:"door", gbType:"tray", gbDrop:12, gbBand:30, gbPerSide:"", gbCenter:0, gbLed:"", gbLedCol:"warm", gbSpots:0, gbSpotsAt:"band", pGbFlat:0, pGbCove:0, cCeil:"#fbfbfa", tileTop:"ceil", wallTile:"30x60", floorTile:"60x60", cTile:"#e9e6e1", wpUp:30, wpShower:200, waste:10, pTile:0, pWP:0, pLabor:0
 };
 Object.assign(DEFAULT,TEMPLATES.mine.make(180,400)); DEFAULT.place.f="N:rc";
 const VARIANTS = {
@@ -504,6 +506,7 @@ function migrate(o){
     c.custom=(o.custom||[]).map(x=>({...x,wall:x.wall==="RC"?"RT":x.wall}));
   }
   for(const k of ["wallCfg","place","island","water","drain"]) if(!c[k]) c[k]=clone(DEFAULT[k]);
+  c.hiddenUnits=Array.isArray(c.hiddenUnits)?c.hiddenUnits.filter(x=>typeof x==="string"):[];
   if(o.gbType==null&&o.ceiling){ if(o.ceiling==="none") c.gbType="hide"; else if(o.ceiling==="flat") c.gbType="slab"; else { const g=o.gyps||(o.roomType==="room"?"cove":"band"); if(g==="flat"){ c.gbType="flat"; c.gbDrop=15; } else { c.gbType="tray"; c.gbBand=g==="cove"?45:g==="tray"?90:30; c.gbLed=(g==="cove"||g==="tray")?"1":""; c.gbDrop=12; } } }
   fixNums(c); return c;
 }
@@ -671,6 +674,8 @@ const SCHEMA = {
     {t:"num",k:"pWP",l:"سعر متر العزل"}
   ]
 };
+// halls/corridors have no appliances or fixtures to clear, so they can be much narrower/shorter than a kitchen or bath
+function roomDimMin(k){ return cfg.roomType==="hall" ? (k==="roomW"?70:60) : (k==="roomW"?120:150); }
 
 
 // =================== THREE SETUP ===================
@@ -743,7 +748,7 @@ function splashMat(w,h){
 let ACC={lower:0,upper:0,tall:0,marble:0}, curSide=null;
 // ---- room geometry (net, meters) ----
 let RW=1.8, RL=4.0, FIN=0, FEATS=[], WALLS={};
-function geo(){ FIN=cfg.dimsOn==="brick"?(cfg.plaster+cfg.tileT)/100:0; RW=Math.max(1.2,cfg.roomW/100-2*FIN); RL=Math.max(1.5,cfg.roomL/100-2*FIN); }
+function geo(){ FIN=cfg.dimsOn==="brick"?(cfg.plaster+cfg.tileT)/100:0; RW=Math.max(roomDimMin("roomW")/100,cfg.roomW/100-2*FIN); RL=Math.max(roomDimMin("roomL")/100,cfg.roomL/100-2*FIN); }
 const wlen=w=>w==="W"||w==="D"?RW:RL;
 function netFeat(f){
   const L=wlen(f.wall), w=Math.max(0.05,Math.min((f.w||10)/100,L)), a0=Math.max(0,Math.min(L-w,(f.pos||0)/100-((f.pos||0)>0&&!f.net?FIN:0)));
@@ -819,6 +824,7 @@ function appUnit(f,a0,a1,back,a,withTop){
   const T=APPS[a.type], dr=dirOf(f), b0=back+0.02*dr, D=a.d/100, front=b0+D*dr, m=(a0+a1)/2;
   let h=a.h/100; if(T.look==="col"||h>H-0.01) h=Math.min(h,H-0.01); if(withTop) h=Math.min(h,CH()-0.045);
   const u=newUnit("app",f,a0,a1,back,D+0.02,0,withTop?CH():h,{front:T.n,label:T.n,app:a.id}); const pu=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=pu; return u; }
   if(T.look==="col"){
     place(f,a0,a1,back,front-0.04*dr,0,0.1,MAT.plinth); place(f,a0,a1,back,front,0.1,h,MAT.base);
     doorPanels(f,a0,a1,front,0.11,0.72,MAT.base,"top",1);
@@ -840,6 +846,7 @@ function appUnit(f,a0,a1,back,a,withTop){
 function appWall(f,a0,a1,back,a){
   const T=APPS[a.type], dr=dirOf(f), y0=a.y/100, y1=Math.min(H-0.01,y0+a.h/100), D=a.d/100;
   const u=newUnit("app",f,a0,a1,back,D,y0,y1,{front:T.n,label:T.n,app:a.id}); const pu=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=pu; return u; }
   place(f,a0,a1,back+0.005*dr,back+D*dr,y0,y1,M(T.col,{roughness:0.3}));
   if(T.look==="heaterG") place(f,(a0+a1)/2-0.05,(a0+a1)/2+0.05,back+0.03*dr,back+0.13*dr,y1,Math.min(H,y1+0.5),MAT.steel);
   if(T.look==="tv") place(f,a0+0.01,a1-0.01,back+D*dr,back+(D+0.003)*dr,y0+0.01,y1-0.01,M("#23303d",{roughness:0.1}));
@@ -848,11 +855,12 @@ function appWall(f,a0,a1,back,a){
 function appCounter(f,a0,a1,back,a){
   const T=APPS[a.type], dr=dirOf(f), ch=CH(), D=a.d/100, h=a.h/100;
   const u=newUnit("app",f,a0,a1,back,D+0.05,ch,ch+h,{front:T.n,label:T.n,app:a.id}); const pu=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=pu; return u; }
   place(f,a0,a1,back+0.05*dr,back+(0.05+D)*dr,ch,ch+h,M(T.col,{roughness:0.35}));
   curUid=pu; return u;
 }
 // ---- unit registry (for drawings, per-unit control, picking) ----
-let UNITS=[], POINTS=[], unitCount={}, curUid=null, SEL=null, selHelper=null;
+let UNITS=[], POINTS=[], unitCount={}, curUid=null, SEL=null, selHelper=null, HIDDEN=new Set();
 const wallOf=f=>f==="+x"?"L":f==="-x"?"RT":f==="+z"?"W":"D";
 function newUnit(kind,f,a0,a1,back,depth,y0,y1,extra){
   const wall=curWall||(W4.includes(curSide)?curSide:null)||wallOf(f), key=wall+"-"+kind; unitCount[key]=(unitCount[key]||0)+1;
@@ -1031,10 +1039,36 @@ function carcass(f,a0,a1,back,front,y0,y1,mat,shelves){
   place(f,a0,a1,back,front,y0,y0+t,inn); place(f,a0,a1,back,front,y1-t,y1,mat);
   const n=shelves==null?Math.max(1,Math.floor((y1-y0)/0.36)-1):shelves; for(let i=1;i<=n;i++){ const y=y0+i*(y1-y0)/(n+1); place(f,a0+t,a1-t,back+t*dr,front-0.03*dr,y,y+0.018,inn); }
 }
+// ---- 45°-cut corner cabinets: a vertical prism over an arbitrary convex plan polygon (pts = [along,outFromWall] pairs) ----
+function prismAO(w,pts,y0,y1,mat){
+  const world=pts.map(([a,o])=>aoToXZ(w,a,o)), n=world.length, pos=[], idx=[];
+  for(let i=0;i<n;i++){ const [x0,z0]=world[i], [x1,z1]=world[(i+1)%n], b=pos.length/3;
+    pos.push(x0,y0,z0, x1,y0,z1, x1,y1,z1, x0,y1,z0); idx.push(b,b+1,b+2, b,b+2,b+3); }
+  const topB=pos.length/3; for(const [x,z] of world) pos.push(x,y1,z); for(let i=1;i<n-1;i++) idx.push(topB,topB+i,topB+i+1);
+  const botB=pos.length/3; for(const [x,z] of world) pos.push(x,y0,z); for(let i=1;i<n-1;i++) idx.push(botB,botB+i+1,botB+i);
+  const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); geo.setIndex(idx); geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,mat); m.castShadow=m.receiveShadow=true; if(curSide) m.userData.side=curSide; if(curUid) m.userData.uid=curUid; root.add(m); return m;
+}
+function cutPentagon(a0,a1,o0,o1,side,cut){ // back edge (o0) stays a square corner, the FRONT (o1) corner at `side` gets chamfered by `cut`
+  cut=Math.max(0.05,Math.min(cut,(a1-a0)*0.85,(o1-o0)*0.92));
+  return side==="a1" ? [[a0,o0],[a1,o0],[a1,o1-cut],[a1-cut,o1],[a0,o1]] : [[a0,o0],[a1,o0],[a1,o1],[a0+cut,o1],[a0,o1-cut]];
+}
+function cornerCutUnit(f,wall,a0,a1,back,depth,side,cut,tallCab,capTop){
+  const dr=dirOf(f), ch=CH(), y1=tallCab?Math.min(capTop||H-0.01,H-0.01):ch;
+  const u=newUnit(tallCab?"tall":"base",f,a0,a1,back,depth,0,y1,{front:"ركن 45° (واجهة مقطوعة)"}); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
+  const dbl=mat=>{ const c=mat.clone(); c.side=THREE.DoubleSide; return c; }, body=dbl(MAT.base);
+  place(f,a0,a1,back,back+(depth-0.05)*dr,0,0.1,MAT.plinth);
+  prismAO(wall,cutPentagon(a0,a1,0.02,depth-0.02,side,cut),0.1,tallCab?y1:ch-0.04,body);
+  if(!tallCab) prismAO(wall,cutPentagon(a0-0.01,a1+0.01,0,depth,side,Math.max(0.05,cut-0.01)),ch-0.04,ch,dbl(MAT.counter));
+  ACC[tallCab?"tall":"lower"]+=a1-a0; if(!tallCab) ACC.marble+=a1-a0;
+  curUid=prevUid; return u;
+}
 
 function base(f,a0,a1,back,depth,kind,regKind){
   depth=depth||0.6; const dr=dirOf(f), ch=CH(), front=back+(depth-0.02)*dr;
   const u=newUnit(regKind||"base",f,a0,a1,back,depth,0,ch); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
   place(f,a0,a1,back,front-0.05*dr,0,0.1,MAT.plinth);
   const top=cfg.handles==="none"?ch-0.08:ch-0.045;
   if(cfg.handles==="none") place(f,a0,a1,front-0.02*dr,front,ch-0.08,ch-0.045,MAT.gola);
@@ -1054,6 +1088,7 @@ function base(f,a0,a1,back,depth,kind,regKind){
 }
 function sink(f,a0,a1,back){
   const su=base(f,a0,a1,back,0.6,"doors","sink"); curUid=su.id;
+  if(HIDDEN.has(su.id)){ curUid=null; return su; }
   const dr=dirOf(f), m=(a0+a1)/2, ch=CH(), sw=Math.min(a1-a0,cfg.sinkW/100)-0.02, sd=Math.min(0.58,cfg.sinkD/100);
   const d0=back+(0.6-sd)/2*dr+0.02*dr, d1=d0+sd*dr;
   place(f,m-sw/2,m+sw/2,d0,d1,ch,ch+0.006,MAT.steel);
@@ -1076,6 +1111,7 @@ function stove(f,a0,a1,back){
   if(cfg.stoveType!=="built"){ const g=cfg.stoveGap/100; a0+=g; a1-=g; }
   const D=cfg.stoveD/100, SH=cfg.stoveH/100, front=back+(cfg.stoveType==="built"?0.6:D)*dr;
   const su=newUnit("stove",f,a0,a1,back,cfg.stoveType==="built"?0.6:D,0,cfg.stoveType==="built"?ch:SH,{front:cfg.stoveType==="built"?"مسطح + فرن بلت إن":"بوتاجاز عادي"}); curUid=su.id;
+  if(HIDDEN.has(su.id)){ curUid=null; return su; }
   if(cfg.openDoors){ const oh=cfg.stoveType==="built"?0.59:SH-0.32, fr=cfg.stoveType==="built"?front:front+0.015*dr;
     place(f,a0+0.04,a1-0.04,fr,fr+oh*dr,0.12,0.145,M("#2a2d31",{transparent:true,opacity:0.85}));
     DOORCHK.push({wall:curWall||curSide,what:"باب الفرن",f,a:(a0+a1)/2,front:fr,reach:oh}); }
@@ -1100,6 +1136,7 @@ function stove(f,a0,a1,back){
 function washer(f,a0,a1,back,withTop){
   const dr=dirOf(f), m=(a0+a1)/2, ww=cfg.washerW/100, b0=back+(cfg.washerBack/100)*dr, front=b0+(cfg.washerD/100)*dr, WH=Math.min(cfg.washerH/100,CH()-0.045);
   const wu=newUnit("washer",f,a0,a1,back,cfg.washerBack/100+cfg.washerD/100,0,withTop!==false?CH():WH,{front:`${cfg.washerW}×${cfg.washerD}`}); curUid=wu.id;
+  if(HIDDEN.has(wu.id)){ curUid=null; return wu; }
   place(f,m-ww/2,m+ww/2,b0,front,0,WH,MAT.white);
   if(withTop!==false){ place(f,a0,a1,back,back+0.62*dr,CH()-0.04,CH(),MAT.counter); ACC.marble+=a1-a0; }
   const r=Math.min(0.2,ww*0.34);
@@ -1112,6 +1149,7 @@ function washer(f,a0,a1,back,withTop){
 function dish(f,a0,a1,back){
   const dr=dirOf(f), front=back+0.58*dr, ch=CH();
   const du=newUnit("dish",f,a0,a1,back,0.6,0,ch,{front:"باب بنفس لون الدواليب"}); curUid=du.id;
+  if(HIDDEN.has(du.id)){ curUid=null; return du; }
   if(cfg.openDoors){ place(f,a0+0.01,a1-0.01,front,front+0.58*dr,0.1,0.125,M("#b8bec4",{transparent:true,opacity:0.85})); DOORCHK.push({wall:curWall||curSide,what:"باب غسالة الأطباق",f,a:(a0+a1)/2,front,reach:0.58}); }
   place(f,a0,a1,back,front-0.05*dr,0,0.1,MAT.plinth);
   place(f,a0+0.005,a1-0.005,back,front,0.1,ch-0.045,M("#d5d9dd",{metalness:0.5,roughness:0.3}));
@@ -1121,6 +1159,7 @@ function dish(f,a0,a1,back){
 function fridge(f,a0,a1,back){ // a0..a1 = fridge body; back = wall
   const dr=dirOf(f), b0=back+(cfg.fridgeBack/100)*dr, front=b0+(cfg.fridgeD/100)*dr, FH=cfg.fridgeH/100, body=M("#d9dde1",{metalness:0.35,roughness:0.35});
   const fu=newUnit("fridge",f,a0,a1,back,cfg.fridgeBack/100+cfg.fridgeD/100,0,FH,{front:`${cfg.fridgeW}×${cfg.fridgeD}`}); curUid=fu.id;
+  if(HIDDEN.has(fu.id)){ curUid=null; return fu; }
   const sp=FH*0.64;
   if(cfg.openDoors){
     place(f,a0,a1,b0,front-0.05*dr,0,FH,body);
@@ -1149,8 +1188,9 @@ function appLabel(t,f,a,d,y){ if(!cfg.appLabels||!cfg.labels) return; t=t.replac
 function uppers(f,a0,a1,back,y0,y1,depth){
   if(a1-a0<0.1||y1-y0<0.15){ KEY=null; return; }
   depth=depth||cfg.uDepth/100; const dr=dirOf(f), front=back+depth*dr;
-  ACC.upper+=(a1-a0)*(y1-y0>0.9?2:1);
   const u=newUnit("upper",f,a0,a1,back,depth,y0,y1); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return; }
+  ACC.upper+=(a1-a0)*(y1-y0>0.9?2:1);
   const o=unitOpt(u.id), nn=+o.n||null;
   const mode=(o.front&&o.front!=="auto")?o.front:(cfg.upperFront==="open"?"open":cfg.upperFront==="glass"?"glassLow":"doors"); u.front=mode; u.acc=o.acc||"";
   if(mode==="open"){
@@ -1170,8 +1210,9 @@ function uppers(f,a0,a1,back,y0,y1,depth){
 function tall(f,a0,a1,back,depth,y0,y1){
   if(a1-a0<0.1){ KEY=null; return; }
   const dr=dirOf(f), front=back+depth*dr; y0=y0||0; y1=y1||H-0.01;
-  if(y0===0) ACC.tall+=a1-a0; else ACC.upper+=a1-a0;
   const u=newUnit(y0===0?"tall":"upper",f,a0,a1,back,depth,y0,y1); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
+  if(y0===0) ACC.tall+=a1-a0; else ACC.upper+=a1-a0;
   const o=unitOpt(u.id), nn=+o.n||null; u.front=(o.front==="open")?"open":"doors"; u.acc=o.acc||"";
   if(o.front==="open"){ if(y0===0) place(f,a0,a1,back,front-0.04*dr,0,0.1,MAT.plinth);
     place(f,a0,a1,back,back+0.015*dr,Math.max(y0,0.1),y1,MAT.wood); place(f,a0,a0+0.018,back,front,Math.max(y0,0.1),y1,MAT.wood); place(f,a1-0.018,a1,back,front,Math.max(y0,0.1),y1,MAT.wood);
@@ -2294,7 +2335,7 @@ function build(){
   scene.remove(root); root=new THREE.Group(); scene.add(root);
   H=cfg.ceil/100; geo();
   TRI=null; BATH=null; BATH_DRAIN=null; ACC={lower:0,upper:0,tall:0,marble:0}; UNITS=[]; POINTS=[]; unitCount={}; DOORCHK=[]; KEY=null; OPT=null; curWall=null; curSide=null;
-  cfg.units=cfg.units||{}; cfg.custom=cfg.custom||[]; cfg.apps=(cfg.apps||[]).filter(a=>APPS[a.type]); cfg.seq=cfg.seq||{};
+  cfg.units=cfg.units||{}; cfg.custom=cfg.custom||[]; cfg.apps=(cfg.apps||[]).filter(a=>APPS[a.type]); cfg.seq=cfg.seq||{}; cfg.hiddenUnits=cfg.hiddenUnits||[]; HIDDEN=new Set(cfg.hiddenUnits);
   FEATS=(cfg.feats||[]).filter(f=>f.type!=="cut").map(netFeat); netCuts(); WALLS=makeWalls();
   mats(); room();
   const warn=[]; const R=cfg.roomType==="bath"?buildBath(warn):cfg.roomType==="hall"?buildHall(warn):cfg.roomType==="room"?buildRoom(warn):buildKitchen(warn);
@@ -2386,7 +2427,7 @@ function buildKitchen(warn){
     } else if(c.type==="shallow"){ segs.forEach(([a,b],k)=>{ KEY=`${w}-b:${k}`; base(fr.f,a,b,fr.back,dep); counterLen+=b-a; }); }
     else if(c.type==="pantry"){ segs.forEach(([a,b],k)=>{ KEY=`${w}-p:${k}`; tall(fr.f,a,b,fr.back,dep,0,capUp(w,a,b,H-0.01)); (tallByWall[w]=tallByWall[w]||[]).push([a,b]); }); }
     else if(c.type==="shelves"){ const ys=[1.3,1.65,2.0,2.35].filter(y=>y<H-0.15); segs.forEach(([a,b])=>{ const u=newUnit("shelf",fr.f,a,b,fr.back,Math.min(dep,0.3),ys[0],ys[ys.length-1]+0.03,{front:`${ys.length} رفوف`}); curUid=u.id; for(const y of ys) place(fr.f,a,b,fr.back,fr.back+Math.min(dep,0.3)*dirOf(fr.f),y,y+0.03,MAT.wood); curUid=null; }); }
-    else if(c.type==="bar"){ segs.forEach(([a,b])=>{ newUnit("bar",fr.f,a,b,fr.back,0.4,0,1.06,{front:"بار فطار"}); const dr=dirOf(fr.f);
+    else if(c.type==="bar"){ segs.forEach(([a,b])=>{ const bu=newUnit("bar",fr.f,a,b,fr.back,0.4,0,1.06,{front:"بار فطار"}); const dr=dirOf(fr.f); if(HIDDEN.has(bu.id)) return;
       place(fr.f,a,b,fr.back,fr.back+0.4*dr,1.02,1.06,MAT.counter); ACC.marble+=b-a; place(fr.f,a+0.1,a+0.14,fr.back+0.02*dr,fr.back+0.06*dr,0,1.02,MAT.handle); place(fr.f,b-0.14,b-0.1,fr.back+0.02*dr,fr.back+0.06*dr,0,1.02,MAT.handle);
       const n=Math.max(1,Math.floor((b-a)/0.55)); for(let i=0;i<n;i++){ const s=a+(i+0.5)*(b-a)/n; cylAt(fr.f,s,fr.back+0.62*dr,0.72,0.17,0.05,MAT.wood); cylAt(fr.f,s,fr.back+0.62*dr,0.36,0.02,0.7,MAT.handle); } counterLen+=b-a; }); }
     for(let i=before;i<UNITS.length;i++){ const u=UNITS[i]; if(u.wall!==w) continue; if(u.y0<1.0) keepLow.push(rectAO(w,u.a0,u.a1,0,u.depth)); if(u.y1>US+0.1) keepUp.push(rectAO(w,u.a0,u.a1,0,u.depth)); }
@@ -2401,14 +2442,14 @@ function buildKitchen(warn){
       if(any){ warn.push(`في ركن ${WNAME[A]} مع ${WNAME[Bw]} فيه ${KN[any.kind]||"جهاز"}، هيبقى صعب يتفتح. الأحسن يبقى دولاب ركن، اسحب الجهاز لمكان تاني`); continue; }
       const cu=UNITS.find(u=>u.wall===A&&(u.kind==="base"||u.kind==="sink")&&u.y1<=ch+0.02&&(atStart?u.a0<0.05:u.a1>LA-0.05)); if(!cu||cu.corner) continue;
       cu.corner=cfg.corner; const fr=wallFrame(A), dr=dirOf(fr.f), front=fr.back+0.6*dr, b0=atStart?cu.a0:cu.a1-0.62, b1=atStart?cu.a0+0.62:cu.a1, wdt=cu.a1-cu.a0;
-      curSide=A; curUid=cu.id; place(fr.f,b0,b1,front+0.021*dr,front+0.025*dr,0.11,ch-0.05,MAT.base); curUid=null; curSide=null;
+      if(!HIDDEN.has(cu.id)){ curSide=A; curUid=cu.id; place(fr.f,b0,b1,front+0.021*dr,front+0.025*dr,0.11,ch-0.05,MAT.base); curUid=null; curSide=null; }
       const nm={blind:"ركن مقفول",door:"باب ركن مكسور",carousel:"كاروسيل",magic:"ماجيك كورنر"}[cfg.corner]; cu.acc=cu.acc||""; cu.label=`دولاب ركن (${nm})`;
       const need=cfg.corner==="magic"?1.0:cfg.corner==="carousel"?0.9:cfg.corner==="door"?0.8:0; if(need&&wdt<need-0.01) warn.push(`دولاب الركن ${Math.round(wdt*100)} سم، ${nm} محتاج ${Math.round(need*100)} سم على الأقل`);
       if(cfg.corner==="blind") warn.push(`الركن بين ${WNAME[A]} و${WNAME[Bw]} ${Math.round(0.62*100)} سم مقفول (ركن ميت)، جرب كاروسيل أو ماجيك كورنر من تاب التخزين`); } } }
   // ================= hood =================
   if(stoveRange){ const [a,b]=stoveRange, m=(a+b)/2, fr=wallFrame(stoveWall); curSide=stoveWall; curWall=stoveWall; const dr=dirOf(fr.f), bk=fr.back;
-    if(cfg.hood==="chimney"){ const hu=newUnit("hood",fr.f,a,b,bk,0.5,US+0.12,H,{front:"شفاط مدخنة"}); curUid=hu.id; place(fr.f,a,b,bk,bk+0.5*dr,US+0.12,US+0.22,MAT.steel); place(fr.f,m-0.14,m+0.14,bk,bk+0.25*dr,US+0.22,H,MAT.steel); curUid=null; }
-    if(cfg.hood==="built"){ const hu=newUnit("hood",fr.f,a,b,bk,0.38,US+0.18,US+0.28,{front:"شفاط بلت إن"}); curUid=hu.id; place(fr.f,a+0.01,b-0.01,bk,bk+0.38*dr,US+0.18,US+0.28,MAT.steel); curUid=null; }
+    if(cfg.hood==="chimney"){ const hu=newUnit("hood",fr.f,a,b,bk,0.5,US+0.12,H,{front:"شفاط مدخنة"}); curUid=hu.id; if(!HIDDEN.has(hu.id)){ place(fr.f,a,b,bk,bk+0.5*dr,US+0.12,US+0.22,MAT.steel); place(fr.f,m-0.14,m+0.14,bk,bk+0.25*dr,US+0.22,H,MAT.steel); } curUid=null; }
+    if(cfg.hood==="built"){ const hu=newUnit("hood",fr.f,a,b,bk,0.38,US+0.18,US+0.28,{front:"شفاط بلت إن"}); curUid=hu.id; if(!HIDDEN.has(hu.id)) place(fr.f,a+0.01,b-0.01,bk,bk+0.38*dr,US+0.18,US+0.28,MAT.steel); curUid=null; }
     curSide=null; curWall=null; }
   // ================= uppers =================
   for(const w of order){
@@ -2441,7 +2482,7 @@ function buildKitchen(warn){
   // ================= spice shelves on columns =================
   if(cfg.colShelves) for(const f of FEATS) if(f.type==="column"&&f.dep>=0.25&&f.a1-f.a0>=0.4){ const fr=wallFrame(f.wall); curSide=f.wall; curWall=f.wall;
     const u=newUnit("shelf",fr.f,f.a0+0.04,f.a1-0.04,fr.back,f.dep+0.14,1.25,Math.min(H-0.2,2.47),{front:"على وش البروز"}); curUid=u.id;
-    for(let y=1.25;y<Math.min(H-0.2,2.5);y+=0.3) boxAO(f.wall,f.a0+0.04,f.a1-0.04,f.dep,f.dep+0.14,y,y+0.02,MAT.wood); curUid=null; curSide=null; curWall=null; }
+    if(!HIDDEN.has(u.id)) for(let y=1.25;y<Math.min(H-0.2,2.5);y+=0.3) boxAO(f.wall,f.a0+0.04,f.a1-0.04,f.dep,f.dep+0.14,y,y+0.02,MAT.wood); curUid=null; curSide=null; curWall=null; }
   // ================= niches =================
   for(const nf of FEATS.filter(f=>f.type==="niche"||f.type==="corridor")){
     const id="N:"+nf.id, fr=nicheFrame(nf), mid=(fr.a0+fr.a1)/2; curSide=fr.host; curWall=id;
@@ -2454,7 +2495,7 @@ function buildKitchen(warn){
       appLabel(`غسالة ${cfg.washerW}×${cfg.washerD}`,fr.f,mid,0.4,1.1); if(cfg.nicheTop){ KEY=id+"-top"; tall(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,0.4,1.45,H-0.01); } }
     else if(nf.use==="pantry"&&fr.floor){ KEY=id+"-tall"; tall(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,Math.min(0.6,fr.depth),0,nf.type==="niche"?Math.min(H-0.01,nf.y1-0.01):H-0.01); }
     else if(nf.use==="shelves"){ const y0=nf.type==="niche"?nf.y0:0.3, y1=nf.type==="niche"?nf.y1:H-0.2, n=Math.max(2,Math.floor((y1-y0)/0.35)); const u=newUnit("shelf",fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,Math.min(0.4,fr.depth),y0,y1,{front:`${n} رفوف`}); curUid=u.id;
-      for(let i=0;i<n;i++){ const y=y0+0.02+i*(y1-y0-0.06)/Math.max(1,n-1); place(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,fr.back+Math.min(0.4,fr.depth)*dirOf(fr.f),y,y+0.025,MAT.wood); } curUid=null; }
+      if(!HIDDEN.has(u.id)) for(let i=0;i<n;i++){ const y=y0+0.02+i*(y1-y0-0.06)/Math.max(1,n-1); place(fr.f,fr.a0+0.02,fr.a1-0.02,fr.back,fr.back+Math.min(0.4,fr.depth)*dirOf(fr.f),y,y+0.025,MAT.wood); } curUid=null; }
     for(const a of apps){ if(a.loc!==id) continue; const T=APPS[a.type]; if(T.cls==="slot"||T.cls==="tall"){ const u=appUnit(fr.f,mid-a.w/200,mid+a.w/200,fr.back,a,false); u.movable=null; } }
     curSide=null; curWall=null;
   }
@@ -2481,7 +2522,9 @@ function buildKitchen(warn){
   for(const cu of cfg.custom){ if(!W4.includes(cu.wall)) continue;
     const fr=frameOf(cu.wall), cL=wlen(cu.wall), cw=Math.min(cu.w/100,cL), a0=Math.max(0,Math.min(cL-cw,cu.pos/100)), a1=a0+cw, dp=cu.d/100; /* keep it on the wall */ curSide=fr.side; curWall=cu.wall;
     OPT={front:cu.front,n:cu.n,shelves:cu.shelves,acc:cu.acc}; KEY=cu.id;
-    if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
+    if(cu.type==="lower"&&cu.shape==="corner45"){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutSize||30)/100)),false); counterLen+=a1-a0; }
+    else if(cu.type==="tall"&&cu.shape==="corner45"){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutSize||30)/100)),true,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100))); }
+    else if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
     else if(cu.type==="upper") uppers(fr.f,a0,a1,fr.back,cu.y/100,capUp(cu.wall,a0,a1,Math.min(H-0.01,(cu.y+cu.h)/100)),dp);
     else if(cu.type==="tall") tall(fr.f,a0,a1,fr.back,dp,0,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100)));
     else if(cu.type==="shelf"){ const n=Math.max(1,+cu.shelves||3); const u=newUnit("shelf",fr.f,a0,a1,fr.back,dp,cu.y/100,Math.min(H-0.01,(cu.y+cu.h)/100),{front:`${n} رفوف`}); const pu=curUid; curUid=u.id;
@@ -2543,6 +2586,7 @@ function buildKitchen(warn){
 }
 function finishBuild(warn,walkCm,counterLen,US){
   // ================= numbering, overlaps =================
+  UNITS=UNITS.filter(u=>!HIDDEN.has(u.id));
   const WO={W:0,L:1,RT:2,D:3,IS:4};
   UNITS.sort((p,q)=>(WO[p.wall]??5)-(WO[q.wall]??5)||String(p.wall).localeCompare(String(q.wall))||(p.y0>=1.2)-(q.y0>=1.2)||(WALLS[p.wall]?WALLS[p.wall].xs(q.a0+(q.a1-q.a0)/2)-WALLS[p.wall].xs(p.a0+(p.a1-p.a0)/2):0));
   UNITS.forEach((u,i)=>u.n=i+1);
@@ -2969,7 +3013,7 @@ function renderControls(){
   for(const c of SCHEMA[tab]){
     if(c.t!=="action") acts=null;
     if(c.t==="head"){ const h=document.createElement("div"); h.className="head"; h.textContent=c.l; ctlEl.appendChild(h); continue; }
-    if(c.t==="range"){ rangeField(ctlEl,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },c.min,c.max,c.step,c.u,()=>renderControls()); continue; }
+    if(c.t==="range"){ const mn=(c.k==="roomW"||c.k==="roomL")?roomDimMin(c.k):c.min; rangeField(ctlEl,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },mn,c.max,c.step,c.u,()=>renderControls()); continue; }
     if(c.t==="select"){ const el=choice(c.o,c.k==="style"?(cfg.style||"light"):cfg[c.k],v=>{ pushHist(); if(c.k==="style"){ cfg.style=v; Object.assign(cfg,STYLES[v]); if(cfg.handles!=="none") cfg.handles=["#c6a25a","#c9a45c","#b8925a"].includes(cfg.cHandle)?"gold":"black"; /* the style's handle color picks the handle finish */ build(); renderControls(); return; } cfg[c.k]=v; build(); renderControls(); },c.l);
       fieldRow(ctlEl,c.l,el); continue; }
     if(c.t==="action"){ if(!acts){ acts=document.createElement("div"); acts.className="ctl act1"; acts.style.flexDirection="column"; ctlEl.appendChild(acts); }
@@ -3006,8 +3050,24 @@ function renderControls(){
 
 
 }
+const DETACHABLE=new Set(["base","upper","tall","shelf"]);
+function unitToCustom(u){ // a plain box-shaped auto unit -> an independent, freely editable cfg.custom item with the same footprint
+  const type=u.kind==="base"?"lower":u.kind, valid=(FRONTS[type==="lower"?"base":type]||[]).map(([v])=>v);
+  const front=type==="shelf"?"open":(valid.includes(u.front)?u.front:"auto");
+  return {id:"c"+Math.random().toString(36).slice(2,7),type,wall:u.wall,pos:Math.round(u.a0*100),w:Math.round((u.a1-u.a0)*100),d:Math.round(u.depth*100),
+    h:type==="lower"?90:Math.round((u.y1-u.y0)*100),y:Math.round(u.y0*100),front,n:"",shelves:3,acc:u.acc||""};
+}
+function detachUnit(u){ const c=unitToCustom(u);
+  if(u.movable&&u.movable.obj==="custom") cfg.custom=cfg.custom.filter(x=>x.id!==u.movable.id);
+  else cfg.hiddenUnits=[...(cfg.hiddenUnits||[]),u.id];
+  cfg.custom=[...(cfg.custom||[]),c]; return c.id; }
+function splitUnit(u){ const base=unitToCustom(u), w1=Math.max(15,Math.floor(base.w/2)), w2=Math.max(15,base.w-w1);
+  const c1={...base,id:"c"+Math.random().toString(36).slice(2,7),w:w1}, c2={...base,id:"c"+Math.random().toString(36).slice(2,7),pos:base.pos+w1,w:w2};
+  if(u.movable&&u.movable.obj==="custom") cfg.custom=cfg.custom.filter(x=>x.id!==u.movable.id);
+  else cfg.hiddenUnits=[...(cfg.hiddenUnits||[]),u.id];
+  cfg.custom=[...(cfg.custom||[]),c1,c2]; return c1.id; }
 function unitsBox(){
-  const n=document.createElement("div"); n.className="note"; n.textContent="دوس على أي دولاب في الـ3D وهيتحدد هنا، أو اختار من القايمة. غيّر نوع الواجهة لكل وحدة لوحدها.";
+  const n=document.createElement("div"); n.className="note"; n.textContent="دوس على أي دولاب في الـ3D وهيتحدد هنا، أو اختار من القايمة. غيّر نوع الواجهة لكل وحدة لوحدها. 🗑 بتشيل الوحدة (مكانها هيفضل فاضي)، ✏️ بتفصلها عشان تعدل مقاسها وشكلها لوحدها، ➗ بتقسمها لوحدتين جنب بعض.";
   ctlEl.appendChild(n);
   let lastWall=null;
   for(const u of UNITS){
@@ -3017,7 +3077,8 @@ function unitsBox(){
     r.innerHTML=`<span class="n">${u.n}</span><span class="t">${u.label||KN[u.kind]||u.kind}<small>عرض ${w} • ارتفاع ${hh} • عمق ${Math.round(u.depth*100)} سم</small></span>`;
     r.querySelector(".t").onclick=()=>{ selectUnit(u.id,false); renderControls(); const rr=ctlEl.querySelector(`[data-uid="${u.id}"]`); if(rr) rr.scrollIntoView({block:"nearest"}); };
     if(CABK.has(u.kind)&&!cfg.openCab){ const ob=document.createElement("button"); ob.className="btn"+(OPENSET.has(u.id)?" on":""); ob.textContent="🚪"; ob.setAttribute("aria-label","افتح الدولاب"); ob.onclick=()=>{ OPENSET.has(u.id)?OPENSET.delete(u.id):OPENSET.add(u.id); SEL=u.id; build(); renderControls(); }; r.appendChild(ob); }
-    const opts=FRONTS[u.kind];
+    const customEntry=u.movable&&u.movable.obj==="custom"?(cfg.custom||[]).find(x=>x.id===u.movable.id):null, isCorner45=customEntry&&customEntry.shape==="corner45";
+    const opts=isCorner45?null:FRONTS[u.kind];
     if(opts){ const sel=document.createElement("select"); for(const [v,t] of opts){ const o=document.createElement("option"); o.value=v; o.textContent=t; sel.appendChild(o); }
         const cur=cfg.units[u.id]; sel.value=(typeof cur==="string"?cur:(cur&&cur.front))||(u.kind==="sink"?"doors":"auto");
       sel.onchange=()=>{ pushHist(); setUnitOpt(u.id,{front:sel.value}); SEL=u.id; build(); };
@@ -3028,10 +3089,25 @@ function unitsBox(){
         mk([["","الرفوف: تلقائي"],["1","رف 1"],["2","2 رف"],["3","3 رفوف"],["4","4 رفوف"],["5","5 رفوف"]],o.shelves||"",v=>setUnitOpt(u.id,{shelves:v}),"الرفوف");
         mk(ACCS.map(([k,t])=>[k,k?t:"إكسسوار: من غير"]),o.acc||"",v=>setUnitOpt(u.id,{acc:v}),"إكسسوار");
         r.appendChild(det); } }
+    const acts=document.createElement("div"); acts.className="uacts";
+    const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑"; del.setAttribute("aria-label","احذف الوحدة");
+    del.onclick=()=>{ pushHist();
+      if(u.movable&&u.movable.obj==="apps") cfg.apps=cfg.apps.filter(x=>x.id!==u.movable.id);
+      else if(u.movable&&u.movable.obj==="custom") cfg.custom=cfg.custom.filter(x=>x.id!==u.movable.id);
+      else cfg.hiddenUnits=[...(cfg.hiddenUnits||[]),u.id];
+      if(SEL===u.id) SEL=null; build(); renderControls(); hint("اتشالت الوحدة ✓"); };
+    acts.appendChild(del);
+    if(DETACHABLE.has(u.kind)&&!u.movable){ const ed=document.createElement("button"); ed.className="btn"; ed.textContent="✏️ تعديل حر"; ed.setAttribute("aria-label","افصل الوحدة وعدّلها لوحدها");
+      ed.onclick=()=>{ pushHist(); const id=detachUnit(u); SEL=id; OPENC.add(id); build(); renderControls(); hint("بقت وحدة مستقلة، عدّلها من كارت الوحدات الإضافية ✓"); }; acts.appendChild(ed); }
+    if(DETACHABLE.has(u.kind)&&!isCorner45){ const sp=document.createElement("button"); sp.className="btn"; sp.textContent="➗ قسّم"; sp.setAttribute("aria-label","قسم الوحدة لوحدتين");
+      sp.onclick=()=>{ pushHist(); const id=splitUnit(u); SEL=id; build(); renderControls(); hint("اتقسمت لوحدتين ✓"); }; acts.appendChild(sp); }
+    r.appendChild(acts);
     ctlEl.appendChild(r);
   }
   const b=document.createElement("button"); b.className="btn"; b.style.marginTop="10px"; b.textContent="رجّع كل الوحدات تلقائي";
   b.onclick=()=>{ pushHist(); cfg.units={}; build(); }; ctlEl.appendChild(b);
+  if((cfg.hiddenUnits||[]).length){ const rb=document.createElement("button"); rb.className="btn"; rb.style.marginTop="8px"; rb.textContent="↩️ رجّع كل الوحدات المحذوفة";
+    rb.onclick=()=>{ pushHist(); cfg.hiddenUnits=[]; build(); renderControls(); }; ctlEl.appendChild(rb); }
 }
 function fieldRow(parent,label,el,out){ const row=document.createElement("div"); row.className="ctl"+(el.kind==="stack"?" stack":""); const lb=document.createElement("label"); lb.textContent=label; row.appendChild(lb); row.appendChild(el); if(out) row.appendChild(out); parent.appendChild(row); return row; }
 // one picker for every option list: a switch for yes/no, segmented buttons for a few short options, a dropdown otherwise
@@ -3129,16 +3205,27 @@ function customBox(){
   for(const c of cfg.custom||[]){ const u=UNITS.find(x=>x.id===c.id); const card=document.createElement("div"); card.className="card"+(c.id===SEL?" sel":"");
     const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<span class="n">${u?u.n:"?"}</span><b>${TN[c.type]}</b><small>${shortWall(c.wall)} • ${c.w} سم</small>`;
     const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.custom=cfg.custom.filter(x=>x.id!==c.id); build(); renderControls(); };
-    hd.onclick=e=>{ if(e.target!==del) selectUnit(c.id,false); }; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,c.id);
+    hd.appendChild(del);
+    if(u&&c.shape!=="corner45"){ const sp=document.createElement("button"); sp.className="btn"; sp.textContent="➗"; sp.setAttribute("aria-label","قسم الوحدة لوحدتين");
+      sp.onclick=e=>{ e.stopPropagation(); pushHist(); const id=splitUnit(u); SEL=id; build(); renderControls(); hint("اتقسمت لوحدتين ✓"); }; hd.appendChild(sp); }
+    hd.onclick=e=>{ if(!e.target.closest("button")) selectUnit(c.id,false); }; card.appendChild(hd); foldCard(card,hd,c.id);
     objSelect(card,c,"wall","الحيطة",W4OPT());
     objRange(card,c,"pos","بعدها عن الركن",0,Math.round(wallLen(c.wall)*100)-c.w,1);
     objRange(card,c,"w","العرض",15,250,1); objRange(card,c,"d","العمق",10,70,1);
     if(c.type!=="lower") objRange(card,c,"h","الارتفاع",15,Math.round(H*100),1);
     if(c.type==="upper"||c.type==="shelf") objRange(card,c,"y","بتبدأ من ارتفاع",20,Math.round(H*100)-20,1);
-    if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));
-      objSelect(card,c,"n","عدد الضلف / الأدراج",[["","تلقائي"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]]); }
-    if(c.type==="shelf"||c.front==="open") objSelect(card,c,"shelves","عدد الرفوف",[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"]]);
-    objSelect(card,c,"acc","إكسسوار",ACCS);
+    if(c.type==="lower"||c.type==="tall") objSelect(card,c,"shape","الشكل",[["rect","مستطيل عادي"],["corner45","ركن بزاوية 45° (قطع الجانب)"]]);
+    const corner45=c.shape==="corner45";
+    if(corner45){ if(!c.cutSide) c.cutSide="a1";
+      objSelect(card,c,"cutSide","الجنب اللي بيتقطع",[["a1","الآخر (بعيد عن أول الحيطة)"],["a0","الأول (قريب من أول الحيطة)"]]);
+      objRange(card,c,"cutSize","مقاس القطع",15,Math.max(16,Math.min(c.w,c.d)-5),1);
+      const cn=document.createElement("div"); cn.className="note"; cn.textContent="واجهة الوحدة هتتقطع بزاوية 45° من الجنب ده، زي دولاب الركن القديم."; card.appendChild(cn);
+    } else {
+      if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));
+        objSelect(card,c,"n","عدد الضلف / الأدراج",[["","تلقائي"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]]); }
+      if(c.type==="shelf"||c.front==="open") objSelect(card,c,"shelves","عدد الرفوف",[["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"]]);
+      objSelect(card,c,"acc","إكسسوار",ACCS);
+    }
     ctlEl.appendChild(card); }
   const h2=document.createElement("div"); h2.className="head"; h2.textContent="🗄 كل الوحدات"; ctlEl.appendChild(h2);
 }
@@ -3257,13 +3344,13 @@ function planTip(box,f,e){ const t=box.querySelector(".plantip"); if(!t) return;
   const r=box.getBoundingClientRect(), hw=t.offsetWidth/2+4, y=e.clientY-r.top;
   t.style.left=Math.max(hw,Math.min(r.width-hw,e.clientX-r.left))+"px"; t.style.top=(y>64?y-60:y+36)+"px"; }
 function wallPop(box){ const pop=box.querySelector(".planpop"); if(!pop) return; pop.innerHTML=""; pop.hidden=!PLAN_WALL; if(!PLAN_WALL) return;
-  const w=PLAN_WALL, k=w==="W"||w==="D"?"roomW":"roomL", sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700,step:1}, brick=cfg.dimsOn==="brick";
+  const w=PLAN_WALL, k=w==="W"||w==="D"?"roomW":"roomL", sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{max:700,step:1}, brick=cfg.dimsOn==="brick";
   const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${WNAME[w]}</b><small>${WNAME[{W:"D",D:"W",L:"RT",RT:"L"}[w]]} بتتغير معاها</small>`;
   const x=document.createElement("button"); x.type="button"; x.className="stb"; x.innerHTML=ico("x",16); x.setAttribute("aria-label","اقفل");
   x.onclick=()=>{ PLAN_WALL=null; wallPop(box); drawPlan(box); }; hd.appendChild(x); pop.appendChild(hd);
   const note=document.createElement("div"); note.className="note";
-  const upd=()=>{ const v=+cfg[k], t=2*((+cfg.plaster||0)+(+cfg.tileT||0)); note.innerHTML=brick?`ده المقاس على الطوب. الصافي بعد المحارة والسيراميك: <b>${Math.max(k==="roomW"?120:150,Math.round(v-t))} سم</b>`:`ده المقاس الصافي بعد التشطيب. على الطوب هيبقى حوالي <b>${Math.round(v+t)} سم</b>`; };
-  const row=rangeField(pop,brick?"الطول على الطوب":"الطول الصافي",()=>cfg[k],v=>{ cfg[k]=v; upd(); },sc.min,sc.max,sc.step||1,"سم",()=>UI_REFRESH());
+  const upd=()=>{ const v=+cfg[k], t=2*((+cfg.plaster||0)+(+cfg.tileT||0)); note.innerHTML=brick?`ده المقاس على الطوب. الصافي بعد المحارة والسيراميك: <b>${Math.max(roomDimMin(k),Math.round(v-t))} سم</b>`:`ده المقاس الصافي بعد التشطيب. على الطوب هيبقى حوالي <b>${Math.round(v+t)} سم</b>`; };
+  const row=rangeField(pop,brick?"الطول على الطوب":"الطول الصافي",()=>cfg[k],v=>{ cfg[k]=v; upd(); },roomDimMin(k),sc.max,sc.step||1,"سم",()=>UI_REFRESH());
   row.querySelector("input[type=range]").addEventListener("change",()=>UI_REFRESH()); upd(); pop.appendChild(note); }
 function bindPlan(box){ if(!box) return; box.classList.add("edit");
   box.insertAdjacentHTML("beforeend",`<div class="plantip" aria-live="polite"></div><div class="plancap">اسحب الشباك أو الباب أو العمود على حيطته، ودوس على أي حيطة عشان تغيّر طولها.</div><div class="planpop" hidden></div>`);
