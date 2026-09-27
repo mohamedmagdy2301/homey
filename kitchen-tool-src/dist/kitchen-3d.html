@@ -671,6 +671,8 @@ const SCHEMA = {
     {t:"num",k:"pWP",l:"سعر متر العزل"}
   ]
 };
+// halls/corridors have no appliances or fixtures to clear, so they can be much narrower/shorter than a kitchen or bath
+function roomDimMin(k){ return cfg.roomType==="hall" ? (k==="roomW"?70:60) : (k==="roomW"?120:150); }
 
 
 // =================== THREE SETUP ===================
@@ -743,7 +745,7 @@ function splashMat(w,h){
 let ACC={lower:0,upper:0,tall:0,marble:0}, curSide=null;
 // ---- room geometry (net, meters) ----
 let RW=1.8, RL=4.0, FIN=0, FEATS=[], WALLS={};
-function geo(){ FIN=cfg.dimsOn==="brick"?(cfg.plaster+cfg.tileT)/100:0; RW=Math.max(1.2,cfg.roomW/100-2*FIN); RL=Math.max(1.5,cfg.roomL/100-2*FIN); }
+function geo(){ FIN=cfg.dimsOn==="brick"?(cfg.plaster+cfg.tileT)/100:0; RW=Math.max(roomDimMin("roomW")/100,cfg.roomW/100-2*FIN); RL=Math.max(roomDimMin("roomL")/100,cfg.roomL/100-2*FIN); }
 const wlen=w=>w==="W"||w==="D"?RW:RL;
 function netFeat(f){
   const L=wlen(f.wall), w=Math.max(0.05,Math.min((f.w||10)/100,L)), a0=Math.max(0,Math.min(L-w,(f.pos||0)/100-((f.pos||0)>0&&!f.net?FIN:0)));
@@ -2969,7 +2971,7 @@ function renderControls(){
   for(const c of SCHEMA[tab]){
     if(c.t!=="action") acts=null;
     if(c.t==="head"){ const h=document.createElement("div"); h.className="head"; h.textContent=c.l; ctlEl.appendChild(h); continue; }
-    if(c.t==="range"){ rangeField(ctlEl,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },c.min,c.max,c.step,c.u,()=>renderControls()); continue; }
+    if(c.t==="range"){ const mn=(c.k==="roomW"||c.k==="roomL")?roomDimMin(c.k):c.min; rangeField(ctlEl,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },mn,c.max,c.step,c.u,()=>renderControls()); continue; }
     if(c.t==="select"){ const el=choice(c.o,c.k==="style"?(cfg.style||"light"):cfg[c.k],v=>{ pushHist(); if(c.k==="style"){ cfg.style=v; Object.assign(cfg,STYLES[v]); if(cfg.handles!=="none") cfg.handles=["#c6a25a","#c9a45c","#b8925a"].includes(cfg.cHandle)?"gold":"black"; /* the style's handle color picks the handle finish */ build(); renderControls(); return; } cfg[c.k]=v; build(); renderControls(); },c.l);
       fieldRow(ctlEl,c.l,el); continue; }
     if(c.t==="action"){ if(!acts){ acts=document.createElement("div"); acts.className="ctl act1"; acts.style.flexDirection="column"; ctlEl.appendChild(acts); }
@@ -3257,13 +3259,13 @@ function planTip(box,f,e){ const t=box.querySelector(".plantip"); if(!t) return;
   const r=box.getBoundingClientRect(), hw=t.offsetWidth/2+4, y=e.clientY-r.top;
   t.style.left=Math.max(hw,Math.min(r.width-hw,e.clientX-r.left))+"px"; t.style.top=(y>64?y-60:y+36)+"px"; }
 function wallPop(box){ const pop=box.querySelector(".planpop"); if(!pop) return; pop.innerHTML=""; pop.hidden=!PLAN_WALL; if(!PLAN_WALL) return;
-  const w=PLAN_WALL, k=w==="W"||w==="D"?"roomW":"roomL", sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700,step:1}, brick=cfg.dimsOn==="brick";
+  const w=PLAN_WALL, k=w==="W"||w==="D"?"roomW":"roomL", sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{max:700,step:1}, brick=cfg.dimsOn==="brick";
   const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${WNAME[w]}</b><small>${WNAME[{W:"D",D:"W",L:"RT",RT:"L"}[w]]} بتتغير معاها</small>`;
   const x=document.createElement("button"); x.type="button"; x.className="stb"; x.innerHTML=ico("x",16); x.setAttribute("aria-label","اقفل");
   x.onclick=()=>{ PLAN_WALL=null; wallPop(box); drawPlan(box); }; hd.appendChild(x); pop.appendChild(hd);
   const note=document.createElement("div"); note.className="note";
-  const upd=()=>{ const v=+cfg[k], t=2*((+cfg.plaster||0)+(+cfg.tileT||0)); note.innerHTML=brick?`ده المقاس على الطوب. الصافي بعد المحارة والسيراميك: <b>${Math.max(k==="roomW"?120:150,Math.round(v-t))} سم</b>`:`ده المقاس الصافي بعد التشطيب. على الطوب هيبقى حوالي <b>${Math.round(v+t)} سم</b>`; };
-  const row=rangeField(pop,brick?"الطول على الطوب":"الطول الصافي",()=>cfg[k],v=>{ cfg[k]=v; upd(); },sc.min,sc.max,sc.step||1,"سم",()=>UI_REFRESH());
+  const upd=()=>{ const v=+cfg[k], t=2*((+cfg.plaster||0)+(+cfg.tileT||0)); note.innerHTML=brick?`ده المقاس على الطوب. الصافي بعد المحارة والسيراميك: <b>${Math.max(roomDimMin(k),Math.round(v-t))} سم</b>`:`ده المقاس الصافي بعد التشطيب. على الطوب هيبقى حوالي <b>${Math.round(v+t)} سم</b>`; };
+  const row=rangeField(pop,brick?"الطول على الطوب":"الطول الصافي",()=>cfg[k],v=>{ cfg[k]=v; upd(); },roomDimMin(k),sc.max,sc.step||1,"سم",()=>UI_REFRESH());
   row.querySelector("input[type=range]").addEventListener("change",()=>UI_REFRESH()); upd(); pop.appendChild(note); }
 function bindPlan(box){ if(!box) return; box.classList.add("edit");
   box.insertAdjacentHTML("beforeend",`<div class="plantip" aria-live="polite"></div><div class="plancap">اسحب الشباك أو الباب أو العمود على حيطته، ودوس على أي حيطة عشان تغيّر طولها.</div><div class="planpop" hidden></div>`);

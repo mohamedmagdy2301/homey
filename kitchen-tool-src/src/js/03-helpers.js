@@ -46,7 +46,7 @@ function splashMat(w,h){
 let ACC={lower:0,upper:0,tall:0,marble:0}, curSide=null;
 // ---- room geometry (net, meters) ----
 let RW=1.8, RL=4.0, FIN=0, FEATS=[], WALLS={};
-function geo(){ FIN=cfg.dimsOn==="brick"?(cfg.plaster+cfg.tileT)/100:0; RW=Math.max(1.2,cfg.roomW/100-2*FIN); RL=Math.max(1.5,cfg.roomL/100-2*FIN); }
+function geo(){ FIN=cfg.dimsOn==="brick"?(cfg.plaster+cfg.tileT)/100:0; RW=Math.max(roomDimMin("roomW")/100,cfg.roomW/100-2*FIN); RL=Math.max(roomDimMin("roomL")/100,cfg.roomL/100-2*FIN); }
 const wlen=w=>w==="W"||w==="D"?RW:RL;
 function netFeat(f){
   const L=wlen(f.wall), w=Math.max(0.05,Math.min((f.w||10)/100,L)), a0=Math.max(0,Math.min(L-w,(f.pos||0)/100-((f.pos||0)>0&&!f.net?FIN:0)));
@@ -122,6 +122,7 @@ function appUnit(f,a0,a1,back,a,withTop){
   const T=APPS[a.type], dr=dirOf(f), b0=back+0.02*dr, D=a.d/100, front=b0+D*dr, m=(a0+a1)/2;
   let h=a.h/100; if(T.look==="col"||h>H-0.01) h=Math.min(h,H-0.01); if(withTop) h=Math.min(h,CH()-0.045);
   const u=newUnit("app",f,a0,a1,back,D+0.02,0,withTop?CH():h,{front:T.n,label:T.n,app:a.id}); const pu=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=pu; return u; }
   if(T.look==="col"){
     place(f,a0,a1,back,front-0.04*dr,0,0.1,MAT.plinth); place(f,a0,a1,back,front,0.1,h,MAT.base);
     doorPanels(f,a0,a1,front,0.11,0.72,MAT.base,"top",1);
@@ -143,6 +144,7 @@ function appUnit(f,a0,a1,back,a,withTop){
 function appWall(f,a0,a1,back,a){
   const T=APPS[a.type], dr=dirOf(f), y0=a.y/100, y1=Math.min(H-0.01,y0+a.h/100), D=a.d/100;
   const u=newUnit("app",f,a0,a1,back,D,y0,y1,{front:T.n,label:T.n,app:a.id}); const pu=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=pu; return u; }
   place(f,a0,a1,back+0.005*dr,back+D*dr,y0,y1,M(T.col,{roughness:0.3}));
   if(T.look==="heaterG") place(f,(a0+a1)/2-0.05,(a0+a1)/2+0.05,back+0.03*dr,back+0.13*dr,y1,Math.min(H,y1+0.5),MAT.steel);
   if(T.look==="tv") place(f,a0+0.01,a1-0.01,back+D*dr,back+(D+0.003)*dr,y0+0.01,y1-0.01,M("#23303d",{roughness:0.1}));
@@ -151,11 +153,12 @@ function appWall(f,a0,a1,back,a){
 function appCounter(f,a0,a1,back,a){
   const T=APPS[a.type], dr=dirOf(f), ch=CH(), D=a.d/100, h=a.h/100;
   const u=newUnit("app",f,a0,a1,back,D+0.05,ch,ch+h,{front:T.n,label:T.n,app:a.id}); const pu=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=pu; return u; }
   place(f,a0,a1,back+0.05*dr,back+(0.05+D)*dr,ch,ch+h,M(T.col,{roughness:0.35}));
   curUid=pu; return u;
 }
 // ---- unit registry (for drawings, per-unit control, picking) ----
-let UNITS=[], POINTS=[], unitCount={}, curUid=null, SEL=null, selHelper=null;
+let UNITS=[], POINTS=[], unitCount={}, curUid=null, SEL=null, selHelper=null, HIDDEN=new Set();
 const wallOf=f=>f==="+x"?"L":f==="-x"?"RT":f==="+z"?"W":"D";
 function newUnit(kind,f,a0,a1,back,depth,y0,y1,extra){
   const wall=curWall||(W4.includes(curSide)?curSide:null)||wallOf(f), key=wall+"-"+kind; unitCount[key]=(unitCount[key]||0)+1;
@@ -334,10 +337,36 @@ function carcass(f,a0,a1,back,front,y0,y1,mat,shelves){
   place(f,a0,a1,back,front,y0,y0+t,inn); place(f,a0,a1,back,front,y1-t,y1,mat);
   const n=shelves==null?Math.max(1,Math.floor((y1-y0)/0.36)-1):shelves; for(let i=1;i<=n;i++){ const y=y0+i*(y1-y0)/(n+1); place(f,a0+t,a1-t,back+t*dr,front-0.03*dr,y,y+0.018,inn); }
 }
+// ---- 45°-cut corner cabinets: a vertical prism over an arbitrary convex plan polygon (pts = [along,outFromWall] pairs) ----
+function prismAO(w,pts,y0,y1,mat){
+  const world=pts.map(([a,o])=>aoToXZ(w,a,o)), n=world.length, pos=[], idx=[];
+  for(let i=0;i<n;i++){ const [x0,z0]=world[i], [x1,z1]=world[(i+1)%n], b=pos.length/3;
+    pos.push(x0,y0,z0, x1,y0,z1, x1,y1,z1, x0,y1,z0); idx.push(b,b+1,b+2, b,b+2,b+3); }
+  const topB=pos.length/3; for(const [x,z] of world) pos.push(x,y1,z); for(let i=1;i<n-1;i++) idx.push(topB,topB+i,topB+i+1);
+  const botB=pos.length/3; for(const [x,z] of world) pos.push(x,y0,z); for(let i=1;i<n-1;i++) idx.push(botB,botB+i+1,botB+i);
+  const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); geo.setIndex(idx); geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,mat); m.castShadow=m.receiveShadow=true; if(curSide) m.userData.side=curSide; if(curUid) m.userData.uid=curUid; root.add(m); return m;
+}
+function cutPentagon(a0,a1,o0,o1,side,cut){ // back edge (o0) stays a square corner, the FRONT (o1) corner at `side` gets chamfered by `cut`
+  cut=Math.max(0.05,Math.min(cut,(a1-a0)*0.85,(o1-o0)*0.92));
+  return side==="a1" ? [[a0,o0],[a1,o0],[a1,o1-cut],[a1-cut,o1],[a0,o1]] : [[a0,o0],[a1,o0],[a1,o1],[a0+cut,o1],[a0,o1-cut]];
+}
+function cornerCutUnit(f,wall,a0,a1,back,depth,side,cut,tallCab,capTop){
+  const dr=dirOf(f), ch=CH(), y1=tallCab?Math.min(capTop||H-0.01,H-0.01):ch;
+  const u=newUnit(tallCab?"tall":"base",f,a0,a1,back,depth,0,y1,{front:"ركن 45° (واجهة مقطوعة)"}); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
+  const dbl=mat=>{ const c=mat.clone(); c.side=THREE.DoubleSide; return c; }, body=dbl(MAT.base);
+  place(f,a0,a1,back,back+(depth-0.05)*dr,0,0.1,MAT.plinth);
+  prismAO(wall,cutPentagon(a0,a1,0.02,depth-0.02,side,cut),0.1,tallCab?y1:ch-0.04,body);
+  if(!tallCab) prismAO(wall,cutPentagon(a0-0.01,a1+0.01,0,depth,side,Math.max(0.05,cut-0.01)),ch-0.04,ch,dbl(MAT.counter));
+  ACC[tallCab?"tall":"lower"]+=a1-a0; if(!tallCab) ACC.marble+=a1-a0;
+  curUid=prevUid; return u;
+}
 
 function base(f,a0,a1,back,depth,kind,regKind){
   depth=depth||0.6; const dr=dirOf(f), ch=CH(), front=back+(depth-0.02)*dr;
   const u=newUnit(regKind||"base",f,a0,a1,back,depth,0,ch); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
   place(f,a0,a1,back,front-0.05*dr,0,0.1,MAT.plinth);
   const top=cfg.handles==="none"?ch-0.08:ch-0.045;
   if(cfg.handles==="none") place(f,a0,a1,front-0.02*dr,front,ch-0.08,ch-0.045,MAT.gola);
@@ -357,6 +386,7 @@ function base(f,a0,a1,back,depth,kind,regKind){
 }
 function sink(f,a0,a1,back){
   const su=base(f,a0,a1,back,0.6,"doors","sink"); curUid=su.id;
+  if(HIDDEN.has(su.id)){ curUid=null; return su; }
   const dr=dirOf(f), m=(a0+a1)/2, ch=CH(), sw=Math.min(a1-a0,cfg.sinkW/100)-0.02, sd=Math.min(0.58,cfg.sinkD/100);
   const d0=back+(0.6-sd)/2*dr+0.02*dr, d1=d0+sd*dr;
   place(f,m-sw/2,m+sw/2,d0,d1,ch,ch+0.006,MAT.steel);
@@ -379,6 +409,7 @@ function stove(f,a0,a1,back){
   if(cfg.stoveType!=="built"){ const g=cfg.stoveGap/100; a0+=g; a1-=g; }
   const D=cfg.stoveD/100, SH=cfg.stoveH/100, front=back+(cfg.stoveType==="built"?0.6:D)*dr;
   const su=newUnit("stove",f,a0,a1,back,cfg.stoveType==="built"?0.6:D,0,cfg.stoveType==="built"?ch:SH,{front:cfg.stoveType==="built"?"مسطح + فرن بلت إن":"بوتاجاز عادي"}); curUid=su.id;
+  if(HIDDEN.has(su.id)){ curUid=null; return su; }
   if(cfg.openDoors){ const oh=cfg.stoveType==="built"?0.59:SH-0.32, fr=cfg.stoveType==="built"?front:front+0.015*dr;
     place(f,a0+0.04,a1-0.04,fr,fr+oh*dr,0.12,0.145,M("#2a2d31",{transparent:true,opacity:0.85}));
     DOORCHK.push({wall:curWall||curSide,what:"باب الفرن",f,a:(a0+a1)/2,front:fr,reach:oh}); }
@@ -403,6 +434,7 @@ function stove(f,a0,a1,back){
 function washer(f,a0,a1,back,withTop){
   const dr=dirOf(f), m=(a0+a1)/2, ww=cfg.washerW/100, b0=back+(cfg.washerBack/100)*dr, front=b0+(cfg.washerD/100)*dr, WH=Math.min(cfg.washerH/100,CH()-0.045);
   const wu=newUnit("washer",f,a0,a1,back,cfg.washerBack/100+cfg.washerD/100,0,withTop!==false?CH():WH,{front:`${cfg.washerW}×${cfg.washerD}`}); curUid=wu.id;
+  if(HIDDEN.has(wu.id)){ curUid=null; return wu; }
   place(f,m-ww/2,m+ww/2,b0,front,0,WH,MAT.white);
   if(withTop!==false){ place(f,a0,a1,back,back+0.62*dr,CH()-0.04,CH(),MAT.counter); ACC.marble+=a1-a0; }
   const r=Math.min(0.2,ww*0.34);
@@ -415,6 +447,7 @@ function washer(f,a0,a1,back,withTop){
 function dish(f,a0,a1,back){
   const dr=dirOf(f), front=back+0.58*dr, ch=CH();
   const du=newUnit("dish",f,a0,a1,back,0.6,0,ch,{front:"باب بنفس لون الدواليب"}); curUid=du.id;
+  if(HIDDEN.has(du.id)){ curUid=null; return du; }
   if(cfg.openDoors){ place(f,a0+0.01,a1-0.01,front,front+0.58*dr,0.1,0.125,M("#b8bec4",{transparent:true,opacity:0.85})); DOORCHK.push({wall:curWall||curSide,what:"باب غسالة الأطباق",f,a:(a0+a1)/2,front,reach:0.58}); }
   place(f,a0,a1,back,front-0.05*dr,0,0.1,MAT.plinth);
   place(f,a0+0.005,a1-0.005,back,front,0.1,ch-0.045,M("#d5d9dd",{metalness:0.5,roughness:0.3}));
@@ -424,6 +457,7 @@ function dish(f,a0,a1,back){
 function fridge(f,a0,a1,back){ // a0..a1 = fridge body; back = wall
   const dr=dirOf(f), b0=back+(cfg.fridgeBack/100)*dr, front=b0+(cfg.fridgeD/100)*dr, FH=cfg.fridgeH/100, body=M("#d9dde1",{metalness:0.35,roughness:0.35});
   const fu=newUnit("fridge",f,a0,a1,back,cfg.fridgeBack/100+cfg.fridgeD/100,0,FH,{front:`${cfg.fridgeW}×${cfg.fridgeD}`}); curUid=fu.id;
+  if(HIDDEN.has(fu.id)){ curUid=null; return fu; }
   const sp=FH*0.64;
   if(cfg.openDoors){
     place(f,a0,a1,b0,front-0.05*dr,0,FH,body);
@@ -452,8 +486,9 @@ function appLabel(t,f,a,d,y){ if(!cfg.appLabels||!cfg.labels) return; t=t.replac
 function uppers(f,a0,a1,back,y0,y1,depth){
   if(a1-a0<0.1||y1-y0<0.15){ KEY=null; return; }
   depth=depth||cfg.uDepth/100; const dr=dirOf(f), front=back+depth*dr;
-  ACC.upper+=(a1-a0)*(y1-y0>0.9?2:1);
   const u=newUnit("upper",f,a0,a1,back,depth,y0,y1); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return; }
+  ACC.upper+=(a1-a0)*(y1-y0>0.9?2:1);
   const o=unitOpt(u.id), nn=+o.n||null;
   const mode=(o.front&&o.front!=="auto")?o.front:(cfg.upperFront==="open"?"open":cfg.upperFront==="glass"?"glassLow":"doors"); u.front=mode; u.acc=o.acc||"";
   if(mode==="open"){
@@ -473,8 +508,9 @@ function uppers(f,a0,a1,back,y0,y1,depth){
 function tall(f,a0,a1,back,depth,y0,y1){
   if(a1-a0<0.1){ KEY=null; return; }
   const dr=dirOf(f), front=back+depth*dr; y0=y0||0; y1=y1||H-0.01;
-  if(y0===0) ACC.tall+=a1-a0; else ACC.upper+=a1-a0;
   const u=newUnit(y0===0?"tall":"upper",f,a0,a1,back,depth,y0,y1); const prevUid=curUid; curUid=u.id;
+  if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
+  if(y0===0) ACC.tall+=a1-a0; else ACC.upper+=a1-a0;
   const o=unitOpt(u.id), nn=+o.n||null; u.front=(o.front==="open")?"open":"doors"; u.acc=o.acc||"";
   if(o.front==="open"){ if(y0===0) place(f,a0,a1,back,front-0.04*dr,0,0.1,MAT.plinth);
     place(f,a0,a1,back,back+0.015*dr,Math.max(y0,0.1),y1,MAT.wood); place(f,a0,a0+0.018,back,front,Math.max(y0,0.1),y1,MAT.wood); place(f,a1-0.018,a1,back,front,Math.max(y0,0.1),y1,MAT.wood);

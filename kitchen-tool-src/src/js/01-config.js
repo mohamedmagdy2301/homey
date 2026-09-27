@@ -279,4 +279,6 @@ const SCHEMA = {
     {t:"num",k:"pWP",l:"سعر متر العزل"}
   ]
 };
+// halls/corridors have no appliances or fixtures to clear, so they can be much narrower/shorter than a kitchen or bath
+function roomDimMin(k){ return cfg.roomType==="hall" ? (k==="roomW"?70:60) : (k==="roomW"?120:150); }
 
