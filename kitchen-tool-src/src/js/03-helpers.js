@@ -309,7 +309,7 @@ function compareUI(el){
     const [A,B]=m, best=(x,y,hi)=>x===y||x==null||y==null?["",""]:(hi?x>y:x<y)?[" style='background:#e5f3e9;font-weight:bold'",""]:[""," style='background:#e5f3e9;font-weight:bold'"];
     const R=(t,a,b,fa,fb,hi)=>{ const [ca,cb]=hi===undefined?["",""]:best(fa,fb,hi); return `<tr><td>${t}</td><td${ca}>${a}</td><td${cb}>${b}</td></tr>`; };
     const money=v=>v>0?Math.round(v).toLocaleString("ar-EG")+" ج":"—";
-    res.innerHTML=`<table style="min-width:0"><tr><th></th><th>${A.name}</th><th>${B.name}</th></tr>`+
+    res.innerHTML=`<table style="min-width:0"><tr><th></th><th>${esc(A.name)}</th><th>${esc(B.name)}</th></tr>`+
       R("الشكل",A.tpl,B.tpl)+R("المقاس الصافي",A.net.join("×"),B.net.join("×"))+
       R("مساحة التخزين",A.vol+" لتر",B.vol+" لتر",A.vol,B.vol,true)+
       R("الرخامة",(A.acc.marble).toFixed(2)+" م",(B.acc.marble).toFixed(2)+" م",A.acc.marble,B.acc.marble,true)+

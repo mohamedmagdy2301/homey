@@ -14,8 +14,8 @@ A single-file web tool (three.js r128, loaded from cdnjs) for designing kitchens
 ```bash
 python build.py                          # bundles src/ -> dist/kitchen-3d.html
 pip install playwright && playwright install chromium
-python tests/smoke_test.py               # headless Chromium tests against dist/ (build first!)
-python tests/smoke_test.py path/to/three.min.js   # use a local three.js instead of npm-packing three@0.128.0
+python tests/smoke_test.py               # headless Chromium tests against dist/ (build first!); fetches three@0.128.0 via npm once into tests/three.min.js
+python tests/smoke_test.py path/to/three.min.js   # use a specific local three.js r128
 ```
 
 There is no test runner and no way to run a single test. `smoke_test.py` is one linear script of `check(...)` calls, so to focus on one area, comment out the others or write a small ad-hoc Playwright script that follows the same pattern. The tests call app globals directly through `page.evaluate` (for example `cfg=newCfg('U'); build(); UNITS...`), and that is also the quickest way to debug logic.
@@ -36,5 +36,7 @@ There is no test runner and no way to run a single test. `smoke_test.py` is one 
 **Apartment mode** (`06-apartment-...js`): `APT.rooms` references saved room projects, and `SNAP[id]` caches each room's built snapshot. The code handles linking and shared walls (`SHARED`), plumbing, electrical and levels, the combined document (`aptDoc()`), and a walkable combined 3D view (`enterApt3D`/`exitApt3D`, `APT3D`, `aptRoots`). `shoppingData()` (12) aggregates purchases.
 
 **Persistence** (`15-ui.js`): `stGet`/`stSet`/`stDel` wrap `window.storage` (the Claude artifacts storage API) and fall back to the in-memory `MEMS` if it throws. Projects are listed in `projIndex` and saved with `saveNow()`. `backupData()`/`restoreData()` live in `11-backup.js`. The tests mock `window.storage` and also check a broken-storage fallback case. To host the tool outside Claude artifacts, swap `stGet`/`stSet`/`stDel` for localStorage or an API.
+
+**User text and HTML.** Much of the UI is built with template strings and `innerHTML`. Any project or room name, warning, or label that goes into markup must be wrapped in `esc()`, which is defined in `01-config.js`. Names are also cleaned when they come in (`cleanName`), and `migrate()` runs `cleanDeep` to strip `<>` from every string in a loaded cfg. `restoreData()` checks the whole backup before it writes anything. Use `stRead()` when you need to tell "the key doesn't exist" apart from "the read failed", and never write defaults over a key whose read failed.
 
 The engineering numbers (drain slopes, pipe and cable lengths, electrical loads) are rough planning estimates and do not replace an engineer.

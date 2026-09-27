@@ -26,7 +26,7 @@ function snapCurrent(c,name){ // build a room silently and capture what the apar
 }
 async function refreshSnaps(){
   const saved=cfg, sl=loadingP; loadingP=true; SLIDING=true; SNAP={};
-  try{ for(const r of APT.rooms){ let c; if(r.id===PROJ.id) c=saved; else { let d=await stGet("kproj:"+r.id);
+  try{ for(const r of APT.rooms){ let c; if(r.id===PROJ.id) c=saved; else { const rd=await stRead("kproj:"+r.id); let d=rd.v; if(rd.err) throw new Error("storage read failed: "+r.id); // never replace an unreadable room with a default
         if(!d){ const nm=projName(r.id); if(nm==="؟") continue; d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":nm.includes("صالة")?"r_living":nm.includes("أطفال")?"r_kids":nm.includes("نوم")?"r_master":"L")}; await stSet("kproj:"+r.id,d); }
         c=migrate(d.cfg); } SNAP[r.id]=snapCurrent(c,projName(r.id)); } }
   finally{ cfg=saved; SLIDING=false; build(); loadingP=sl; }
@@ -106,7 +106,7 @@ function aptPlanSVG(){
     s+=`<rect x="${R.x0*S}" y="${R.z0*S}" width="${(R.x1-R.x0)*S}" height="${(R.z1-R.z0)*S}" fill="${col[sn.roomType]||"#fff"}"/>`;
     for(const u of [...sn.units].sort((a,b)=>(b.ft==="rug")-(a.ft==="rug"))){ const a=toWorld(r,sn,u.x0,u.z0), b=toWorld(r,sn,u.x1,u.z1); s+=`<rect x="${Math.min(a[0],b[0])*S}" y="${Math.min(a[1],b[1])*S}" width="${Math.abs(b[0]-a[0])*S}" height="${Math.abs(b[1]-a[1])*S}" fill="${UC[u.kind]||"#e5e5e5"}" stroke="#9aa0a6" stroke-width="1.5"/>`; }
     for(const f of sn.feats){ if(f.type!=="window") continue; const {p0,p1}=wallWorld(r,sn,f.wall,f.a0,f.a1); s+=`<line x1="${p0[0]*S}" y1="${p0[1]*S}" x2="${p1[0]*S}" y2="${p1[1]*S}" stroke="#6fb6e0" stroke-width="${g+2}"/>`; }
-    s+=`<text x="${(R.x0+R.x1)/2*S}" y="${(R.z0+R.z1)/2*S}" text-anchor="middle" font-size="${Math.max(18,Math.min(34,(R.x1-R.x0)*S/6))}" fill="#2d5f7a" font-weight="bold">${sn.name}</text>`;
+    s+=`<text x="${(R.x0+R.x1)/2*S}" y="${(R.z0+R.z1)/2*S}" text-anchor="middle" font-size="${Math.max(18,Math.min(34,(R.x1-R.x0)*S/6))}" fill="#2d5f7a" font-weight="bold">${esc(sn.name)}</text>`;
     s+=`<text x="${(R.x0+R.x1)/2*S}" y="${(R.z0+R.z1)/2*S+28}" text-anchor="middle" font-size="18" fill="#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</text></g>`; }
   if(aptTab==="المسقط") for(const sh of SHARED){ if(APTLINKS.some(L=>L.B&&((L.A===sh.a&&L.B===sh.b)||(L.A===sh.b&&L.B===sh.a)))) continue; const g=APT.wallT/100, c=sh.c+g/2; s+=sh.v?`<line x1="${c*S}" y1="${sh.s0*S}" x2="${c*S}" y2="${sh.s1*S}" stroke="#2e9d5a" stroke-width="6" stroke-dasharray="14 10"/>`:`<line x1="${sh.s0*S}" y1="${c*S}" x2="${sh.s1*S}" y2="${c*S}" stroke="#2e9d5a" stroke-width="6" stroke-dasharray="14 10"/>`; }
   for(const L of APTLINKS){ const g=APT.wallT; const q0=[L.p0[0]+L.n[0]*g/200,L.p0[1]+L.n[1]*g/200], q1=[L.p1[0]+L.n[0]*g/200,L.p1[1]+L.n[1]*g/200];
@@ -121,7 +121,7 @@ function aptPlanSVG(){
 }
 let APT_SVC=null, aptDrag=null;
 async function openApt(){ await saveNow(); await loadApt(); document.getElementById("apt").style.display="flex"; document.getElementById("aptBody").innerHTML="<div class='note'>بحضّر الشقة…</div>";
-  if(!APT.rooms.length){ APT.rooms=[{id:PROJ.id,x:0,z:0,rot:0}]; } await refreshSnaps(); APT_SVC=aptServices(); renderApt(); }
+  if(!APT.rooms.length){ APT.rooms=[{id:PROJ.id,x:0,z:0,rot:0}]; } try{ await refreshSnaps(); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); renderApt(); }
 function closeApt(){ document.getElementById("apt").style.display="none"; saveApt(); }
 function renderApt(){
   const body=document.getElementById("aptBody"); body.innerHTML="";
@@ -146,21 +146,21 @@ function renderApt(){
     d.innerHTML=`🟦 <b>الصرف:</b> ${f(sv.drain.m4)} م مواسير 4 بوصة + ${f(sv.drain.m2)} م مواسير 2 و3 بوصة<br>💧 <b>المية البارد:</b> ${f(sv.cold.main)} م خط رئيسي (25 مم) + ${f(sv.cold.br)} م فروع (20 مم)<br>🔥 <b>المية السخنة:</b> ${f(sv.hot.main)} م رئيسي + ${f(sv.hot.br)} م فروع<br>⚡ <b>الكهربا:</b> ${sv.circuits} دايرة • الحمل حوالي ${(sv.demand/1000).toFixed(1)} ك.و (${sv.amps} أمبير) ← قاطع رئيسي ${sv.main} أمبير<br>`+Object.entries(sv.wire).sort().map(([mm,m])=>`سلك ${mm} مم²: ${Math.ceil(m)} م`).join(" • ")+`<br><small>الأطوال تقريبية (مسار على الحيطان بزوايا قايمة) + زود 10% احتياطي.</small><br><small style="color:#8a2a1c">${DISCLAIM}</small>`;
     box.appendChild(d);
     const n2=document.createElement("div"); n2.className="note"; n2.textContent="كل أوضة بتصرّف على أقرب صرف: اللي جواها (لو محدده في تصميمها) أو العمود اللي على المسقط."; box.appendChild(n2);
-    const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>أبعد حنفية سخن</th></tr>${sv.rooms.map(r=>`<tr><td>${r.name}</td><td>${f(r.drainL)} م</td><td>${f(r.coldL)} م</td><td>${f(r.hotL)} م</td><td style="color:${r.farHot>7?"#b3452c":"inherit"}">${r.farHot?f(r.farHot)+" م":"—"}</td></tr>`).join("")}</table>`; box.appendChild(t); }
+    const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>أبعد حنفية سخن</th></tr>${sv.rooms.map(r=>`<tr><td>${esc(r.name)}</td><td>${f(r.drainL)} م</td><td>${f(r.coldL)} م</td><td>${f(r.hotL)} م</td><td style="color:${r.farHot>7?"#b3452c":"inherit"}">${r.farHot?f(r.farHot)+" م":"—"}</td></tr>`).join("")}</table>`; box.appendChild(t); }
   if(aptTab==="المناسيب"){
     aRange(box,"منسوب الأرضية العادي (مونة + بلاط)",3,15,APT.baseFill,"سم",async v=>{ APT.baseFill=v; APT_SVC=aptServices(); await saveApt(); renderApt(); });
     const n=document.createElement("div"); n.className="note"; n.textContent="المنسوب = ارتفاع البلاط النهائي فوق البلاطة الخرسانة. الحمام بياخد ردم أكتر عشان ميول الصرف لحد العمود."; box.appendChild(n);
-    const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>الردم المطلوب</th><th>المنسوب</th></tr>${sv.rooms.map(r=>`<tr><td>${r.name}</td><td>${Math.round(r.fill)} سم</td><td>${r.level} سم</td></tr>`).join("")}</table>`; box.appendChild(t);
+    const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>الردم المطلوب</th><th>المنسوب</th></tr>${sv.rooms.map(r=>`<tr><td>${esc(r.name)}</td><td>${Math.round(r.fill)} سم</td><td>${r.level} سم</td></tr>`).join("")}</table>`; box.appendChild(t);
     const h=document.createElement("div"); h.className="head"; h.textContent="🚪 عند الأبواب"; box.appendChild(h);
     if(!sv.levels.length){ const x=document.createElement("div"); x.className="note"; x.textContent="مفيش أبواب مربوطة بين الأوض لسه. لزّق الأوض في بعض من تاب المسقط."; box.appendChild(x); }
     for(const L of sv.levels){ const c=document.createElement("div"); c.className="card"; c.innerHTML=`<div class="ch"><b>${L.na} ↔ ${L.nb}</b><small>${L.la} / ${L.lb} سم</small></div><div class="note">${L.adv}</div>`; box.appendChild(c); } }
   if(aptTab==="الإجمالي"){
     let tc=0, ta=0, tw=0, tp={socket:0,water:0,drain:0}; const rows=APT.rooms.filter(r=>SNAP[r.id]).map(r=>{ const sn=SNAP[r.id]; tc+=sn.cost; const fa=sn.RW*sn.RL; ta+=fa; const wa=sn.bath?sn.bath.wallA:0; tw+=wa; for(const k in tp) tp[k]+=sn.pts.filter(p=>p.type===k).length;
-      return `<tr><td>${sn.name}</td><td>${fa.toFixed(1)} م²</td><td>${wa?wa.toFixed(1)+" م²":"—"}</td><td>${sn.pts.filter(p=>p.type==="socket").length}/${sn.pts.filter(p=>p.type==="water").length}/${sn.pts.filter(p=>p.type==="drain").length}</td><td>${sn.cost>0?Math.round(sn.cost).toLocaleString("ar-EG"):"—"}</td></tr>`; }).join("");
+      return `<tr><td>${esc(sn.name)}</td><td>${fa.toFixed(1)} م²</td><td>${wa?wa.toFixed(1)+" م²":"—"}</td><td>${sn.pts.filter(p=>p.type==="socket").length}/${sn.pts.filter(p=>p.type==="water").length}/${sn.pts.filter(p=>p.type==="drain").length}</td><td>${sn.cost>0?Math.round(sn.cost).toLocaleString("ar-EG"):"—"}</td></tr>`; }).join("");
     const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>الأرضية</th><th>سيراميك حيطان</th><th>برايز/مية/صرف</th><th>التكلفة</th></tr>${rows}<tr style="font-weight:bold;background:#f1f4f6"><td>الشقة</td><td>${ta.toFixed(1)} م²</td><td>${tw?tw.toFixed(1)+" م²":"—"}</td><td>${tp.socket}/${tp.water}/${tp.drain}</td><td>${tc>0?Math.round(tc).toLocaleString("ar-EG")+" ج":"—"}</td></tr></table>`; box.appendChild(t);
     const allW=[...APT_SVC.warn,...APT.rooms.filter(r=>SNAP[r.id]).flatMap(r=>SNAP[r.id].warn.map(w=>SNAP[r.id].name+": "+w))];
     const h=document.createElement("div"); h.className="head"; h.textContent=`⚠ ملاحظات (${allW.length})`; box.appendChild(h);
-    const ul=document.createElement("ul"); ul.style.cssText="font-size:13px;line-height:1.7;color:#8a2a1c;padding-inline-start:18px"; ul.innerHTML=allW.slice(0,25).map(w=>`<li>${w}</li>`).join(""); box.appendChild(ul); }
+    const ul=document.createElement("ul"); ul.style.cssText="font-size:13px;line-height:1.7;color:#8a2a1c;padding-inline-start:18px"; ul.innerHTML=allW.slice(0,25).map(w=>`<li>${esc(w)}</li>`).join(""); box.appendChild(ul); }
   ctlEl=saveCtl;
 }
 function svgPt(svg,e){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
@@ -198,12 +198,13 @@ function localWallSeg(r,p0,p1){ const sn=SNAP[r.id], l0=toLocal(r,sn,...p0), l1=
   for(const w of W4){ const o=l=>w==="L"?l[0]:w==="RT"?sn.RW-l[0]:w==="W"?l[1]:sn.RL-l[1], al=l=>w==="L"||w==="RT"?l[1]:l[0];
     if(Math.abs(o(l0))<0.06&&Math.abs(o(l1))<0.06) return {wall:w,b0:Math.min(al(l0),al(l1)),b1:Math.max(al(l0),al(l1))}; } return null; }
 function aptDoorLinks(){ // doors the user added between rooms from the apartment screen
-  const out=[], g=APT.wallT/100; APT.doors=(APT.doors||[]).filter(d=>SHARED.some(s=>s.a===d.a&&s.b===d.b));
-  for(const d of APT.doors){ const s=SHARED.find(x=>x.a===d.a&&x.b===d.b); const A=APT.rooms.find(r=>r.id===d.a), B=APT.rooms.find(r=>r.id===d.b);
+  // doors whose rooms stopped touching are skipped, not deleted, so they come back when the rooms touch again (either order)
+  const out=[], g=APT.wallT/100;
+  for(const d of APT.doors||[]){ const s=SHARED.find(x=>(x.a===d.a&&x.b===d.b)||(x.a===d.b&&x.b===d.a)); if(!s) continue; const A=APT.rooms.find(r=>r.id===s.a), B=APT.rooms.find(r=>r.id===s.b); if(!A||!B) continue;
     const len=s.s1-s.s0, w=Math.min(d.w/100,len-0.1), a0=s.s0+Math.max(0.05,Math.min(len-w-0.05,d.pos/100));
     const p0=s.v?[s.c,a0]:[a0,s.c], p1=s.v?[s.c,a0+w]:[a0+w,s.c], n=s.v?[1,0]:[0,1], q0=[p0[0]+n[0]*g,p0[1]+n[1]*g], q1=[p1[0]+n[0]*g,p1[1]+n[1]*g];
     const sa=localWallSeg(A,p0,p1), sb=localWallSeg(B,q0,q1); if(!sa||!sb) continue;
-    out.push({A:d.a,B:d.b,wallA:sa.wall,wallB:sb.wall,b0:sb.b0,b1:sb.b1,injA:sa,f:{type:"door",y1:2.1},p0,p1,n,apt:true}); }
+    out.push({A:s.a,B:s.b,wallA:sa.wall,wallB:sb.wall,b0:sb.b0,b1:sb.b1,injA:sa,f:{type:"door",y1:2.1},p0,p1,n,apt:true}); }
   return out;
 }
 function aptRecalc(){ layoutRel(); computeShared(); computeLinks(); APT_SVC=aptServices(); }
@@ -213,16 +214,16 @@ function arrangeUI(box){
   const h1=document.createElement("div"); h1.className="head"; h1.textContent="1️⃣ الأوض"; box.appendChild(h1);
   const ar=document.createElement("div"); ar.className="addrow"; const ps=document.createElement("select");
   const free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
-  ps.innerHTML=free.map(p=>`<option value="${p.id}">${p.name}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option>`;
+  ps.innerHTML=free.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option>`;
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
   ab.onclick=async()=>{ let id=ps.value; if(id.startsWith("__")){ const MAPK={__hall:["h_hall","طرقة"],__bath:["b_std","حمام"],__living:["r_living","صالة"],__master:["r_master","أوضة نوم"],__kids:["r_kids","أوضة أطفال"]}[id]; const key=MAPK[0], nm=MAPK[1]+(APT.rooms.length?" "+(APT.rooms.length+1):""); id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:nm,cfg:newCfg(key)}); projIndex.push({id,name:nm,t:Date.now()}); await stSet("kproj:index",projIndex); }
-    const last=APT.rooms[APT.rooms.length-1]; APT.rooms.push({id,x:0,z:0,rot:0,rel:last?{to:last.id,side:"right",off:0}:null}); aptSel=id; await refreshSnaps(); aptRecalc(); await saveApt(); renderApt(); hint("اتضافت ✓ حدد مكانها في الخطوة 2"); };
+    const last=APT.rooms[APT.rooms.length-1]; APT.rooms.push({id,x:0,z:0,rot:0,rel:last?{to:last.id,side:"right",off:0}:null}); aptSel=id; try{ await refreshSnaps(); }catch(e){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); return; } aptRecalc(); await saveApt(); renderApt(); hint("اتضافت ✓ حدد مكانها في الخطوة 2"); };
   ar.append(ps,ab); box.appendChild(ar);
   // step 2
   const h2=document.createElement("div"); h2.className="head"; h2.textContent="2️⃣ مكان كل أوضة"; box.appendChild(h2);
   const rs=APT.rooms.filter(r=>SNAP[r.id]);
   rs.forEach((r,i)=>{ const sn=SNAP[r.id]; const card=document.createElement("div"); card.className="card"+(aptSel===r.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${{kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||""} ${sn.name}</b><small style="color:#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</small></div>`;
+    card.innerHTML=`<div class="ch"><b>${{kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||""} ${esc(sn.name)}</b><small style="color:#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</small></div>`;
     card.onclick=e=>{ if(e.target.closest("select,input,button")) return; aptSel=r.id; renderApt(); };
     if(i===0){ const n=document.createElement("div"); n.className="note"; n.textContent="📍 دي الأوضة الأساس، الباقي بيترص حواليها."; card.appendChild(n); }
     else { const others=rs.filter(x=>x!==r).map(x=>[x.id,SNAP[x.id].name]); const rel=r.rel||{to:rs[0].id,side:"right",off:0};
@@ -272,10 +273,10 @@ async function aptDoc(){
   const saved=cfg, sl=loadingP; loadingP=true; SLIDING=true; const sv=APT_SVC;
   let body=`<section id="apt-plan"><h3>مسقط الشقة</h3><div class="sub">${APT.rooms.length} أوض • سُمك الحيطان بينهم ${APT.wallT} سم</div><div class="planbox">${aptPlanSVG()}</div></section>`;
   body+=`<section id="apt-sched"><h3>جدول الأبواب والشبابيك</h3><div class="sub">المقاسات بالسنتيمتر (الصافي بعد التشطيب)</div>${scheduleHTML()}</section>`;
-  if(sv) body+=`<section id="apt-svc"><h3>السباكة والكهربا والمناسيب</h3><div class="sub">${DISCLAIM}</div><div class="tbl"><table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>الردم</th><th>المنسوب</th></tr>${sv.rooms.map(r=>`<tr><td>${r.name}</td><td>${r.drainL.toFixed(1)} م</td><td>${r.coldL.toFixed(1)} م</td><td>${r.hotL.toFixed(1)} م</td><td>${Math.round(r.fill)} سم</td><td>${r.level} سم</td></tr>`).join("")}</table></div><div class="sub" style="margin-top:6px">${sv.circuits} دايرة • الحمل حوالي ${(sv.demand/1000).toFixed(1)} ك.و (${sv.amps} أمبير) • قاطع رئيسي ${sv.main} أمبير</div>${sv.levels.length?`<ul style="font-size:13px">${sv.levels.map(l=>`<li>${l.na} ↔ ${l.nb}: ${l.adv}</li>`).join("")}</ul>`:""}</section>`;
+  if(sv) body+=`<section id="apt-svc"><h3>السباكة والكهربا والمناسيب</h3><div class="sub">${DISCLAIM}</div><div class="tbl"><table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>الردم</th><th>المنسوب</th></tr>${sv.rooms.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.drainL.toFixed(1)} م</td><td>${r.coldL.toFixed(1)} م</td><td>${r.hotL.toFixed(1)} م</td><td>${Math.round(r.fill)} سم</td><td>${r.level} سم</td></tr>`).join("")}</table></div><div class="sub" style="margin-top:6px">${sv.circuits} دايرة • الحمل حوالي ${(sv.demand/1000).toFixed(1)} ك.و (${sv.amps} أمبير) • قاطع رئيسي ${sv.main} أمبير</div>${sv.levels.length?`<ul style="font-size:13px">${sv.levels.map(l=>`<li>${l.na} ↔ ${l.nb}: ${l.adv}</li>`).join("")}</ul>`:""}</section>`;
   body+=`<section id="apt-shop"><h3>قايمة المشتريات</h3><div class="sub">${DISCLAIM}</div>${shoppingHTML()}</section>`;
   let nav=`<button data-go="apt-plan">المسقط</button><button data-go="apt-sched">الأبواب والشبابيك</button><button data-go="apt-svc">السباكة والكهربا</button><button data-go="apt-shop">المشتريات</button>`;
-  try{ APT.rooms.forEach((r,i)=>{ const sn=SNAP[r.id]; if(!sn) return; cfg=clone(sn.cfg); build(); const {h}=drawHTML(); body+=`<div class="rdoc" id="rdoc${i}" style="page-break-before:always"><h2 style="color:#2d5f7a;border-bottom:2px solid #2d5f7a;padding-bottom:4px">${sn.name}</h2>${h.replace(/id="sec-/g,`id="r${i}-sec-`)}</div>`; nav+=`<button data-go="rdoc${i}">${sn.name}</button>`; }); }
+  try{ APT.rooms.forEach((r,i)=>{ const sn=SNAP[r.id]; if(!sn) return; cfg=clone(sn.cfg); build(); const {h}=drawHTML(); body+=`<div class="rdoc" id="rdoc${i}" style="page-break-before:always"><h2 style="color:#2d5f7a;border-bottom:2px solid #2d5f7a;padding-bottom:4px">${esc(sn.name)}</h2>${h.replace(/id="sec-/g,`id="r${i}-sec-`)}</div>`; nav+=`<button data-go="rdoc${i}">${sn.name}</button>`; }); }
   finally{ cfg=saved; SLIDING=false; build(); loadingP=sl; }
   document.getElementById("apt").style.display="none"; DRAW_DOC=true; document.getElementById("draw").style.display="flex";
   const b=document.getElementById("dbody"), t=document.getElementById("dtabs"); b.innerHTML=body; t.innerHTML=nav; b.scrollTop=0;
@@ -332,14 +333,16 @@ function aptFree(X,Z){
 let aptSaved=null, aptBox=null;
 function enterApt3D(walk){
   closeApt(); aptSaved=cfg; const sl=loadingP; loadingP=true; SLIDING=true;
-  root.traverse(o=>{ if(o.geometry)o.geometry.dispose(); }); scene.remove(root); root=new THREE.Group(); scene.add(root);
+  root.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); scene.remove(root); root=new THREE.Group(); scene.add(root);
   APT_BUILD=true; aptRoots=[]; let X0=1e9,Z0=1e9,X1=-1e9,Z1=-1e9;
-  for(const r of APT.rooms){ const sn=SNAP[r.id]; if(!sn) continue; const c=clone(sn.cfg); c.ceiling="none"; c.gbType="hide"; c.labels=false; c.showPts=false; c.walls="solid"; c.openDoors=false; c.showTri=false; c.openCab=false;
+  try{ for(const r of APT.rooms){ const sn=SNAP[r.id]; if(!sn) continue; const c=clone(sn.cfg); c.ceiling="none"; c.gbType="hide"; c.labels=false; c.showPts=false; c.walls="solid"; c.openDoors=false; c.showTri=false; c.openCab=false;
     APTLINKS.forEach((L,i)=>{ if(L.injA&&L.A===r.id) c.feats=[...(c.feats||[]),{id:"la"+i,type:"opening",wall:L.injA.wall,pos:Math.round(L.injA.b0*100),w:Math.round((L.injA.b1-L.injA.b0)*100),y:0,h:210,d:0,net:true}];
       if(L.B===r.id) c.feats=[...(c.feats||[]),{id:"lk"+i,type:"opening",wall:L.wallB,pos:Math.round(L.b0*100),w:Math.round((L.b1-L.b0)*100),y:0,h:L.f.type==="door"?Math.round((L.f.y1||2.1)*100):210,d:0,net:true}]; });
     cfg=c; build(); const phi=r.rot===90?-Math.PI/2:r.rot===180?Math.PI:r.rot===270?Math.PI/2:0, off=r.rot===90?[sn.RL,0]:r.rot===180?[sn.RW,sn.RL]:r.rot===270?[0,sn.RW]:[0,0];
     root.rotation.y=phi; root.position.set(r.x/100+off[0],0,r.z/100+off[1]); scene.remove(root); aptRoots.push(root); scene.add(root); root=new THREE.Group(); scene.add(root);
-    const R=roomRectW(r); X0=Math.min(X0,R.x0);Z0=Math.min(Z0,R.z0);X1=Math.max(X1,R.x1);Z1=Math.max(Z1,R.z1); }
+    const R=roomRectW(r); X0=Math.min(X0,R.x0);Z0=Math.min(Z0,R.z0);X1=Math.max(X1,R.x1);Z1=Math.max(Z1,R.z1); } }
+  catch(e){ console.error(e); for(const g of aptRoots){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); scene.remove(g); } aptRoots=[]; // back to the normal room view, autosave working again
+    APT_BUILD=false; SLIDING=false; loadingP=sl; cfg=aptSaved||cfg; aptSaved=null; build(); hint("حصلت مشكلة في عرض الشقة 3D، رجعتك للتصميم",4000); return; }
   // floor under the walls between rooms
   const fl=new THREE.Mesh(new THREE.BoxGeometry(X1-X0+0.4,0.02,Z1-Z0+0.4),M("#d8d4cc")); fl.position.set((X0+X1)/2,-0.02,(Z0+Z1)/2); root.add(fl);
   APT_BUILD=false; SLIDING=false; loadingP=sl; APT3D=true; aptBox={X0,Z0,X1,Z1}; bulb.position.set((X0+X1)/2,2.6,(Z0+Z1)/2); bulb.intensity=0.6;

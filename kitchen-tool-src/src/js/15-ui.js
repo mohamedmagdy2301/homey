@@ -290,23 +290,27 @@ function locOpts(cls){
 }
 // ======== projects ========
 let PROJ={id:"p"+Date.now().toString(36),name:"مطبخي"}, projIndex=[], saveT=null, loadingP=true, storageOK=null;
-const MEMS={}, PENDING=new Set(); let retryT=null, lastSaved={};
-async function stGet(k){ if(k in MEMS) return clone(MEMS[k]);
-  try{ const r=await window.storage.get(k,false); storageOK=storageOK===false?false:true; if(r){ const v=JSON.parse(r.value); MEMS[k]=v; return clone(v); } }catch(e){ if(!window.storage) storageOK=false; } return null; }
+const MEMS={}, PENDING=new Set(), DELETED=new Set(); let retryT=null, lastSaved={};
+// {v} = value (null when the key doesn't exist); {v:null,err:true} = the read itself failed, so never overwrite that key with defaults
+async function stRead(k){ if(k in MEMS) return {v:clone(MEMS[k])};
+  try{ const r=await window.storage.get(k,false); storageOK=storageOK===false?false:true; if(r){ const v=JSON.parse(r.value); MEMS[k]=v; return {v:clone(v)}; } return {v:null}; }catch(e){ if(!window.storage) storageOK=false; return {v:null,err:true}; } }
+async function stGet(k){ return (await stRead(k)).v; }
 async function rawSet(k){ try{ const txt=JSON.stringify(MEMS[k]); if(lastSaved[k]===txt){ PENDING.delete(k); return true; } const r=await window.storage.set(k,txt,false); if(r){ lastSaved[k]=txt; PENDING.delete(k); storageOK=true; return true; } }catch(e){} PENDING.add(k); storageOK=false; clearTimeout(retryT); retryT=setTimeout(retryPending,6000); return false; }
 async function retryPending(){ for(const k of [...PENDING]) if(k in MEMS) await rawSet(k); else PENDING.delete(k); if(PENDING.size){ clearTimeout(retryT); retryT=setTimeout(retryPending,15000); } }
 async function stSet(k,v){ MEMS[k]=clone(v); return rawSet(k); }
-async function stDel(k){ delete MEMS[k]; PENDING.delete(k); try{ await window.storage.delete(k,false); }catch(e){} }
-function autosave(){ if(loadingP||WIZ) return; clearTimeout(saveT); saveT=setTimeout(saveNow,2500); }
-async function saveNow(){ const e={id:PROJ.id,name:PROJ.name,t:Date.now()}; const i=projIndex.findIndex(p=>p.id===PROJ.id); const isNew=i<0||projIndex[i].name!==PROJ.name; if(i>=0) projIndex[i]=e; else projIndex.push(e);
-  await stSet("kproj:"+PROJ.id,{name:PROJ.name,cfg}); if(isNew||!("kproj:index" in MEMS)) await stSet("kproj:index",projIndex); else MEMS["kproj:index"]=clone(projIndex); }
+async function stDel(k){ delete MEMS[k]; delete lastSaved[k]; PENDING.delete(k); try{ await window.storage.delete(k,false); }catch(e){} }
+// the timer waits while another room's cfg is swapped in (apartment snapshots / 3D / compare)
+function autosave(){ if(loadingP||WIZ) return; clearTimeout(saveT); saveT=setTimeout(function tick(){ if(loadingP||APT_BUILD||APT3D){ saveT=setTimeout(tick,1000); return; } saveNow(); },2500); }
+async function saveNow(){ clearTimeout(saveT); if(loadingP||APT_BUILD||APT3D||DELETED.has(PROJ.id)) return;
+  const e={id:PROJ.id,name:PROJ.name,t:Date.now()}; const i=projIndex.findIndex(p=>p.id===PROJ.id); if(i>=0) projIndex[i]=e; else projIndex.push(e);
+  await stSet("kproj:"+PROJ.id,{name:PROJ.name,cfg}); await stSet("kproj:index",projIndex); }
 function updProjName(){ document.getElementById("projName").textContent=PROJ.name; }
 async function initProjects(){
-  projIndex=(await stGet("kproj:index"))||[]; await loadApt();
-  if(projIndex.length){ const last=[...projIndex].sort((a,b)=>b.t-a.t)[0]; const d=await stGet("kproj:"+last.id); if(d&&d.cfg){ PROJ={id:last.id,name:d.name||last.name}; cfg=migrate(d.cfg); } }
+  projIndex=((await stGet("kproj:index"))||[]).filter(p=>p&&p.id).map(p=>({...p,name:cleanName(p.name)})); await loadApt();
+  if(projIndex.length){ const last=[...projIndex].sort((a,b)=>b.t-a.t)[0]; const d=await stGet("kproj:"+last.id); if(d&&d.cfg){ PROJ={id:last.id,name:cleanName(d.name)||last.name}; cfg=migrate(d.cfg); } }
   loadingP=false; updProjName(); build(); renderControls(); autosave();
 }
-async function openProject(id){ let d=await stGet("kproj:"+id); if(!d){ const nm=projName(id); d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":"L")}; await stSet("kproj:"+id,d); hint("المشروع ده ماكانش اتحفظ، فتحته من جديد بالشكل الافتراضي",4000); } await saveNow(); PROJ={id,name:d.name}; cfg=migrate(d.cfg); hist.length=0; SEL=null; updProjName(); build(); renderControls(); closeSheet(); setView("out"); hint(`اتفتح "${PROJ.name}"`); }
+async function openProject(id){ const rd=await stRead("kproj:"+id); let d=rd.v; if(rd.err){ hint("مقدرتش أقرا المشروع ده من الحفظ دلوقتي، جرّب تاني كمان شوية",4000); return; } if(!d){ const nm=projName(id); d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":"L")}; await stSet("kproj:"+id,d); hint("المشروع ده ماكانش اتحفظ، فتحته من جديد بالشكل الافتراضي",4000); } await saveNow(); PROJ={id,name:cleanName(d.name)||projName(id)}; cfg=migrate(d.cfg); hist.length=0; SEL=null; updProjName(); build(); renderControls(); closeSheet(); setView("out"); hint(`اتفتح "${PROJ.name}"`); }
 function projectsBox(){ renderProjects(ctlEl); }
 function renderProjects(el){
   const n=document.createElement("div"); n.className="note"; n.textContent=storageOK===false?"⚠ الحفظ الدايم متعطل دلوقتي، وبحاول تاني لوحدي كل شوية. شغلك محفوظ طول ما الصفحة مفتوحة، ولو هتقفلها انسخ الإعدادات من تحت.":"كل مطبخ بيتحفظ لوحده تلقائي. تقدر تعمل أكتر من مطبخ وتقارن بينهم."; el.appendChild(n);
@@ -314,15 +318,16 @@ function renderProjects(el){
   const nb=document.createElement("button"); nb.className="btn main"; nb.style.width="100%"; nb.textContent="➕ مطبخ أو حمام أو أوضة جديدة (بالمعالج)"; nb.onclick=()=>{ closeSheet(); openWizard(true); }; el.appendChild(nb);
   const list=[...projIndex]; if(!list.some(p=>p.id===PROJ.id)) list.push({id:PROJ.id,name:PROJ.name,t:Date.now()});
   list.sort((a,b)=>b.t-a.t).forEach(p=>{ const card=document.createElement("div"); card.className="card"+(p.id===PROJ.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${p.id===PROJ.id?"✓ ":""}${p.name}</b><small style="color:#6b737c">${new Date(p.t).toLocaleDateString("ar-EG")}</small></div>`;
+    card.innerHTML=`<div class="ch"><b>${p.id===PROJ.id?"✓ ":""}${esc(p.name)}</b><small style="color:#6b737c">${new Date(p.t).toLocaleDateString("ar-EG")}</small></div>`;
     const act=document.createElement("div"); act.className="act";
     const mk=(t,fn)=>{ const b=document.createElement("button"); b.className="btn"; b.textContent=t; b.onclick=fn; act.appendChild(b); };
     if(p.id!==PROJ.id) mk("فتح",()=>openProject(p.id));
     mk("✏️ اسم",async()=>{ const inp=document.createElement("input"); inp.value=p.name; inp.style.cssText="flex:1;font:inherit;padding:6px;border:1px solid #c9ced3;border-radius:8px"; const ok=document.createElement("button"); ok.className="btn main"; ok.textContent="حفظ";
-      act.innerHTML=""; act.append(inp,ok); inp.focus(); ok.onclick=async()=>{ const nm=inp.value.trim()||p.name; if(p.id===PROJ.id){ PROJ.name=nm; updProjName(); await saveNow(); } else { const d=await stGet("kproj:"+p.id); if(d){ d.name=nm; await stSet("kproj:"+p.id,d); } const i=projIndex.findIndex(x=>x.id===p.id); if(i>=0) projIndex[i].name=nm; await stSet("kproj:index",projIndex); } refreshSheet(); }; });
+      act.innerHTML=""; act.append(inp,ok); inp.focus(); ok.onclick=async()=>{ const nm=cleanName(inp.value)||p.name; if(p.id===PROJ.id){ PROJ.name=nm; updProjName(); await saveNow(); } else { const d=await stGet("kproj:"+p.id); if(d){ d.name=nm; await stSet("kproj:"+p.id,d); } const i=projIndex.findIndex(x=>x.id===p.id); if(i>=0) projIndex[i].name=nm; await stSet("kproj:index",projIndex); } refreshSheet(); }; });
     mk("📄 نسخة",async()=>{ const d=p.id===PROJ.id?{name:PROJ.name,cfg}:await stGet("kproj:"+p.id); if(!d) return; const id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:d.name+" (نسخة)",cfg:d.cfg}); projIndex.push({id,name:d.name+" (نسخة)",t:Date.now()}); await stSet("kproj:index",projIndex); refreshSheet(); });
     if(list.length>1) mk("🗑",async()=>{ act.innerHTML=""; const q=document.createElement("span"); q.textContent="متأكد؟"; q.style.alignSelf="center"; const y=document.createElement("button"); y.className="btn main"; y.textContent="امسح"; const c=document.createElement("button"); c.className="btn"; c.textContent="لأ";
-      act.append(q,y,c); c.onclick=refreshSheet; y.onclick=async()=>{ await stDel("kproj:"+p.id); projIndex=projIndex.filter(x=>x.id!==p.id); await stSet("kproj:index",projIndex); if(p.id===PROJ.id){ const nx=projIndex[0]; if(nx) await openProject(nx.id); } refreshSheet(); }; });
+      act.append(q,y,c); c.onclick=refreshSheet; y.onclick=async()=>{ DELETED.add(p.id); if(p.id===PROJ.id) clearTimeout(saveT); await stDel("kproj:"+p.id); projIndex=projIndex.filter(x=>x.id!==p.id); await stSet("kproj:index",projIndex);
+        if(p.id===PROJ.id){ const nx=projIndex[0]; if(nx) await openProject(nx.id); if(PROJ.id===p.id){ PROJ={id:"p"+Date.now().toString(36),name:PROJ.name}; hist.length=0; updProjName(); await saveNow(); } } refreshSheet(); }; });
     card.appendChild(act); el.appendChild(card); });
   backupUI(el);
   compareUI(el);
@@ -331,7 +336,7 @@ function renderProjects(el){
   const st=document.createElement("div"); st.className="note";
   const a2=document.createElement("div"); a2.className="act";
   const cp=document.createElement("button"); cp.className="btn"; cp.textContent="نسخ إعدادات المطبخ ده"; cp.onclick=async()=>{ ta.select(); try{ await navigator.clipboard.writeText(ta.value); st.textContent="اتنسخت، ابعتها لأي حد"; }catch(e){ document.execCommand&&document.execCommand("copy"); st.textContent="اتنسخت"; } };
-  const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كمطبخ جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"مطبخ ملصوق"}; cfg=migrate(v); build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
+  const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كمطبخ جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); if(!v||typeof v!=="object"||Array.isArray(v)) throw new Error("bad"); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"مطبخ ملصوق"}; cfg=migrate(v); hist.length=0; SEL=null; build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
   a2.append(cp,ap); el.append(ta,a2,st);
 }
 function openSheet(){ const s=document.getElementById("sheet"); s.style.display="flex"; refreshSheet(); }
@@ -362,13 +367,13 @@ function tplIcon(k){ const r=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" 
     if(k==="b_laundry") b+=r(6,6,12,12,"#e3e5e7")+r(20,6,12,12,"#e3e5e7")+r(46,30,8,10,"#cfe3ee");
     if(k==="b_master") b+=r(6,6,32,12,"#d4ebf3")+r(40,6,14,16,"#c8e2ec")+o(12,30,6,5)+r(46,28,8,18,"#cfe3ee"); }
   return b+"</svg>"; }
-function openWizard(isNew){ saveNow(); WIZ={step:0,isNew,backup:clone(cfg),backupProj:{...PROJ},name:isNew?"مطبخ جديد":PROJ.name}; tabsEl.dataset.rt=""; if(isNew) cfg=newCfg("L"); UI_REFRESH=renderWiz; document.getElementById("wiz").style.display="flex"; build(); renderWiz(); }
+function openWizard(isNew){ saveNow(); WIZ={step:0,isNew,backup:clone(cfg),backupProj:{...PROJ},backupHist:hist.slice(),name:isNew?"مطبخ جديد":PROJ.name}; tabsEl.dataset.rt=""; if(isNew) cfg=newCfg("L"); UI_REFRESH=renderWiz; document.getElementById("wiz").style.display="flex"; build(); renderWiz(); }
 function closeWizard(apply){ const w=WIZ; WIZ=null; UI_REFRESH=()=>renderControls(); document.getElementById("wiz").style.display="none";
-  if(!apply){ cfg=w.backup; PROJ=w.backupProj; }
-  else if(w.isNew){ PROJ={id:"p"+Date.now().toString(36),name:w.name||"مطبخ جديد"}; hist.length=0; }
-  else PROJ.name=w.name||PROJ.name;
+  if(!apply){ cfg=w.backup; PROJ=w.backupProj; hist.length=0; hist.push(...w.backupHist); }
+  else if(w.isNew){ PROJ={id:"p"+Date.now().toString(36),name:cleanName(w.name)||"مطبخ جديد"}; hist.length=0; }
+  else PROJ.name=cleanName(w.name)||PROJ.name;
   updProjName(); build(); renderControls(); setView("out"); if(apply){ saveNow(); hint("✓ المطبخ جاهز، عدّل أي حاجة من ⚙ التحكم",4000); } }
-function updWizPreview(){ const p=document.getElementById("wizPlan"); if(p) p.innerHTML=planSVG(); const s=document.getElementById("wizWarn"); if(s) s.innerHTML=(STATS.warn||[]).slice(0,3).map(w=>`<div>⚠ ${w}</div>`).join(""); }
+function updWizPreview(){ const p=document.getElementById("wizPlan"); if(p) p.innerHTML=planSVG(); const s=document.getElementById("wizWarn"); if(s) s.innerHTML=(STATS.warn||[]).slice(0,3).map(w=>`<div>⚠ ${esc(w)}</div>`).join(""); }
 function renderWiz(){
   if(!WIZ) return; const body=document.getElementById("wizBody"); body.innerHTML="";
   document.getElementById("wizTitle").textContent=`${WIZ.step+1}/${WSTEPS.length} • ${WSTEPS[WIZ.step]}`;
@@ -390,7 +395,7 @@ function renderWiz(){
   else if(st===4&&cfg.roomType==="room"){ furnBox(hostEl); }
   else if(st===4&&cfg.roomType==="hall"){ const n=document.createElement("div"); n.className="note"; n.textContent="الطرقة مالهاش أجهزة. بعد ما تخلص، اربطها بالمطبخ والحمامات من 🏠 ← 🏢 الشقة."; hostEl.appendChild(n); }
   else if(st===4){ wallsBoxMini(hostEl); placeBox(); for(const c of [SCHEMA["الأجهزة"][1],SCHEMA["الأجهزة"][2]]) schemaRow(hostEl,c); }
-  if(st===5){ const d=document.createElement("div"); d.className="sum"; d.innerHTML=`<b>${WIZ.name||"مشروع"}</b><br>صافي ${STATS.net[0]} × ${STATS.net[1]} سم • ${FEATS.length} عنصر على الحيطان • أضيق ممر ${STATS.walk} سم<br><small>بعد ما تخلص تقدر تعدّل أي حاجة من ⚙ التحكم، وتسحب الأجهزة بصباعك.</small>`; hostEl.appendChild(d); }
+  if(st===5){ const d=document.createElement("div"); d.className="sum"; d.innerHTML=`<b>${esc(WIZ.name||"مشروع")}</b><br>صافي ${STATS.net[0]} × ${STATS.net[1]} سم • ${FEATS.length} عنصر على الحيطان • أضيق ممر ${STATS.walk} سم<br><small>بعد ما تخلص تقدر تعدّل أي حاجة من ⚙ التحكم، وتسحب الأجهزة بصباعك.</small>`; hostEl.appendChild(d); }
   ctlEl=saveCtl;
   const back=document.getElementById("wizBack"), next=document.getElementById("wizNext");
   back.style.visibility=st===0?"hidden":"visible"; next.textContent=st===WSTEPS.length-1?"✓ افتح التصميم":"التالي ←";

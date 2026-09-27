@@ -1,6 +1,9 @@
 // =================== CONFIG ===================
 let H = 2.8; // ceiling height (from cfg.ceil)
 const clone=o=>JSON.parse(JSON.stringify(o));
+const cleanName=s=>String(s??"").replace(/[<>]/g,"").trim().slice(0,80); // names typed by the user or read from a backup
+const cleanDeep=o=>typeof o==="string"?o.replace(/[<>]/g,""):Array.isArray(o)?o.map(cleanDeep):o&&typeof o==="object"?Object.fromEntries(Object.entries(o).map(([k,v])=>[k,cleanDeep(v)])):o;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); // user text going into innerHTML / SVG
 const W4=["W","RT","D","L"];
 const WNAME={W:"الحيطة القدامية",RT:"الحيطة اليمين",D:"الحيطة اللي ورا",L:"الحيطة الشمال"};
 const TEMPLATES={
@@ -80,7 +83,7 @@ function applyTemplate(c,key,keepDims){
 }
 function newCfg(key){ const c=clone(DEFAULT); applyTemplate(c,key,false); c.custom=[]; c.apps=[]; c.steps={}; return c; }
 function migrate(o){
-  o=o||{}; const c={...clone(DEFAULT),...o};
+  o=cleanDeep(o&&typeof o==="object"&&!Array.isArray(o)?o:{}); const c={...clone(DEFAULT),...o};
   if(!o.feats){ // convert designs saved before the generic room model
     const shW=o.shW??60, shD=o.shD??100, winOff=o.winOff??20, winW=o.winW??80, sill=o.sill??100, wtop=o.wtop??220, dw=o.doorW??80;
     c.feats=[]; if(shW>0&&shD>0) c.feats.push({id:"sh",type:"column",wall:"L",pos:0,w:shD,d:shW,y:0,h:0});
