@@ -1052,21 +1052,24 @@ function prismAO(w,pts,y0,y1,mat){
   const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); geo.setIndex(idx); geo.computeVertexNormals();
   const m=new THREE.Mesh(geo,mat); m.castShadow=m.receiveShadow=true; if(curSide) m.userData.side=curSide; if(curUid) m.userData.uid=curUid; root.add(m); return m;
 }
-function cornerPoly(a0,a1,o0,o1,side,cutA,cutD,round){ // back edge (o0) stays a square corner; the FRONT (o1) corner at `side` gets cut by cutA (along the wall) x cutD (into the depth) — straight (any angle, from the cutA:cutD ratio) or, if round, a quarter-ellipse fillet
-  cutA=Math.max(0.03,Math.min(cutA,(a1-a0)*0.85)); cutD=Math.max(0.03,Math.min(cutD,(o1-o0)*0.92));
-  const sgn=side==="a1"?1:-1, corner=side==="a1"?a1:a0, cA=corner-sgn*cutA, mid=[];
-  if(round){ const n=10; for(let i=0;i<=n;i++){ const t=i/n*Math.PI/2; mid.push([corner-sgn*cutA*Math.sin(t),o1-cutD*Math.cos(t)]); } }
-  else mid.push([corner,o1-cutD],[cA,o1]);
+function cornerPoly(a0,a1,o0,o1,side,cutA,cutD,round,bulge){ // back edge (o0) stays a square corner; the FRONT (o1) corner at `side` gets reshaped by cutA (along the wall) x cutD (into the depth) — straight (any angle) or, if round, a quarter-ellipse; bulge flips it from a cut-in fillet to a lobe that protrudes past the original corner
+  if(bulge){ cutA=Math.max(0.03,Math.min(cutA,0.6)); cutD=Math.max(0.03,Math.min(cutD,0.6)); }
+  else { cutA=Math.max(0.03,Math.min(cutA,(a1-a0)*0.85)); cutD=Math.max(0.03,Math.min(cutD,(o1-o0)*0.92)); }
+  const sgn=side==="a1"?1:-1, corner=side==="a1"?a1:a0, mid=[];
+  if(bulge&&round){ const n=10; for(let i=0;i<=n;i++){ const t=i/n*Math.PI/2; mid.push([corner+sgn*cutA*Math.sin(t),o1+cutD*Math.cos(t)]); } }
+  else if(round){ const n=10; for(let i=0;i<=n;i++){ const t=i/n*Math.PI/2; mid.push([corner-sgn*cutA*Math.sin(t),o1-cutD*Math.cos(t)]); } }
+  else mid.push([corner,o1-cutD],[corner-sgn*cutA,o1]);
   return side==="a1" ? [[a0,o0],[a1,o0],...mid,[a0,o1]] : [[a0,o0],[a1,o0],[a1,o1],...mid.slice().reverse()];
 }
-function cornerCutUnit(f,wall,a0,a1,back,depth,side,cutA,cutD,round,tallCab,capTop){
+function cornerCutUnit(f,wall,a0,a1,back,depth,side,cutA,cutD,round,bulge,tallCab,capTop){
   const dr=dirOf(f), ch=CH(), y1=tallCab?Math.min(capTop||H-0.01,H-0.01):ch;
-  const u=newUnit(tallCab?"tall":"base",f,a0,a1,back,depth,0,y1,{front:round?"ركن دائري (واجهة مدورة)":"ركن مقطوع (واجهة مايلة)"}); const prevUid=curUid; curUid=u.id;
+  const label=bulge?"ركن دائري بارز (واجهة برزت لبرة)":round?"ركن دائري (واجهة مدورة)":"ركن مقطوع (واجهة مايلة)";
+  const u=newUnit(tallCab?"tall":"base",f,a0,a1,back,depth,0,y1,{front:label}); const prevUid=curUid; curUid=u.id;
   if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
-  const dbl=mat=>{ const c=mat.clone(); c.side=THREE.DoubleSide; return c; }, body=dbl(MAT.base);
+  const dbl=mat=>{ const c=mat.clone(); c.side=THREE.DoubleSide; return c; }, body=dbl(MAT.base), ov=bulge?0.01:-0.01;
   place(f,a0,a1,back,back+(depth-0.05)*dr,0,0.1,MAT.plinth);
-  prismAO(wall,cornerPoly(a0,a1,0.02,depth-0.02,side,cutA,cutD,round),0.1,tallCab?y1:ch-0.04,body);
-  if(!tallCab) prismAO(wall,cornerPoly(a0-0.01,a1+0.01,0,depth,side,Math.max(0.03,cutA-0.01),Math.max(0.03,cutD-0.01),round),ch-0.04,ch,dbl(MAT.counter));
+  prismAO(wall,cornerPoly(a0,a1,0.02,depth-0.02,side,cutA,cutD,round,bulge),0.1,tallCab?y1:ch-0.04,body);
+  if(!tallCab) prismAO(wall,cornerPoly(a0-0.01,a1+0.01,0,depth,side,Math.max(0.03,cutA+ov),Math.max(0.03,cutD+ov),round,bulge),ch-0.04,ch,dbl(MAT.counter));
   ACC[tallCab?"tall":"lower"]+=a1-a0; if(!tallCab) ACC.marble+=a1-a0;
   curUid=prevUid; return u;
 }
@@ -2604,7 +2607,7 @@ function buildKitchen(warn){
     const fr=frameOf(cu.wall), cL=wlen(cu.wall), cw=Math.min(cu.w/100,cL), a0=Math.max(0,Math.min(cL-cw,cu.pos/100)), a1=a0+cw, dp=cu.d/100; /* keep it on the wall */ curSide=fr.side; curWall=cu.wall;
     OPT={front:cu.front,n:cu.n,shelves:cu.shelves,acc:cu.acc}; KEY=cu.id;
     const cornerShape=cu.shape==="corner45"||cu.shape==="cornerCut"||cu.shape==="cornerRound";
-    const ccArgs=()=>[cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutA||cu.cutSize||30)/100)),Math.max(0.1,Math.min(dp-0.1,(cu.cutD||cu.cutSize||30)/100)),cu.shape==="cornerRound"];
+    const ccArgs=()=>[cu.cutSide==="a0"?"a0":"a1",(cu.cutA||cu.cutSize||30)/100,(cu.cutD||cu.cutSize||30)/100,cu.shape==="cornerRound",cu.bulge==="out"];
     if(cu.type==="lower"&&cornerShape){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,...ccArgs(),false); counterLen+=a1-a0; }
     else if(cu.type==="tall"&&cornerShape){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,...ccArgs(),true,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100))); }
     else if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
@@ -3303,10 +3306,12 @@ function customBox(){
     if(c.type==="lower"||c.type==="tall") objSelect(card,c,"shape","الشكل",[["rect","مستطيل عادي"],["cornerCut","ركن مقطوع (أي زاوية)"],["cornerRound","ركن دائري (زاوية مدورة)"]]);
     if(isCornerShape){ if(!c.cutSide) c.cutSide="a1";
       objSelect(card,c,"cutSide","الجنب اللي بيتقطع",[["a1","الآخر (بعيد عن أول الحيطة)"],["a0","الأول (قريب من أول الحيطة)"]]);
-      objRange(card,c,"cutA","المقطوع من العرض",10,Math.max(11,c.w-20),1);
-      objRange(card,c,"cutD","المقطوع من العمق",10,Math.max(11,c.d-10),1);
+      if(c.shape==="cornerRound"){ if(!c.bulge) c.bulge="in"; objSelect(card,c,"bulge","اتجاه الدورة",[["in","لجوه (مقصوص)"],["out","لبرة (بارز)"]]); }
+      const bulgeOut=c.shape==="cornerRound"&&c.bulge==="out";
+      objRange(card,c,"cutA","المقطوع من العرض",10,bulgeOut?60:Math.max(11,c.w-20),1);
+      objRange(card,c,"cutD","المقطوع من العمق",10,bulgeOut?60:Math.max(11,c.d-10),1);
       const cn=document.createElement("div"); cn.className="note";
-      cn.textContent=c.shape==="cornerRound"?"واجهة الوحدة هتتدوّر من الركن ده. زوّد الفرق بين 'من العرض' و'من العمق' عشان الدورة تبقى بيضاوي مش نص دايرة.":"واجهة الوحدة هتتقطع بخط مايل من الركن ده. خلّي 'من العرض' و'من العمق' متساويين عشان الزاوية تطلع بالظبط 45°، أو فرّق بينهم لزاوية تانية.";
+      cn.textContent=bulgeOut?"الركن هيبرز لبرة عن مقاس الوحدة العادي، زي كرسي/ركنة دائرية طالعة.":c.shape==="cornerRound"?"واجهة الوحدة هتتدوّر من الركن ده. زوّد الفرق بين 'من العرض' و'من العمق' عشان الدورة تبقى بيضاوي مش نص دايرة.":"واجهة الوحدة هتتقطع بخط مايل من الركن ده. خلّي 'من العرض' و'من العمق' متساويين عشان الزاوية تطلع بالظبط 45°، أو فرّق بينهم لزاوية تانية.";
       card.appendChild(cn);
     } else {
       if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));

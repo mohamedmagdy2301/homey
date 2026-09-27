@@ -312,10 +312,12 @@ function customBox(){
     if(c.type==="lower"||c.type==="tall") objSelect(card,c,"shape","الشكل",[["rect","مستطيل عادي"],["cornerCut","ركن مقطوع (أي زاوية)"],["cornerRound","ركن دائري (زاوية مدورة)"]]);
     if(isCornerShape){ if(!c.cutSide) c.cutSide="a1";
       objSelect(card,c,"cutSide","الجنب اللي بيتقطع",[["a1","الآخر (بعيد عن أول الحيطة)"],["a0","الأول (قريب من أول الحيطة)"]]);
-      objRange(card,c,"cutA","المقطوع من العرض",10,Math.max(11,c.w-20),1);
-      objRange(card,c,"cutD","المقطوع من العمق",10,Math.max(11,c.d-10),1);
+      if(c.shape==="cornerRound"){ if(!c.bulge) c.bulge="in"; objSelect(card,c,"bulge","اتجاه الدورة",[["in","لجوه (مقصوص)"],["out","لبرة (بارز)"]]); }
+      const bulgeOut=c.shape==="cornerRound"&&c.bulge==="out";
+      objRange(card,c,"cutA","المقطوع من العرض",10,bulgeOut?60:Math.max(11,c.w-20),1);
+      objRange(card,c,"cutD","المقطوع من العمق",10,bulgeOut?60:Math.max(11,c.d-10),1);
       const cn=document.createElement("div"); cn.className="note";
-      cn.textContent=c.shape==="cornerRound"?"واجهة الوحدة هتتدوّر من الركن ده. زوّد الفرق بين 'من العرض' و'من العمق' عشان الدورة تبقى بيضاوي مش نص دايرة.":"واجهة الوحدة هتتقطع بخط مايل من الركن ده. خلّي 'من العرض' و'من العمق' متساويين عشان الزاوية تطلع بالظبط 45°، أو فرّق بينهم لزاوية تانية.";
+      cn.textContent=bulgeOut?"الركن هيبرز لبرة عن مقاس الوحدة العادي، زي كرسي/ركنة دائرية طالعة.":c.shape==="cornerRound"?"واجهة الوحدة هتتدوّر من الركن ده. زوّد الفرق بين 'من العرض' و'من العمق' عشان الدورة تبقى بيضاوي مش نص دايرة.":"واجهة الوحدة هتتقطع بخط مايل من الركن ده. خلّي 'من العرض' و'من العمق' متساويين عشان الزاوية تطلع بالظبط 45°، أو فرّق بينهم لزاوية تانية.";
       card.appendChild(cn);
     } else {
       if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));
