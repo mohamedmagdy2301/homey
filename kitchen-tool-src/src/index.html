@@ -277,6 +277,9 @@
   #apt.split .aptplan svg{width:100%;height:100%;max-height:none}
   #apt.split .aptctl{grid-area:ctl;overflow:auto;padding:2px 16px 24px;border-top:1px solid var(--line-soft);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   #apt .aptbig{position:absolute;top:8px;left:8px;min-height:34px;padding:0 12px;font-size:13px;background:var(--paper);box-shadow:var(--lift-1,0 1px 4px rgba(0,0,0,.12))}
+  #apt .aptundo{position:absolute;top:50px;left:8px;min-height:34px;padding:0 12px;font-size:13px;background:var(--paper)}
+  #apt .aptundo:disabled{opacity:.45}
+  #apt .aptarea{position:absolute;top:8px;right:8px;padding:6px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--ink);direction:rtl;pointer-events:none}
   #apt.split.big #aptBody{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"plan"}
   #apt.split.big .apttabs,#apt.split.big .aptctl,#apt.big .ovf{display:none!important}
   #apt.split.big .aptplan{margin:8px}

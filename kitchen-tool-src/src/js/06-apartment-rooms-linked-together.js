@@ -1,12 +1,38 @@
 // =================== APARTMENT (rooms linked together) ===================
-const HTEMPLATES={ h_hall:{name:"طرقة",dims:[120,400],make:(W,L)=>({feats:[{id:"d1",type:"door",wall:"L",pos:60,w:80,y:0,h:210,d:0},{id:"d2",type:"door",wall:"RT",pos:220,w:80,y:0,h:210,d:0},{id:"en",type:"door",wall:"D",pos:Math.max(0,Math.round((W-90)/2)),w:90,y:0,h:210,d:0}]})} };
+const HTEMPLATES={  h_hall:{name:"طرقة",dims:[120,400],make:(W,L)=>({feats:[{id:"d1",type:"door",wall:"L",pos:60,w:80,y:0,h:210,d:0},{id:"d2",type:"door",wall:"RT",pos:220,w:80,y:0,h:210,d:0},{id:"en",type:"door",wall:"D",pos:Math.max(0,Math.round((W-90)/2)),w:90,y:0,h:210,d:0}]})} };
 let APT={rooms:[],wallT:12,baseFill:7,riser:null,water:null,panel:null,heaterMode:"shared",heaterAt:null}, SNAP={}, APT3D=false, APT_BUILD=false, aptRoots=[], aptSel=null, aptTab="المسقط", aptPlace=null, APTLINKS=[];
 const aoLocal=(w,a,o,RW_,RL_)=>w==="L"?[o,a]:w==="RT"?[RW_-o,a]:w==="W"?[a,o]:[a,RL_-o];
 const aptSize=(sn,rot)=>rot%180===0?[sn.RW,sn.RL]:[sn.RL,sn.RW];
 function toWorld(r,sn,x,z){ let p; switch(r.rot){ case 90:p=[sn.RL-z,x];break; case 180:p=[sn.RW-x,sn.RL-z];break; case 270:p=[z,sn.RW-x];break; default:p=[x,z]; } return [r.x/100+p[0],r.z/100+p[1]]; }
 function toLocal(r,sn,X,Z){ const x=X-r.x/100, z=Z-r.z/100; switch(r.rot){ case 90:return [z,sn.RL-x]; case 180:return [sn.RW-x,sn.RL-z]; case 270:return [sn.RW-z,x]; default:return [x,z]; } }
 const manh=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1]);
-async function saveApt(){ await stSet("kapt:main",APT); }
+let APT_UNDO=[], APT_LAST=null, APT_ROOMS_PREV=null;
+async function saveApt(){ const now=JSON.stringify(APT); if(APT_LAST!=null&&(now!==APT_LAST||APT_ROOMS_PREV)){ APT_UNDO.push({apt:APT_LAST,rooms:APT_ROOMS_PREV}); if(APT_UNDO.length>40) APT_UNDO.shift(); } APT_ROOMS_PREV=null; APT_LAST=now; await stSet("kapt:main",APT); }
+async function aptUndo(){ const e=APT_UNDO.pop(); if(!e) return;
+  APT=JSON.parse(e.apt); for(const [id,d] of Object.entries(e.rooms||{})){ if(id===PROJ.id){ cfg=migrate(clone(d.cfg)); PROJ.name=d.name; updProjName(); build(); await saveNow(); } else await stSet("kproj:"+id,d); const p=projIndex.find(x=>x.id===id); if(p) p.name=d.name; }
+  if(e.rooms) await stSet("kproj:index",projIndex); APT_LAST=JSON.stringify(APT); await stSet("kapt:main",APT);
+  try{ await refreshSnaps(); }catch(err){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); } APT_SVC=aptServices(); renderApt(); hint("↶ رجعت خطوة"); }
+const roomIco=sn=>sn.cfg&&sn.cfg.template==="r_balcony"?"🌿":({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"");
+const aptArea=sn=>(sn.q&&+sn.q.floorA)||sn.RW*sn.RL;
+async function aptEditRoom(id,fn){ // change a room's saved design (size, name) from the apartment screen, then re-snapshot just that room
+  let d; if(id===PROJ.id) d={name:PROJ.name,cfg:clone(cfg)}; else { const rd=await stRead("kproj:"+id); if(rd.err||!rd.v){ hint("مقدرتش أقرا الأوضة من الحفظ، جرّب تاني",4000); return false; } d=rd.v; }
+  APT_ROOMS_PREV=APT_ROOMS_PREV||{}; if(!(id in APT_ROOMS_PREV)) APT_ROOMS_PREV[id]=clone(d);
+  fn(d); d.name=cleanName(d.name)||APT_ROOMS_PREV[id].name;
+  if(id===PROJ.id){ cfg=d.cfg; PROJ.name=d.name; updProjName(); build(); await saveNow(); } else await stSet("kproj:"+id,d);
+  const p=projIndex.find(x=>x.id===id); if(p&&p.name!==d.name){ p.name=d.name; await stSet("kproj:index",projIndex); }
+  const saved=cfg, sl=loadingP; loadingP=true; SLIDING=true; try{ SNAP[id]=snapCurrent(id===PROJ.id?saved:migrate(clone(d.cfg)),d.name); } finally{ cfg=saved; SLIDING=false; build(); loadingP=sl; }
+  return true; }
+const sizeKey=(r,axis)=>(axis==="x")===(r.rot%180===0)?"roomW":"roomL"; /* the room's own width/length that runs along the plan's x or z */
+const finOf=(sn,k)=>sn.cfg[k]-Math.round((k==="roomW"?sn.RW:sn.RL)*100); /* entered size minus the clear size (plaster + tiles when sizes are on the brick) */
+async function aptResize(r,axis,net,fromStart){ // net = new clear size in cm across the plan; the other edge stays, rooms after it in the same row move along
+  const sn=SNAP[r.id], k=sizeKey(r,axis), sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700}, v=Math.max(sc.min,Math.min(sc.max,Math.round(net+finOf(sn,k))));
+  if(v===sn.cfg[k]) { renderApt(); return; }
+  const R0=roomRectW(r), old=axis==="x"?R0.x1-R0.x0:R0.z1-R0.z0; if(!await aptEditRoom(r.id,d=>{ d.cfg[k]=v; })) return;
+  const R1=roomRectW(r), dl=Math.round(((axis==="x"?R1.x1-R1.x0:R1.z1-R1.z0)-old)*100), off0=r.rel?(r.rel.off||0):0;
+  const along=r.rel&&((axis==="x")===(r.rel.side==="top"||r.rel.side==="bottom"));
+  if(fromStart){ if(along) r.rel.off=off0-dl; else if(!r.rel){ if(axis==="x") r.x-=dl; else r.z-=dl; } }
+  if(along&&dl) for(const o of APT.rooms) if(o!==r&&o.rel&&o.rel.to===r.rel.to&&o.rel.side===r.rel.side){ const oo=o.rel.off||0; if(!fromStart&&oo>off0) o.rel.off=oo+dl; if(fromStart&&oo<off0) o.rel.off=oo-dl; }
+  aptRecalc(); await saveApt(); renderApt(); }
 async function loadApt(){ const a=await stGet("kapt:main"); if(a) APT={...APT,...a}; }
 function projName(id){ const p=projIndex.find(x=>x.id===id); return id===PROJ.id?PROJ.name:(p?p.name:"؟"); }
 function snapQ(c){ const q={...(QTY||{})}; q.pts={}; for(const p of POINTS) q.pts[p.type]=(q.pts[p.type]||0)+1; q.fix={}; q.app={}; q.furn={}; q.wardrobes=[];
@@ -28,7 +54,7 @@ function snapCurrent(c,name){ // build a room silently and capture what the apar
 async function refreshSnaps(){
   const saved=cfg, sl=loadingP; loadingP=true; SLIDING=true; SNAP={};
   try{ for(const r of APT.rooms){ let c; if(r.id===PROJ.id) c=saved; else { const rd=await stRead("kproj:"+r.id); let d=rd.v; if(rd.err) throw new Error("storage read failed: "+r.id); // never replace an unreadable room with a default
-        if(!d){ const nm=projName(r.id); if(nm==="؟") continue; d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":nm.includes("صالة")?"r_living":nm.includes("أطفال")?"r_kids":nm.includes("نوم")?"r_master":"L")}; await stSet("kproj:"+r.id,d); }
+        if(!d){ const nm=projName(r.id); if(nm==="؟") continue; d={name:nm,cfg:newCfg(nm.includes("بلكونة")?"r_balcony":nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":nm.includes("صالة")?"r_living":nm.includes("أطفال")?"r_kids":nm.includes("نوم")?"r_master":"L")}; await stSet("kproj:"+r.id,d); }
         c=migrate(d.cfg); } SNAP[r.id]=snapCurrent(c,projName(r.id)); } }
   finally{ cfg=saved; SLIDING=false; build(); loadingP=sl; }
   APT.rooms=APT.rooms.filter(r=>SNAP[r.id]); layoutRel(); computeShared(); computeLinks();
@@ -97,7 +123,7 @@ function aptPlanSVG(){
   const rs=APT.rooms.filter(r=>SNAP[r.id]); if(!rs.length) return `<div class="note">ضيف أوض للشقة من تحت.</div>`;
   let X0=1e9,Z0=1e9,X1=-1e9,Z1=-1e9; for(const r of rs){ const R=roomRectW(r); X0=Math.min(X0,R.x0);Z0=Math.min(Z0,R.z0);X1=Math.max(X1,R.x1);Z1=Math.max(Z1,R.z1); }
   for(const k of ["riser","riser2","water","panel","heaterAt"]) if(APT[k]){ X0=Math.min(X0,APT[k].x/100);Z0=Math.min(Z0,APT[k].z/100);X1=Math.max(X1,APT[k].x/100);Z1=Math.max(Z1,APT[k].z/100); }
-  const pad=0.6; X0-=pad;Z0-=pad;X1+=pad;Z1+=pad; const S=100;
+  const pad=0.9; X0-=pad;Z0-=pad;X1+=pad;Z1+=pad; const S=100;
   let s=`<svg id="aptSvg" viewBox="${X0*S} ${Z0*S} ${(X1-X0)*S} ${(Z1-Z0)*S}" xmlns="http://www.w3.org/2000/svg" font-family="Tahoma,Arial" style="touch-action:none;background:#f6f7f8">`;
   s+=`<rect x="${X0*S}" y="${Z0*S}" width="${(X1-X0)*S}" height="${(Z1-Z0)*S}" fill="#f6f7f8" data-bg="1"/>`;
   const col={kitchen:"#fff6ea",bath:"#eaf5fa",hall:"#f4f1ec",room:"#f7f4ee"};
@@ -109,21 +135,27 @@ function aptPlanSVG(){
     for(const f of sn.feats){ if(f.type!=="window") continue; const {p0,p1}=wallWorld(r,sn,f.wall,f.a0,f.a1); s+=`<line x1="${p0[0]*S}" y1="${p0[1]*S}" x2="${p1[0]*S}" y2="${p1[1]*S}" stroke="#6fb6e0" stroke-width="${g+2}"/>`; }
     const cx=(R.x0+R.x1)/2*S, cy=(R.z0+R.z1)/2*S, rw=(R.x1-R.x0)*S;
     s+=`<rect class="lbg" x="${cx}" y="${cy}" width="0" height="0" rx="6" fill="#fff" fill-opacity=".82"/><text class="rn" x="${cx}" y="${cy}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="${Math.max(18,Math.min(34,rw/6))}" fill="#2d5f7a" font-weight="bold">${esc(sn.name)}</text>`;
-    s+=`<text class="rd" x="${cx}" y="${cy+28}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</text></g>`; }
-  if(aptTab==="المسقط") for(const sh of SHARED){ if(APTLINKS.some(L=>L.B&&((L.A===sh.a&&L.B===sh.b)||(L.A===sh.b&&L.B===sh.a)))) continue; const g=APT.wallT/100, c=sh.c+g/2; s+=sh.v?`<line x1="${c*S}" y1="${sh.s0*S}" x2="${c*S}" y2="${sh.s1*S}" stroke="#2e9d5a" stroke-width="6" stroke-dasharray="14 10"/>`:`<line x1="${sh.s0*S}" y1="${c*S}" x2="${sh.s1*S}" y2="${c*S}" stroke="#2e9d5a" stroke-width="6" stroke-dasharray="14 10"/>`; }
+    s+=`<text class="rd" x="${cx}" y="${cy+28}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</text><text class="ra" x="${cx}" y="${cy+50}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptArea(sn).toFixed(1)} م²</text></g>`; }
+  { let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const r of rs){ const R=roomRectW(r); a=Math.min(a,R.x0);b=Math.min(b,R.z0);c=Math.max(c,R.x1);d=Math.max(d,R.z1); } const g=APT.wallT/100; a-=g;b-=g;c+=g;d+=g; const o=0.32, t=0.1;
+    const ln=(x1,y1,x2,y2)=>`<line x1="${x1*S}" y1="${y1*S}" x2="${x2*S}" y2="${y2*S}" stroke="#56606a" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
+    s+=ln(a,b-o,c,b-o)+ln(a,b-o-t,a,b-o+t)+ln(c,b-o-t,c,b-o+t)+`<text x="${(a+c)/2*S}" y="${(b-o-0.06)*S}" text-anchor="middle" font-size="16" data-px="11" fill="#56606a">${(c-a).toFixed(2)} م</text>`;
+    s+=ln(a-o,b,a-o,d)+ln(a-o-t,b,a-o+t,b)+ln(a-o-t,d,a-o+t,d)+`<text x="${(a-o-0.06)*S}" y="${(b+d)/2*S}" text-anchor="middle" font-size="16" data-px="11" fill="#56606a" transform="rotate(-90 ${(a-o-0.06)*S} ${(b+d)/2*S})">${(d-b).toFixed(2)} م</text>`; }
+  if(aptTab==="المسقط") for(const sh of SHARED){ if(APTLINKS.some(L=>L.B&&((L.A===sh.a&&L.B===sh.b)||(L.A===sh.b&&L.B===sh.a)))) continue; const g=APT.wallT/100, c=sh.c+g/2, i=SHARED.indexOf(sh); s+=sh.v?`<line data-sh="${i}" x1="${c*S}" y1="${sh.s0*S}" x2="${c*S}" y2="${sh.s1*S}" stroke="#000" stroke-opacity="0" stroke-width="24" vector-effect="non-scaling-stroke" style="cursor:pointer"/>`:`<line data-sh="${i}" x1="${sh.s0*S}" y1="${c*S}" x2="${sh.s1*S}" y2="${c*S}" stroke="#000" stroke-opacity="0" stroke-width="24" vector-effect="non-scaling-stroke" style="cursor:pointer"/>`; s+=sh.v?`<line x1="${c*S}" y1="${sh.s0*S}" x2="${c*S}" y2="${sh.s1*S}" stroke="#2e9d5a" stroke-width="6" stroke-dasharray="14 10" pointer-events="none"/>`:`<line x1="${sh.s0*S}" y1="${c*S}" x2="${sh.s1*S}" y2="${c*S}" stroke="#2e9d5a" stroke-width="6" stroke-dasharray="14 10" pointer-events="none"/>`; }
   for(const L of APTLINKS){ const g=APT.wallT; const q0=[L.p0[0]+L.n[0]*g/200,L.p0[1]+L.n[1]*g/200], q1=[L.p1[0]+L.n[0]*g/200,L.p1[1]+L.n[1]*g/200];
     s+=`<line x1="${q0[0]*S}" y1="${q0[1]*S}" x2="${q1[0]*S}" y2="${q1[1]*S}" stroke="${L.B?"#fff":"#e07b00"}" stroke-width="${g+3}"/>`;
     if(!L.B) s+=`<text x="${(q0[0]+q1[0])/2*S+L.n[0]*40}" y="${(q0[1]+q1[1])/2*S+L.n[1]*40+6}" text-anchor="middle" font-size="16" data-px="10" fill="#e07b00">باب لبرة</text>`; }
   const sv=APT_SVC; if(sv&&aptTab!=="المسقط"){ const P=v=>[v.x/100,v.z/100];
     const route=(src,colr)=>{ for(const r of rs){ const e=roomEntry(r,src); s+=`<polyline points="${src[0]*S},${src[1]*S} ${e[0]*S},${src[1]*S} ${e[0]*S},${e[1]*S}" fill="none" stroke="${colr}" stroke-width="4" stroke-dasharray="10 6" opacity="0.8"/>`; } };
     if(APT.riser) route(P(APT.riser),"#1b3a5c"); if(APT.riser2) route(P(APT.riser2),"#1b3a5c"); if(APT.water) route(P(APT.water),"#2a7fd4"); if(APT.panel) route(P(APT.panel),"#e07b00"); }
+  const hr=aptTab==="المسقط"&&aptSel&&rs.find(r=>r.id===aptSel); if(hr){ const R=roomRectW(hr), g=APT.wallT/200, mx=(R.x0+R.x1)/2, mz=(R.z0+R.z1)/2;
+    for(const [h,x,z,c] of [["x0",R.x0-g,mz,"ew"],["x1",R.x1+g,mz,"ew"],["z0",mx,R.z0-g,"ns"],["z1",mx,R.z1+g,"ns"]]) s+=`<circle data-h="${h}" cx="${x*S}" cy="${z*S}" r="16" data-r="11" fill="#fff" stroke="#e07b00" stroke-width="3" vector-effect="non-scaling-stroke" style="cursor:${c}-resize"/>`; }
   const mk=(v,c,t)=>{ if(!v) return; s+=`<circle cx="${v.x}" cy="${v.z}" r="16" data-r="8" fill="${c}" stroke="#fff" stroke-width="3"/><text x="${v.x}" y="${v.z-22}" data-cy="${v.z}" text-anchor="middle" font-size="16" data-px="11" fill="${c}" font-weight="bold">${t}</text>`; };
   mk(APT.riser,"#1b3a5c","عمود الصرف"); mk(APT.riser2,"#1b3a5c","عمود صرف 2"); mk(APT.water,"#2a7fd4","دخول المية"); mk(APT.panel,"#e07b00","اللوحة"); if(APT.heaterMode==="shared") mk(APT.heaterAt,"#c0392b","السخان");
   return s+"</svg>";
 }
-let APT_SVC=null, aptDrag=null;
+let APT_SVC=null, aptDrag=null, aptRsz=null;
 async function openApt(){ await saveNow(); await loadApt(); document.getElementById("apt").style.display="flex"; document.getElementById("aptBody").innerHTML="<div class='note'>بحضّر الشقة…</div>";
-  if(!APT.rooms.length){ APT.rooms=[{id:PROJ.id,x:0,z:0,rot:0}]; } try{ await refreshSnaps(); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); renderApt(); }
+  if(!APT.rooms.length){ APT.rooms=[{id:PROJ.id,x:0,z:0,rot:0}]; } APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; try{ await refreshSnaps(); APT_LAST=JSON.stringify(APT); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); renderApt(); }
 function closeApt(){ document.getElementById("apt").style.display="none"; saveApt(); }
 let aptBig=false;
 function renderApt(){
@@ -133,7 +165,9 @@ function renderApt(){
   for(const t of ["المسقط","السباكة والكهربا","المناسيب","الإجمالي","الرسومات","المشتريات والميزانية"]){ const b=document.createElement("button"); b.className="btn"+(aptTab===t?" on":""); b.textContent=t; b.onclick=()=>{ aptTab=t; aptPlace=null; renderApt(); }; tabs.appendChild(b); }
   body.appendChild(tabs);
   if(withPlan){ const pl=document.createElement("div"); pl.className="planbox aptplan"; pl.innerHTML=aptPlanSVG(); body.appendChild(pl); bindAptSvg();
-    const bg=document.createElement("button"); bg.className="btn aptbig"; bg.textContent=aptBig?"✕ صغّر":"⛶ كبّر المسقط"; bg.onclick=()=>{ aptBig=!aptBig; ov.classList.toggle("big",aptBig); bg.textContent=aptBig?"✕ صغّر":"⛶ كبّر المسقط"; fitAptLabels(); }; pl.appendChild(bg); }
+    const bg=document.createElement("button"); bg.className="btn aptbig"; bg.textContent=aptBig?"✕ صغّر":"⛶ كبّر المسقط"; bg.onclick=()=>{ aptBig=!aptBig; ov.classList.toggle("big",aptBig); bg.textContent=aptBig?"✕ صغّر":"⛶ كبّر المسقط"; fitAptLabels(); }; pl.appendChild(bg);
+    const ub=document.createElement("button"); ub.className="btn aptundo"; ub.textContent="↶ تراجع"; ub.disabled=!APT_UNDO.length; ub.onclick=()=>aptUndo(); pl.appendChild(ub);
+    const rsA=APT.rooms.filter(r=>SNAP[r.id]); if(rsA.length>1){ const ar=document.createElement("div"); ar.className="aptarea"; ar.textContent=`📐 ${rsA.reduce((a,r)=>a+aptArea(SNAP[r.id]),0).toFixed(1)} م² صافي`; pl.appendChild(ar); } }
   const box=document.createElement("div"); box.className="aptctl"; body.appendChild(box); const saveCtl=ctlEl; ctlEl=box;
   const sv=APT_SVC;
   if(aptTab==="المسقط") arrangeUI(box);
@@ -172,10 +206,10 @@ function fitAptLabels(){ // label sizes in screen pixels, whatever the plan's sc
   const svg=document.getElementById("aptSvg"), M=svg&&svg.getScreenCTM(); if(!M||!M.a) return; const k=M.a;
   svg.querySelectorAll("[data-px]").forEach(t=>{ const f=+t.dataset.px/k; t.setAttribute("font-size",f); if(t.dataset.cy) t.setAttribute("y",+t.dataset.cy-12/k); });
   svg.querySelectorAll("[data-r]").forEach(c=>c.setAttribute("r",+c.dataset.r/k));
-  svg.querySelectorAll("g[data-room]").forEach(g=>{ const n=g.querySelector(".rn"), d=g.querySelector(".rd"), bg=g.querySelector(".lbg"); if(!n||!d) return; const w=+n.dataset.fit, cy=+n.dataset.cy;
+  svg.querySelectorAll("g[data-room]").forEach(g=>{ const n=g.querySelector(".rn"), d=g.querySelector(".rd"), ra=g.querySelector(".ra"), bg=g.querySelector(".lbg"); if(!n||!d) return; const w=+n.dataset.fit, cy=+n.dataset.cy;
     const fn=Math.min(14/k,w*0.9/(Math.max(3,n.textContent.length)*0.62)), fd=Math.min(11/k,w*0.9/(d.textContent.length*0.6)); n.setAttribute("font-size",fn); d.setAttribute("font-size",fd);
-    n.setAttribute("y",cy-0.1*fn); d.setAttribute("y",cy+0.35*fn+fd*1.05);
-    try{ const a=n.getBBox(), b=d.getBBox(), p=3/k, x0=Math.min(a.x,b.x)-p, x1=Math.max(a.x+a.width,b.x+b.width)+p; bg.setAttribute("x",x0); bg.setAttribute("y",a.y-p); bg.setAttribute("width",x1-x0); bg.setAttribute("height",b.y+b.height-a.y+2*p); bg.setAttribute("rx",5/k); }catch(e){} });
+    n.setAttribute("y",cy-0.1*fn-(ra?fd*0.55:0)); d.setAttribute("y",cy+0.35*fn+fd*1.05-(ra?fd*0.55:0)); if(ra){ ra.setAttribute("font-size",fd); ra.setAttribute("y",cy+0.35*fn+fd*2.2-fd*0.55); }
+    try{ const a=n.getBBox(), b=(ra||d).getBBox(), c=d.getBBox(), p=3/k, x0=Math.min(a.x,b.x,c.x)-p, x1=Math.max(a.x+a.width,b.x+b.width,c.x+c.width)+p; bg.setAttribute("x",x0); bg.setAttribute("y",a.y-p); bg.setAttribute("width",x1-x0); bg.setAttribute("height",b.y+b.height-a.y+2*p); bg.setAttribute("rx",5/k); }catch(e){} });
 }
 addEventListener("resize",()=>{ if(document.getElementById("apt").style.display==="flex") fitAptLabels(); });
 function svgPt(svg,e){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
@@ -183,19 +217,38 @@ function bindAptSvg(){
   const svg=document.getElementById("aptSvg"); if(!svg) return;
   svg.addEventListener("pointerdown",e=>{ const pt=svgPt(svg,e);
     if(aptPlace){ APT[aptPlace]={x:Math.round(pt.x),z:Math.round(pt.y)}; aptPlace=null; APT_SVC=aptServices(); saveApt(); renderApt(); return; }
-    const g=e.target.closest("[data-room]"); if(!g||aptTab!=="المسقط") return; const r=APT.rooms.find(x=>x.id===g.dataset.room); if(!r) return; if(APT.rooms[0]===r){ aptSel=r.id; renderApt(); return; }
+    if(aptTab!=="المسقط") return;
+    const hd=e.target.closest("[data-h]"), hr=hd&&APT.rooms.find(x=>x.id===aptSel); if(hr){ const ns="http://www.w3.org/2000/svg", k=svg.getScreenCTM().a, pv=document.createElementNS(ns,"rect"), tx=document.createElementNS(ns,"text");
+      pv.setAttribute("fill","#e07b00"); pv.setAttribute("fill-opacity",".12"); pv.setAttribute("stroke","#e07b00"); pv.setAttribute("stroke-width","2"); pv.setAttribute("stroke-dasharray","6 4"); pv.setAttribute("vector-effect","non-scaling-stroke");
+      tx.setAttribute("text-anchor","middle"); tx.setAttribute("font-size",13/k); tx.setAttribute("font-weight","bold"); tx.setAttribute("fill","#b35f00"); tx.setAttribute("stroke","#fff"); tx.setAttribute("stroke-width",4/k); tx.setAttribute("paint-order","stroke"); svg.append(pv,tx);
+      aptRsz={r:hr,edge:hd.dataset.h,R:roomRectW(hr),sx:pt.x,sy:pt.y,pv,tx}; aptRszMove(pt); svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+    const sh=e.target.closest("[data-sh]"), s=sh&&SHARED[+sh.dataset.sh]; if(s){ const len=Math.round((s.s1-s.s0)*100), at=(s.v?pt.y:pt.x)-s.s0*100; APT.doors=APT.doors||[];
+      APT.doors.push({a:s.a,b:s.b,w:80,pos:Math.max(0,Math.min(Math.max(0,len-90),Math.round(at-40)))}); aptSel=s.a; aptRecalc(); saveApt(); renderApt(); hint("✓ اتحط باب. تقدر تزحلقه أو تشيله من كارت الأوضة",3500); return; }
+    const g=e.target.closest("[data-room]"); if(!g) return; const r=APT.rooms.find(x=>x.id===g.dataset.room); if(!r) return; if(APT.rooms[0]===r){ aptSel=r.id; renderApt(); return; }
     aptSel=r.id; aptDrag={r,g,sx:pt.x,sy:pt.y,ox:r.x,oz:r.z,moved:false}; svg.setPointerCapture(e.pointerId); e.preventDefault(); });
-  svg.addEventListener("pointermove",e=>{ if(!aptDrag) return; const pt=svgPt(svg,e), dx=pt.x-aptDrag.sx, dz=pt.y-aptDrag.sy; if(Math.hypot(dx,dz)>4) aptDrag.moved=true;
+  svg.addEventListener("pointermove",e=>{ if(aptRsz){ aptRszMove(svgPt(svg,e)); return; } if(!aptDrag) return; const pt=svgPt(svg,e), dx=pt.x-aptDrag.sx, dz=pt.y-aptDrag.sy; if(Math.hypot(dx,dz)>4) aptDrag.moved=true;
     const [nx,nz]=snapPos(aptDrag.r,aptDrag.ox+dx,aptDrag.oz+dz); aptDrag.g.setAttribute("transform",`translate(${nx-aptDrag.ox},${nz-aptDrag.oz})`); aptDrag.nx=nx; aptDrag.nz=nz; });
-  const up=async()=>{ if(!aptDrag) return; const d=aptDrag; aptDrag=null; if(d.moved&&d.nx!=null){ d.r.x=d.nx; d.r.z=d.nz; if(APT.rooms[0]!==d.r) d.r.rel=null; computeShared(); computeLinks(); APT_SVC=aptServices(); await saveApt(); } renderApt(); };
+  const up=async()=>{ if(aptRsz){ const z=aptRsz; aptRsz=null; z.pv.remove(); z.tx.remove(); if(z.net!=null&&Math.abs(z.net-z.old)>=1) await aptResize(z.r,z.edge[0],z.net,z.edge[1]==="0"); return; } if(!aptDrag) return; const d=aptDrag; aptDrag=null; if(d.moved&&d.nx!=null){ d.r.x=d.nx; d.r.z=d.nz; if(APT.rooms[0]!==d.r) d.r.rel=null; computeShared(); computeLinks(); APT_SVC=aptServices(); await saveApt(); } renderApt(); };
   svg.addEventListener("pointerup",up); svg.addEventListener("pointercancel",up);
 }
+function aptRszMove(pt){ // live preview while a handle is dragged: the moving edge snaps to other rooms' walls, else to 5 cm
+  const z=aptRsz, ax=z.edge[0], st=z.edge[1]==="0", g=APT.wallT; let a0=(ax==="x"?z.R.x0:z.R.z0)*100, a1=(ax==="x"?z.R.x1:z.R.z1)*100; z.old=a1-a0;
+  let m=(st?a0:a1)+(ax==="x"?pt.x-z.sx:pt.y-z.sy), best=12, snap=null;
+  for(const o of APT.rooms){ if(o===z.r||!SNAP[o.id]) continue; const Q=roomRectW(o), q0=(ax==="x"?Q.x0:Q.z0)*100, q1=(ax==="x"?Q.x1:Q.z1)*100; for(const c of [q0-g,q1+g,q0,q1]) if(Math.abs(c-m)<best){ best=Math.abs(c-m); snap=c; } }
+  m=snap!=null?snap:(st?a1-Math.round((a1-m)/5)*5:a0+Math.round((m-a0)/5)*5); if(st) a0=Math.min(m,a1-100); else a1=Math.max(m,a0+100); z.net=Math.round(a1-a0);
+  const x0=ax==="x"?a0:z.R.x0*100, x1=ax==="x"?a1:z.R.x1*100, z0=ax==="z"?a0:z.R.z0*100, z1=ax==="z"?a1:z.R.z1*100;
+  z.pv.setAttribute("x",x0); z.pv.setAttribute("y",z0); z.pv.setAttribute("width",x1-x0); z.pv.setAttribute("height",z1-z0);
+  const cx=(x0+x1)/2, k=z.tx.getAttribute("font-size"); z.tx.setAttribute("x",cx); z.tx.setAttribute("y",(z0+z1)/2);
+  z.tx.innerHTML=`<tspan x="${cx}">${Math.round(x1-x0)}×${Math.round(z1-z0)}</tspan><tspan x="${cx}" dy="1.25em">${((x1-x0)*(z1-z0)/1e4).toFixed(1)} م²</tspan>`; }
 // ---------- simpler apartment arranging: "next to" + doors between rooms ----------
 const SIDES=[["right","يمينها"],["left","شمالها"],["bottom","تحتها"],["top","فوقها"]];
 let SHARED=[];
 function aSel(parent,label,opts,val,onch){ const el=document.createElement("select"); for(const [v,t] of opts){ const o=document.createElement("option"); o.value=v; o.textContent=t; el.appendChild(o); } el.value=val; el.onchange=()=>onch(el.value); fieldRow(parent,label,el); return el; }
-function aRange(parent,label,min,max,val,u,onch){ const el=document.createElement("input"); el.type="range"; el.min=min; el.max=Math.max(min+1,max); el.step=1; el.value=val; const out=document.createElement("output"); out.textContent=val+" "+u;
-  el.oninput=()=>{ out.textContent=el.value+" "+u; }; el.onchange=()=>onch(+el.value); fieldRow(parent,label,el,out); return el; }
+function aRange(parent,label,min,max,val,u,onch){ max=Math.max(min+1,max); const row=document.createElement("div"); row.className="ctl rng"; const lb=document.createElement("label"); lb.textContent=label;
+  const sl=document.createElement("input"); sl.type="range"; sl.min=min; sl.max=max; sl.step=1; sl.value=val; sl.setAttribute("aria-label",label);
+  const fill=()=>sl.style.setProperty("--p",Math.max(0,Math.min(100,(+sl.value-min)/((max-min)||1)*100))+"%");
+  const out=numIn(val,min,max,u,v=>{ sl.value=v; fill(); onch(v); },1,null,label);
+  sl.oninput=()=>{ out.set(+sl.value); fill(); }; sl.onchange=()=>onch(+sl.value); fill(); row.append(lb,out,sl); parent.appendChild(row); return sl; }
 function layoutRel(){
   const placed=new Set(); if(APT.rooms[0]){ APT.rooms[0].rel=null; placed.add(APT.rooms[0].id); }
   for(let pass=0;pass<4;pass++) for(const r of APT.rooms){ if(!r.rel||!SNAP[r.id]) { placed.add(r.id); continue; } const t=APT.rooms.find(x=>x.id===r.rel.to); if(!t||!SNAP[t.id]||!placed.has(t.id)) continue;
@@ -226,22 +279,25 @@ function aptRecalc(){ layoutRel(); computeShared(); computeLinks(); APT_SVC=aptS
 // ---------- apartment templates: a hall in the middle, rooms above and below with their doors (wall D) facing it ----------
 const APT_TPLS=[
   {n:"استوديو",sub:"صالة ومطبخ وحمام",top:[["k","مطبخ"],["b_std","حمام"]],bot:[["r_living","صالة"]]},
-  {n:"أوضة وصالة",sub:"نوم وصالة ومطبخ وحمام",top:[["k","مطبخ"],["b_std","حمام"]],bot:[["r_living","صالة"],["r_master","أوضة نوم"]]},
-  {n:"أوضتين وصالة",sub:"نوم رئيسية وأطفال وصالة ومطبخ وحمام",top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"]]},
-  {n:"3 أوض وصالة",sub:"3 نوم وصالة ومطبخ وحمامين",top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"],["b_std","حمام ضيوف"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"],["r_kids","أوضة نوم 3"]]}];
+  {n:"أوضة وصالة",sub:"نوم وصالة ومطبخ وحمام وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"]],bot:[["r_living","صالة"],["r_master","أوضة نوم"]]},
+  {n:"أوضتين وصالة",sub:"نوم رئيسية وأطفال وصالة ومطبخ وحمام وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"]]},
+  {n:"3 أوض وصالة",sub:"3 نوم وصالة ومطبخ وحمامين وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"],["b_std","حمام ضيوف"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"],["r_kids","أوضة نوم 3"]]}];
 async function applyAptTpl(T){
   if(APT.rooms.length>1&&!confirm("ترتيب الشقة الحالي هيتشال ويتعمل ترتيب جديد من القالب. الأوض القديمة هتفضل محفوظة في مشاريعك. نكمّل؟")) return;
   await saveNow(); document.getElementById("aptBody").innerHTML="<div class='note'>بجهّز الشقة…</div>";
   let reuse=true; const kindOf=key=>key==="k"?"kitchen":BTEMPLATES[key]?"bath":"room";
   const mk=async(key,nm,c)=>{ // the room open now takes the first slot of its kind
-    if(reuse&&!c&&cfg.roomType===kindOf(key)&&(key==="k"||cfg.roomType==="bath"||(RTEMPLATES[key]&&RTEMPLATES[key].rtype===cfg.rtype))){ reuse=false; return PROJ.id; }
+    if(reuse&&!c&&cfg.template!=="r_balcony"&&cfg.roomType===kindOf(key)&&(key==="k"||cfg.roomType==="bath"||(RTEMPLATES[key]&&RTEMPLATES[key].rtype===cfg.rtype))){ reuse=false; return PROJ.id; }
     const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); await stSet("kproj:"+id,{name:nm,cfg:c||newCfg(key==="k"?"L":key)}); projIndex.push({id,name:nm,t:Date.now()}); return id; };
   const hc=newCfg("h_hall"); hc.roomW=600; hc.roomL=140; hc.feats=[{id:"en",type:"door",wall:"RT",pos:25,w:90,y:0,h:210,d:0}];
   const hall=await mk("h_hall","طرقة",hc), tops=[], bots=[];
   for(const [k,nm] of T.top) tops.push({id:await mk(k,nm),x:0,z:0,rot:0,rel:{to:hall,side:"top",off:0}});
-  for(const [k,nm] of T.bot) bots.push({id:await mk(k,nm),x:0,z:0,rot:180,rel:{to:hall,side:"bottom",off:0}});
+  const lc=newCfg("r_living"), ww=lc.feats.find(f=>f.id==="win"); if(T.balc&&ww) Object.assign(ww,{type:"door",w:120,pos:Math.round((lc.roomW-120)/2),y:0,h:220,d:0});
+  for(const [k,nm] of T.bot) bots.push({id:await mk(k,nm,T.balc&&k==="r_living"?lc:null),x:0,z:0,rot:180,rel:{to:hall,side:"bottom",off:0}});
+  const extra=[]; if(T.balc){ const bc=newCfg("r_balcony"); bc.roomW=lc.roomW; applyTemplate(bc,"r_balcony",true); bc.feats=bc.feats.filter(f=>f.type!=="door"); /* its door is the living room's */
+    extra.push({id:await mk("r_balcony","بلكونة",bc),x:0,z:0,rot:180,rel:{to:bots[0].id,side:"bottom",off:0}}); }
   await stSet("kproj:index",projIndex);
-  APT.rooms=[{id:hall,x:0,z:0,rot:0,rel:null},...tops,...bots]; APT.doors=[]; for(const k of ["riser","riser2","water","panel","heaterAt"]) APT[k]=null;
+  APT.rooms=[{id:hall,x:0,z:0,rot:0,rel:null},...tops,...bots,...extra]; APT.doors=[]; for(const k of ["riser","riser2","water","panel","heaterAt"]) APT[k]=null;
   try{ await refreshSnaps();
     const row=rs=>{ let x=0; for(const r of rs){ r.rel.off=x; x+=Math.round(aptSize(SNAP[r.id],r.rot)[0]*100)+APT.wallT; } return x-APT.wallT; };
     const need=Math.max(row(tops),row(bots)), d=await stGet("kproj:"+hall); d.cfg.roomW+=need-Math.round(SNAP[hall].RW*100); await stSet("kproj:"+hall,d); // hall as long as the longer row
@@ -256,18 +312,21 @@ function arrangeUI(box){
   const tplGrid=()=>{ const g=document.createElement("div"); g.className="tplgrid"; for(const T of APT_TPLS){ const b=document.createElement("button"); b.className="btn tpl"; b.innerHTML=`<b>${T.n}</b><small style="color:var(--muted)">${T.sub}</small>`; b.onclick=()=>applyAptTpl(T); g.appendChild(b); } box.appendChild(g); };
   if(rs.length<=1){ head("🏢 ابدأ بقالب شقة"); note("اختار شكل قريب من شقتك: طرقة في النص والأوض حواليها بأبوابها. بعد كده عدّل مقاس كل أوضة ومكانها."); tplGrid(); head("أو ابني الشقة أوضة أوضة"); }
   else { note("دوس على أوضة في المسقط عشان تعدّلها، أو اسحبها بصباعك. الخط الأخضر المتقطع = حيطة مشتركة ممكن تحط فيها باب، والبرتقاني = باب لبرة.");
-    const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"")+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
+    const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=roomIco(sn)+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
   const ar=document.createElement("div"); ar.className="addrow"; const ps=document.createElement("select");
   const free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
-  ps.innerHTML=free.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option>`;
+  ps.innerHTML=free.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option><option value="__balc">🌿 بلكونة جديدة</option>`;
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
-  ab.onclick=async()=>{ let id=ps.value; if(id.startsWith("__")){ const MAPK={__hall:["h_hall","طرقة"],__bath:["b_std","حمام"],__living:["r_living","صالة"],__master:["r_master","أوضة نوم"],__kids:["r_kids","أوضة أطفال"]}[id]; const key=MAPK[0], nm=MAPK[1]+(APT.rooms.length?" "+(APT.rooms.length+1):""); id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:nm,cfg:newCfg(key)}); projIndex.push({id,name:nm,t:Date.now()}); await stSet("kproj:index",projIndex); }
+  ab.onclick=async()=>{ let id=ps.value; if(id.startsWith("__")){ const MAPK={__hall:["h_hall","طرقة"],__bath:["b_std","حمام"],__living:["r_living","صالة"],__master:["r_master","أوضة نوم"],__kids:["r_kids","أوضة أطفال"],__balc:["r_balcony","بلكونة"]}[id]; const key=MAPK[0], nm=MAPK[1]+(APT.rooms.length?" "+(APT.rooms.length+1):""); id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:nm,cfg:newCfg(key)}); projIndex.push({id,name:nm,t:Date.now()}); await stSet("kproj:index",projIndex); }
     const last=APT.rooms[APT.rooms.length-1]; APT.rooms.push({id,x:0,z:0,rot:0,rel:last?{to:last.id,side:"right",off:0}:null}); aptSel=id; try{ await refreshSnaps(); }catch(e){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); return; } aptRecalc(); await saveApt(); renderApt(); hint("اتضافت ✓ حدد مكانها في الخطوة 2"); };
   ar.append(ps,ab); if(rs.length<=1) box.appendChild(ar);
   // the selected room: where it sits, rotate, design, remove
   rs.forEach((r,i)=>{ if(r.id!==aptSel) return; const sn=SNAP[r.id]; const card=document.createElement("div"); card.className="card"+(aptSel===r.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${{kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||""} ${esc(sn.name)}</b><small style="color:#66716C">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</small></div>`;
+    card.innerHTML=`<div class="ch"><b>${roomIco(sn)} ${esc(sn.name)}</b><small style="color:#66716C">${aptArea(sn).toFixed(1)} م²</small></div>`;
     card.onclick=e=>{ if(e.target.closest("select,input,button")) return; aptSel=r.id; renderApt(); };
+    { const brick=sn.cfg.dimsOn==="brick"; for(const [ax,lab] of [["x","العرض ↔"],["z","الطول ↕"]]){ const k=sizeKey(r,ax), sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700};
+        aRange(card,lab+(brick?" (على الطوب)":""),sc.min,sc.max,sn.cfg[k],"سم",v=>aptResize(r,ax,v-finOf(sn,k),false)); }
+      const n=document.createElement("div"); n.className="note"; n.textContent=`الصافي بعد التشطيب ${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)} سم. تقدر كمان تشد الدواير البرتقاني على المسقط.`; card.appendChild(n); }
     if(i===0){ const n=document.createElement("div"); n.className="note"; n.textContent="📍 دي الأوضة الأساس، الباقي بيترص حواليها."; card.appendChild(n); }
     else { const others=rs.filter(x=>x!==r).map(x=>[x.id,SNAP[x.id].name]); const rel=r.rel||{to:rs[0].id,side:"right",off:0};
       const upd=async()=>{ r.rel=rel; aptRecalc(); await saveApt(); renderApt(); };
@@ -279,6 +338,11 @@ function arrangeUI(box){
     const act=document.createElement("div"); act.className="act";
     const mk=(t,fn)=>{ const b=document.createElement("button"); b.className="btn"; b.textContent=t; b.onclick=fn; act.appendChild(b); };
     mk("↻ لف",async()=>{ r.rot=(r.rot+90)%360; aptRecalc(); await saveApt(); renderApt(); });
+    mk("✏️ اسم",()=>{ const inp=document.createElement("input"); inp.value=sn.name; inp.className="txt"; inp.setAttribute("aria-label","اسم الأوضة"); const ok=document.createElement("button"); ok.className="btn main"; ok.textContent="حفظ";
+      act.innerHTML=""; act.append(inp,ok); inp.focus(); inp.select(); inp.onkeydown=e=>{ if(e.key==="Enter") ok.click(); }; ok.onclick=async()=>{ const nm=cleanName(inp.value); if(nm&&nm!==sn.name) await aptEditRoom(r.id,d=>{ d.name=nm; }); await saveApt(); renderApt(); }; });
+    mk("📄 نسخة",async()=>{ const rd=r.id===PROJ.id?{v:{name:PROJ.name,cfg:clone(cfg)}}:await stRead("kproj:"+r.id); if(rd.err||!rd.v){ hint("مقدرتش أقرا الأوضة من الحفظ، جرّب تاني",4000); return; }
+      const id="p"+Date.now().toString(36), nm=cleanName(rd.v.name+" 2"); await stSet("kproj:"+id,{name:nm,cfg:rd.v.cfg}); projIndex.push({id,name:nm,t:Date.now()}); await stSet("kproj:index",projIndex);
+      APT.rooms.push({id,x:0,z:0,rot:r.rot,rel:{to:r.id,side:"right",off:0}}); aptSel=id; try{ await refreshSnaps(); }catch(e){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); return; } aptRecalc(); await saveApt(); renderApt(); hint("✓ اتعملت نسخة جنبها، حطها في مكانها",3500); });
     mk("✏️ صمّمها",async()=>{ closeApt(); if(r.id!==PROJ.id) await openProject(r.id); setPanel(true); tab=cfg.roomType==="bath"?"الحمام":cfg.roomType==="room"?"الأثاث":"الأوضة"; renderTabs(); renderControls(); });
     mk("✕ شيل",async()=>{ APT.rooms=APT.rooms.filter(x=>x!==r); for(const o of APT.rooms) if(o.rel&&o.rel.to===r.id) o.rel={to:APT.rooms[0]?APT.rooms[0].id:null,side:"right",off:0}; aptSel=null; aptRecalc(); await saveApt(); renderApt(); });
     card.appendChild(act); box.appendChild(card); });
@@ -287,7 +351,7 @@ function arrangeUI(box){
   if(aptSel&&rs.length>1){ head("🚪 الأبواب بينها وبين اللي جنبها"); if(!pairs.length) note("مفيش أوضة لازقة فيها. حطها جنب أوضة تانية الأول."); }
   APT.doors=APT.doors||[];
   for(const s of pairs){ const na=SNAP[s.a].name, nb=SNAP[s.b].name, len=Math.round((s.s1-s.s0)*100);
-    const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="ch"><b>${na} ↔ ${nb}</b><small style="color:#66716C">حيطة مشتركة ${len} سم</small></div>`;
+    const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="ch"><b>${esc(na)} ↔ ${esc(nb)}</b><small style="color:#66716C">حيطة مشتركة ${len} سم</small></div>`;
     const fromDesign=APTLINKS.some(L=>!L.apt&&L.B&&((L.A===s.a&&L.B===s.b)||(L.A===s.b&&L.B===s.a)));
     const d=APT.doors.find(x=>(x.a===s.a&&x.b===s.b)||(x.a===s.b&&x.b===s.a));
     if(fromDesign){ const n=document.createElement("div"); n.className="note"; n.style.color="#2e7d4f"; n.textContent="✓ فيه باب بينهم من تصميم الأوضة نفسها"; card.appendChild(n); }
@@ -297,7 +361,12 @@ function arrangeUI(box){
       aRange(card,"عرضه",60,Math.min(150,L2-10),d.w,"سم",async v=>{ d.w=v; aptRecalc(); await saveApt(); renderApt(); }); }
     box.appendChild(card); }
   if(rs.length>1){ head("➕ ضيف أوضة"); box.appendChild(ar);
-    const tb=document.createElement("button"); tb.className="btn"; tb.style.width="100%"; tb.textContent=aptTplOpen?"✕ اقفل القوالب":"🏢 ابدأ من جديد بقالب شقة"; tb.onclick=()=>{ aptTplOpen=!aptTplOpen; renderApt(); }; box.appendChild(tb); if(aptTplOpen) tplGrid(); head("الحيطان"); }
+    const tb=document.createElement("button"); tb.className="btn"; tb.style.width="100%"; tb.textContent=aptTplOpen?"✕ اقفل القوالب":"🏢 ابدأ من جديد بقالب شقة"; tb.onclick=()=>{ aptTplOpen=!aptTplOpen; renderApt(); }; box.appendChild(tb); if(aptTplOpen) tplGrid();
+    head("📐 المساحة"); const net=rs.reduce((a,r)=>a+aptArea(SNAP[r.id]),0), g=APT.wallT/100, gross=rs.reduce((a,r)=>{ const sn=SNAP[r.id]; return a+(sn.RW+g)*(sn.RL+g); },0);
+    const sm=document.createElement("div"); sm.className="sum"; sm.innerHTML=`صافي الأرضيات: <b>${net.toFixed(1)} م²</b><br>بالحيطان اللي بين الأوض: حوالي <b>${gross.toFixed(0)} م²</b><br><small>${rs.map(r=>`${esc(SNAP[r.id].name)} ${aptArea(SNAP[r.id]).toFixed(1)}`).join(" • ")}</small>`; box.appendChild(sm);
+    fieldRow(box,"مساحة العقد",numIn(APT.contract||0,0,2000,"م²",async v=>{ APT.contract=v; await saveApt(); renderApt(); },1,null,"مساحة العقد"));
+    if(APT.contract>0) note(`الفرق بين العقد وصافي الأرضيات ${(APT.contract-net).toFixed(1)} م². ده عادةً الحيطان الخارجية ونصيب الشقة من السلم والمداخل والمناور.`);
+    head("الحيطان"); }
   aRange(box,"سُمك الحيطان بين الأوض",8,30,APT.wallT,"سم",async v=>{ APT.wallT=v; aptRecalc(); await saveApt(); renderApt(); });
 }
 
@@ -314,7 +383,7 @@ function shoppingHTML(){ const T=shoppingData(); return Object.entries(T).map(([
 const DISCLAIM="⚠ الأطوال والكميات والأحمال حسابات تخطيطية تقريبية، لازم المهندس أو الفني يراجعها قبل الشراء والتنفيذ.";
 async function aptDoc(){
   const saved=cfg, sl=loadingP; loadingP=true; SLIDING=true; const sv=APT_SVC;
-  let body=`<section id="apt-plan"><h3>مسقط الشقة</h3><div class="sub">${APT.rooms.length} أوض • سُمك الحيطان بينهم ${APT.wallT} سم</div><div class="planbox">${aptPlanSVG()}</div></section>`;
+  let body=`<section id="apt-plan"><h3>مسقط الشقة</h3><div class="sub">${APT.rooms.length} أوض • سُمك الحيطان بينهم ${APT.wallT} سم</div><div class="planbox">${aptPlanSVG().replace('id="aptSvg"','')}</div></section>`; /* one #aptSvg only: the editable plan */
   body+=`<section id="apt-sched"><h3>جدول الأبواب والشبابيك</h3><div class="sub">المقاسات بالسنتيمتر (الصافي بعد التشطيب)</div>${scheduleHTML()}</section>`;
   if(sv) body+=`<section id="apt-svc"><h3>السباكة والكهربا والمناسيب</h3><div class="sub">${DISCLAIM}</div><div class="tbl"><table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>الردم</th><th>المنسوب</th></tr>${sv.rooms.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.drainL.toFixed(1)} م</td><td>${r.coldL.toFixed(1)} م</td><td>${r.hotL.toFixed(1)} م</td><td>${Math.round(r.fill)} سم</td><td>${r.level} سم</td></tr>`).join("")}</table></div><div class="sub" style="margin-top:6px">${sv.circuits} دايرة • الحمل حوالي ${(sv.demand/1000).toFixed(1)} ك.و (${sv.amps} أمبير) • قاطع رئيسي ${sv.main} أمبير</div>${sv.levels.length?`<ul style="font-size:13px">${sv.levels.map(l=>`<li>${l.na} ↔ ${l.nb}: ${l.adv}</li>`).join("")}</ul>`:""}</section>`;
   body+=`<section id="apt-shop"><h3>قايمة المشتريات</h3><div class="sub">${DISCLAIM}</div>${shoppingHTML()}</section>`;

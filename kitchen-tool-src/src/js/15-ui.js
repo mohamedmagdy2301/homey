@@ -40,7 +40,8 @@ document.getElementById("projBtn").onclick=()=>openSheet();
 })();
 // Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo, Esc = close the top-most layer (the wizard keeps its own ✕ so work isn't lost by accident)
 addEventListener("keydown",e=>{ const tg=e.target, typing=tg&&(tg.tagName==="TEXTAREA"||(tg.tagName==="INPUT"&&!["range","checkbox","color"].includes(tg.type)));
-  if((e.ctrlKey||e.metaKey)&&(e.code==="KeyZ"||e.code==="KeyY")&&!typing&&!WIZ&&!APT3D){ e.preventDefault(); document.getElementById(e.code==="KeyY"||e.shiftKey?"redo":"undo").click(); return; }
+  if((e.ctrlKey||e.metaKey)&&e.code==="KeyZ"&&!e.shiftKey&&!typing&&document.getElementById("apt").style.display==="flex"){ e.preventDefault(); aptUndo(); return; } /* the apartment screen has its own undo */
+  if((e.ctrlKey||e.metaKey)&&(e.code==="KeyZ"||e.code==="KeyY")&&!typing&&!WIZ&&!APT3D&&document.getElementById("apt").style.display!=="flex"){ e.preventDefault(); document.getElementById(e.code==="KeyY"||e.shiftKey?"redo":"undo").click(); return; }
   if(e.key!=="Escape") return; const vis=id=>document.getElementById(id).style.display==="flex";
   if(vis("shot")) document.getElementById("shot").style.display="none"; else if(vis("draw")) document.getElementById("dclose").click();
   else if(vis("sheet")) closeSheet(); else if(vis("apt")) closeApt(); else if(!WIZ&&panelOpen&&!MQ.desk.matches) setPanel(false); });
