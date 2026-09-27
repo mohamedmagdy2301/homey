@@ -11,6 +11,8 @@ sun.position.set(1.4,4,-4); sun.target.position.set(0.9,0,2);
 sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
 Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4,near:0.5,far:15});
 scene.add(sun,sun.target);
+// keep the sun's shadow box over the whole room (a fixed ±4 m box clipped shadows in big rooms / the apartment)
+function fitSun(cx,cz,s){ sun.target.position.set(cx,0,cz); sun.position.set(cx+0.5,4,cz-6); sun.target.updateMatrixWorld(); const c=sun.shadow.camera; c.left=c.bottom=-s; c.right=c.top=s; c.near=0.5; c.far=Math.hypot(0.5,4,6)+s+4; c.updateProjectionMatrix(); }
 const bulb=new THREE.PointLight(0xfff1d6,0.45,7); bulb.position.set(0.9,2.6,2); scene.add(bulb);
 let root=new THREE.Group(); scene.add(root);
 // render on demand: the loop only draws while something changes (saves battery on phones)

@@ -271,7 +271,7 @@ function finishBuild(warn,walkCm,counterLen,US){
   if(cfg.labels&&(cfg.roomType||"kitchen")==="kitchen"){ label(`أضيق ممر ${walkCm} سم`,RW/2,0.05,RL/2); }
   // lights / env
   scene.background=new THREE.Color(cfg.night?0x1b1f26:0xe9ecef);
-  sun.intensity=cfg.night?0.05:0.8; hemi.intensity=cfg.night?0.25:0.75; bulb.intensity=(cfg.night?0.9:0.45)*(gbOn()?1.4:1); bulb.position.set(RW/2,H-0.2,RL/2);
+  sun.intensity=cfg.night?0.05:0.8; hemi.intensity=cfg.night?0.25:0.75; bulb.intensity=(cfg.night?0.9:0.45)*(gbOn()?1.4:1); bulb.position.set(RW/2,H-0.2,RL/2); fitSun(RW/2,RL/2,Math.max(4,Math.hypot(RW,RL)/2+0.8));
   if(cfg.led && cfg.upper!=="none"){ let n=0; for(const u of UNITS){ if(n>=4) break; if(u.kind==="upper"&&Math.abs(u.y0-US)<0.02&&W4.includes(u.wall)){ const fr=wallFrame(u.wall), dr=dirOf(fr.f), m=(u.a0+u.a1)/2, o=fr.back+0.3*dr; const [x,z]=alongZ(fr.f)?[o,m]:[m,o]; const p=new THREE.PointLight(0xfff0c8,cfg.night?0.5:0.15,1.6); p.position.set(x,US-0.1,z); root.add(p); n++; } } }
   if(tabsEl.dataset.rt!==cfg.roomType){ tabsEl.dataset.rt=cfg.roomType; if(!tabsFor().includes(tab)) tab=tabsFor()[0]; renderTabs(); }
   showStats(); if(!SLIDING && ["السقف","الحمام","التشطيب","الأثاث","الدهان والأرضية","التكلفة","الوحدات","المية والكهربا","➕ أجهزة","الأوضة","خطوات التنفيذ","التخزين","الأجهزة"].includes(tab)) renderControls();

@@ -346,7 +346,7 @@ function enterApt3D(walk){
     APT_BUILD=false; SLIDING=false; loadingP=sl; cfg=aptSaved||cfg; aptSaved=null; build(); hint("حصلت مشكلة في عرض الشقة 3D، رجعتك للتصميم",4000); return; }
   // floor under the walls between rooms
   const fl=new THREE.Mesh(new THREE.BoxGeometry(X1-X0+0.4,0.02,Z1-Z0+0.4),M("#d8d4cc")); fl.position.set((X0+X1)/2,-0.02,(Z0+Z1)/2); root.add(fl);
-  APT_BUILD=false; SLIDING=false; loadingP=sl; APT3D=true; aptBox={X0,Z0,X1,Z1}; bulb.position.set((X0+X1)/2,2.6,(Z0+Z1)/2); bulb.intensity=0.6;
+  APT_BUILD=false; SLIDING=false; loadingP=sl; APT3D=true; aptBox={X0,Z0,X1,Z1}; bulb.position.set((X0+X1)/2,2.6,(Z0+Z1)/2); bulb.intensity=0.6; fitSun((X0+X1)/2,(Z0+Z1)/2,Math.hypot(X1-X0,Z1-Z0)/2+0.8);
   document.querySelector(".top").style.display="none"; document.getElementById("stats").style.display="none"; document.getElementById("open").style.display="none"; document.getElementById("aptBar").style.display="flex";
   aptView(walk);
 }

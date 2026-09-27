@@ -412,6 +412,8 @@ sun.position.set(1.4,4,-4); sun.target.position.set(0.9,0,2);
 sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
 Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4,near:0.5,far:15});
 scene.add(sun,sun.target);
+// keep the sun's shadow box over the whole room (a fixed ±4 m box clipped shadows in big rooms / the apartment)
+function fitSun(cx,cz,s){ sun.target.position.set(cx,0,cz); sun.position.set(cx+0.5,4,cz-6); sun.target.updateMatrixWorld(); const c=sun.shadow.camera; c.left=c.bottom=-s; c.right=c.top=s; c.near=0.5; c.far=Math.hypot(0.5,4,6)+s+4; c.updateProjectionMatrix(); }
 const bulb=new THREE.PointLight(0xfff1d6,0.45,7); bulb.position.set(0.9,2.6,2); scene.add(bulb);
 let root=new THREE.Group(); scene.add(root);
 // render on demand: the loop only draws while something changes (saves battery on phones)
@@ -1484,7 +1486,7 @@ function enterApt3D(walk){
     APT_BUILD=false; SLIDING=false; loadingP=sl; cfg=aptSaved||cfg; aptSaved=null; build(); hint("حصلت مشكلة في عرض الشقة 3D، رجعتك للتصميم",4000); return; }
   // floor under the walls between rooms
   const fl=new THREE.Mesh(new THREE.BoxGeometry(X1-X0+0.4,0.02,Z1-Z0+0.4),M("#d8d4cc")); fl.position.set((X0+X1)/2,-0.02,(Z0+Z1)/2); root.add(fl);
-  APT_BUILD=false; SLIDING=false; loadingP=sl; APT3D=true; aptBox={X0,Z0,X1,Z1}; bulb.position.set((X0+X1)/2,2.6,(Z0+Z1)/2); bulb.intensity=0.6;
+  APT_BUILD=false; SLIDING=false; loadingP=sl; APT3D=true; aptBox={X0,Z0,X1,Z1}; bulb.position.set((X0+X1)/2,2.6,(Z0+Z1)/2); bulb.intensity=0.6; fitSun((X0+X1)/2,(Z0+Z1)/2,Math.hypot(X1-X0,Z1-Z0)/2+0.8);
   document.querySelector(".top").style.display="none"; document.getElementById("stats").style.display="none"; document.getElementById("open").style.display="none"; document.getElementById("aptBar").style.display="flex";
   aptView(walk);
 }
@@ -2233,7 +2235,7 @@ function finishBuild(warn,walkCm,counterLen,US){
   if(cfg.labels&&(cfg.roomType||"kitchen")==="kitchen"){ label(`أضيق ممر ${walkCm} سم`,RW/2,0.05,RL/2); }
   // lights / env
   scene.background=new THREE.Color(cfg.night?0x1b1f26:0xe9ecef);
-  sun.intensity=cfg.night?0.05:0.8; hemi.intensity=cfg.night?0.25:0.75; bulb.intensity=(cfg.night?0.9:0.45)*(gbOn()?1.4:1); bulb.position.set(RW/2,H-0.2,RL/2);
+  sun.intensity=cfg.night?0.05:0.8; hemi.intensity=cfg.night?0.25:0.75; bulb.intensity=(cfg.night?0.9:0.45)*(gbOn()?1.4:1); bulb.position.set(RW/2,H-0.2,RL/2); fitSun(RW/2,RL/2,Math.max(4,Math.hypot(RW,RL)/2+0.8));
   if(cfg.led && cfg.upper!=="none"){ let n=0; for(const u of UNITS){ if(n>=4) break; if(u.kind==="upper"&&Math.abs(u.y0-US)<0.02&&W4.includes(u.wall)){ const fr=wallFrame(u.wall), dr=dirOf(fr.f), m=(u.a0+u.a1)/2, o=fr.back+0.3*dr; const [x,z]=alongZ(fr.f)?[o,m]:[m,o]; const p=new THREE.PointLight(0xfff0c8,cfg.night?0.5:0.15,1.6); p.position.set(x,US-0.1,z); root.add(p); n++; } } }
   if(tabsEl.dataset.rt!==cfg.roomType){ tabsEl.dataset.rt=cfg.roomType; if(!tabsFor().includes(tab)) tab=tabsFor()[0]; renderTabs(); }
   showStats(); if(!SLIDING && ["السقف","الحمام","التشطيب","الأثاث","الدهان والأرضية","التكلفة","الوحدات","المية والكهربا","➕ أجهزة","الأوضة","خطوات التنفيذ","التخزين","الأجهزة"].includes(tab)) renderControls();
@@ -2548,7 +2550,7 @@ function renderControls(){
     let el;
     if(c.t==="select"){ el=document.createElement("select"); for(const [v,n] of c.o){const o=document.createElement("option");o.value=v;o.textContent=n;el.appendChild(o);}
       el.value=c.k==="style"?(cfg.style||"light"):cfg[c.k];
-      el.onchange=()=>{ pushHist(); if(c.k==="style"){ cfg.style=el.value; Object.assign(cfg,STYLES[el.value]); build(); renderControls(); return;} cfg[c.k]=el.value;
+      el.onchange=()=>{ pushHist(); if(c.k==="style"){ cfg.style=v; Object.assign(cfg,STYLES[el.value]); if(cfg.handles!=="none") cfg.handles=["#c6a25a","#c9a45c","#b8925a"].includes(cfg.cHandle)?"gold":"black"; /* the style's handle color picks the handle finish */ build(); renderControls(); return;} cfg[c.k]=el.value;
         build(); renderControls(); }; row.appendChild(el); }
     if(c.t==="toggle"){ const w=document.createElement("label"); w.className="sw"; el=document.createElement("input"); el.type="checkbox"; el.checked=!!cfg[c.k];
       el.onchange=()=>{pushHist(); cfg[c.k]=el.checked; build();}; w.appendChild(el); w.appendChild(document.createElement("i")); row.appendChild(w); }

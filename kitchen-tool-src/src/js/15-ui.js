@@ -31,7 +31,7 @@ function renderControls(){
     let el;
     if(c.t==="select"){ el=document.createElement("select"); for(const [v,n] of c.o){const o=document.createElement("option");o.value=v;o.textContent=n;el.appendChild(o);}
       el.value=c.k==="style"?(cfg.style||"light"):cfg[c.k];
-      el.onchange=()=>{ pushHist(); if(c.k==="style"){ cfg.style=el.value; Object.assign(cfg,STYLES[el.value]); build(); renderControls(); return;} cfg[c.k]=el.value;
+      el.onchange=()=>{ pushHist(); if(c.k==="style"){ cfg.style=v; Object.assign(cfg,STYLES[el.value]); if(cfg.handles!=="none") cfg.handles=["#c6a25a","#c9a45c","#b8925a"].includes(cfg.cHandle)?"gold":"black"; /* the style's handle color picks the handle finish */ build(); renderControls(); return;} cfg[c.k]=el.value;
         build(); renderControls(); }; row.appendChild(el); }
     if(c.t==="toggle"){ const w=document.createElement("label"); w.className="sw"; el=document.createElement("input"); el.type="checkbox"; el.checked=!!cfg[c.k];
       el.onchange=()=>{pushHist(); cfg[c.k]=el.checked; build();}; w.appendChild(el); w.appendChild(document.createElement("i")); row.appendChild(w); }
