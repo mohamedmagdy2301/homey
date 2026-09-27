@@ -103,8 +103,14 @@ function migrate(o){
   }
   for(const k of ["wallCfg","place","island","water","drain"]) if(!c[k]) c[k]=clone(DEFAULT[k]);
   if(o.gbType==null&&o.ceiling){ if(o.ceiling==="none") c.gbType="hide"; else if(o.ceiling==="flat") c.gbType="slab"; else { const g=o.gyps||(o.roomType==="room"?"cove":"band"); if(g==="flat"){ c.gbType="flat"; c.gbDrop=15; } else { c.gbType="tray"; c.gbBand=g==="cove"?45:g==="tray"?90:30; c.gbLed=(g==="cove"||g==="tray")?"1":""; c.gbDrop=12; } } }
-  return c;
+  fixNums(c); return c;
 }
+/* numbers from old saves / backups: NaN, "", Infinity or out-of-range values would break every geometry */
+function fixNums(c){ let lim={}; try{ for(const g of Object.values(SCHEMA)) for(const x of g) if(x.t==="range"){ const l=lim[x.k]; lim[x.k]=l?[Math.min(l[0],x.min),Math.max(l[1],x.max)]:[x.min,x.max]; } }catch(e){} /* SCHEMA isn't defined yet on the first call */
+  for(const k in DEFAULT) if(typeof DEFAULT[k]==="number"){ const v=+c[k]; c[k]=c[k]!==""&&c[k]!=null&&Number.isFinite(v)?v:DEFAULT[k]; if(lim[k]) c[k]=Math.max(lim[k][0],Math.min(lim[k][1],c[k])); }
+  for(const key of ["feats","custom","apps","bfix","furn"]) c[key]=(Array.isArray(c[key])?c[key]:[]).filter(x=>x&&typeof x==="object"&&!Array.isArray(x)).map(x=>{
+    for(const f of ["pos","w","d","h","y","a","b","dep"]) if(x[f]!=null&&x[f]!==""&&!Number.isFinite(+x[f])) x[f]=0;
+    for(const f of ["w","d","a","b"]) if(+x[f]<0) x[f]=-x[f]; return x; }); }
 
 const STYLES = {
   light:{name:"مودرن فاتح", cBase:"#f3f3f0", cUpper:"#f7f7f5", cCounter:"#d9d7d2", cWall:"#f1efeb", cFloor:"#cdc8bf", cWood:"#b88f5e", cHandle:"#2f3237"},

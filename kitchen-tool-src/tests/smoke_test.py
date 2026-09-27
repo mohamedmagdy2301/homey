@@ -98,6 +98,10 @@ with sync_playwright() as p:
     check("walk mode can't pass through furniture", r is False, r)
     r = ev("()=>{ setView('out'); sph.theta+=1; camTouched=true; const t=sph.theta; setPanel(true); setPanel(false); return Math.abs(sph.theta-t)<1e-9; }")
     check("opening/closing the panel keeps the user's camera", r, r)
+    r = ev("()=>{ const c=migrate({roomW:'abc',roomL:-50,ceil:null,feats:[{id:'w',type:'window',wall:'W',pos:'x',w:-80,y:100,h:120},null,5],custom:'bad'}); cfg=c; build(); return [c.roomW, c.roomL, c.ceil, c.feats.length, c.feats[0].pos, c.feats[0].w, Array.isArray(c.custom), UNITS.length>0]; }")
+    check("bad numbers in a saved design are repaired", r[0] == 180 and r[1] == 150 and r[2] == 280 and r[3] == 1 and r[4] == 0 and r[5] == 80 and r[6] and r[7], r)
+    r = ev("async()=>{ cfg=newCfg('L'); build(); setView('out'); await new Promise(r=>setTimeout(r,1500)); let n=0; const o=renderer.render.bind(renderer); renderer.render=(...a)=>{ n++; return o(...a); }; await new Promise(r=>setTimeout(r,600)); const idle=n; build(); await new Promise(r=>setTimeout(r,300)); renderer.render=o; return [idle, n-idle]; }")
+    check("renders only when something changes", r[0] == 0 and r[1] > 0, r)
     check("no JS errors during the whole run", not errs, errs[:3])
     b.close()
     b, pg, errs = page(p, FAILING); ev = pg.evaluate

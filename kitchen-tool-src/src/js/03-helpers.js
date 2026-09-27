@@ -15,7 +15,11 @@ function mats(){
 }
 // ---- procedural textures ----
 function shade(hex,k){ const c=col(hex); c.r=Math.min(1,c.r*k); c.g=Math.min(1,c.g*k); c.b=Math.min(1,c.b*k); return "#"+c.getHexString(); }
-function makeTex(kind,color,rx,ry){
+const TEXC=new Map(); /* drawn canvases by kind+color: a bath rebuild used to paint a new canvas per tile segment on every slider tick */
+function makeTex(kind,color,rx,ry){ const key=kind+"|"+color; let c=TEXC.get(key);
+  if(!c){ if(TEXC.size>64) TEXC.clear(); c=texCanvas(kind,color); TEXC.set(key,c); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry); t.anisotropy=4; return t; } /* own texture per material: build() disposes it, the canvas stays cached */
+function texCanvas(kind,color){
   const c=document.createElement("canvas"); c.width=c.height=256; const g=c.getContext("2d");
   g.fillStyle=color; g.fillRect(0,0,256,256);
   if(kind==="tiles"){ g.strokeStyle=shade(color,0.8); g.lineWidth=6; g.strokeRect(0,0,256,256); }
@@ -26,7 +30,7 @@ function makeTex(kind,color,rx,ry){
       g.strokeStyle=shade(color,0.7); g.lineWidth=2; g.strokeRect(i*64,(i%2)*128,64,256);
       g.strokeStyle=shade(color,0.85); g.lineWidth=1; for(let k=0;k<6;k++){ g.beginPath(); g.moveTo(i*64+8+k*9,0); g.lineTo(i*64+6+k*9,256); g.stroke(); } } }
   if(kind==="checker"){ g.fillStyle=shade(color,0.45); g.fillRect(0,0,128,128); g.fillRect(128,128,128,128); }
-  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry); t.anisotropy=4; return t;
+  return c;
 }
 function floorMat(w,d){
   if(cfg.floorType==="plain") return M(cfg.cFloor,{roughness:0.8});

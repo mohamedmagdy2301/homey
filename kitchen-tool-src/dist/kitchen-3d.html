@@ -231,8 +231,14 @@ function migrate(o){
   }
   for(const k of ["wallCfg","place","island","water","drain"]) if(!c[k]) c[k]=clone(DEFAULT[k]);
   if(o.gbType==null&&o.ceiling){ if(o.ceiling==="none") c.gbType="hide"; else if(o.ceiling==="flat") c.gbType="slab"; else { const g=o.gyps||(o.roomType==="room"?"cove":"band"); if(g==="flat"){ c.gbType="flat"; c.gbDrop=15; } else { c.gbType="tray"; c.gbBand=g==="cove"?45:g==="tray"?90:30; c.gbLed=(g==="cove"||g==="tray")?"1":""; c.gbDrop=12; } } }
-  return c;
+  fixNums(c); return c;
 }
+/* numbers from old saves / backups: NaN, "", Infinity or out-of-range values would break every geometry */
+function fixNums(c){ let lim={}; try{ for(const g of Object.values(SCHEMA)) for(const x of g) if(x.t==="range"){ const l=lim[x.k]; lim[x.k]=l?[Math.min(l[0],x.min),Math.max(l[1],x.max)]:[x.min,x.max]; } }catch(e){} /* SCHEMA isn't defined yet on the first call */
+  for(const k in DEFAULT) if(typeof DEFAULT[k]==="number"){ const v=+c[k]; c[k]=c[k]!==""&&c[k]!=null&&Number.isFinite(v)?v:DEFAULT[k]; if(lim[k]) c[k]=Math.max(lim[k][0],Math.min(lim[k][1],c[k])); }
+  for(const key of ["feats","custom","apps","bfix","furn"]) c[key]=(Array.isArray(c[key])?c[key]:[]).filter(x=>x&&typeof x==="object"&&!Array.isArray(x)).map(x=>{
+    for(const f of ["pos","w","d","h","y","a","b","dep"]) if(x[f]!=null&&x[f]!==""&&!Number.isFinite(+x[f])) x[f]=0;
+    for(const f of ["w","d","a","b"]) if(+x[f]<0) x[f]=-x[f]; return x; }); }
 
 const STYLES = {
   light:{name:"مودرن فاتح", cBase:"#f3f3f0", cUpper:"#f7f7f5", cCounter:"#d9d7d2", cWall:"#f1efeb", cFloor:"#cdc8bf", cWood:"#b88f5e", cHandle:"#2f3237"},
@@ -408,6 +414,9 @@ Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4,near:0.5,far:15
 scene.add(sun,sun.target);
 const bulb=new THREE.PointLight(0xfff1d6,0.45,7); bulb.position.set(0.9,2.6,2); scene.add(bulb);
 let root=new THREE.Group(); scene.add(root);
+// render on demand: the loop only draws while something changes (saves battery on phones)
+let DIRTY=2; function poke(n){ DIRTY=Math.max(DIRTY,n||30); }
+for(const ev of ["pointerdown","pointermove","pointerup","wheel","keydown","input","change","click"]) addEventListener(ev,()=>poke(),{capture:true,passive:true});
 let walls={};
 
 // =================== HELPERS ===================
@@ -427,7 +436,11 @@ function mats(){
 }
 // ---- procedural textures ----
 function shade(hex,k){ const c=col(hex); c.r=Math.min(1,c.r*k); c.g=Math.min(1,c.g*k); c.b=Math.min(1,c.b*k); return "#"+c.getHexString(); }
-function makeTex(kind,color,rx,ry){
+const TEXC=new Map(); /* drawn canvases by kind+color: a bath rebuild used to paint a new canvas per tile segment on every slider tick */
+function makeTex(kind,color,rx,ry){ const key=kind+"|"+color; let c=TEXC.get(key);
+  if(!c){ if(TEXC.size>64) TEXC.clear(); c=texCanvas(kind,color); TEXC.set(key,c); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry); t.anisotropy=4; return t; } /* own texture per material: build() disposes it, the canvas stays cached */
+function texCanvas(kind,color){
   const c=document.createElement("canvas"); c.width=c.height=256; const g=c.getContext("2d");
   g.fillStyle=color; g.fillRect(0,0,256,256);
   if(kind==="tiles"){ g.strokeStyle=shade(color,0.8); g.lineWidth=6; g.strokeRect(0,0,256,256); }
@@ -438,7 +451,7 @@ function makeTex(kind,color,rx,ry){
       g.strokeStyle=shade(color,0.7); g.lineWidth=2; g.strokeRect(i*64,(i%2)*128,64,256);
       g.strokeStyle=shade(color,0.85); g.lineWidth=1; for(let k=0;k<6;k++){ g.beginPath(); g.moveTo(i*64+8+k*9,0); g.lineTo(i*64+6+k*9,256); g.stroke(); } } }
   if(kind==="checker"){ g.fillStyle=shade(color,0.45); g.fillRect(0,0,128,128); g.fillRect(128,128,128,128); }
-  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry); t.anisotropy=4; return t;
+  return c;
 }
 function floorMat(w,d){
   if(cfg.floorType==="plain") return M(cfg.cFloor,{roughness:0.8});
@@ -1962,7 +1975,7 @@ function build(){
   FEATS=(cfg.feats||[]).filter(f=>f.type!=="cut").map(netFeat); netCuts(); WALLS=makeWalls();
   mats(); room();
   const warn=[]; const R=cfg.roomType==="bath"?buildBath(warn):cfg.roomType==="hall"?buildHall(warn):cfg.roomType==="room"?buildRoom(warn):buildKitchen(warn);
-  finishBuild(warn,R.walk,R.counter,cfg.uStart/100);
+  finishBuild(warn,R.walk,R.counter,cfg.uStart/100); poke();
 }
 function buildKitchen(warn){
   const ch=CH(), US=cfg.uStart/100, uTop=cfg.upper==="ceiling"?H-0.01:Math.min(2.2,H-0.01), UD=cfg.uDepth/100;
@@ -2954,7 +2967,7 @@ function costBox(){
 }
 renderTabs(); renderControls();
 
-function resize(){
+function resize(){ poke(); /* setSize clears the canvas */
   const w=document.documentElement.clientWidth||innerWidth, full=document.documentElement.clientHeight||innerHeight;
   const h=panelOpen?Math.round(full*0.48):full;
   canvas.style.height=h+"px";
@@ -2977,7 +2990,10 @@ function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canva
   const sh=document.getElementById("shot"); sh.querySelector("img").src=url; sh.style.display="flex";
   try{ const a=document.createElement("a"); a.href=url; a.download="kitchen.png"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
 document.getElementById("shotClose").onclick=()=>document.getElementById("shot").style.display="none";
-(function loop(){ if(cfg.autoRot && pts.size===0) sph.theta+=0.004; updateCam(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
+let camKey="";
+(function loop(){ if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
+  const k=[sph.theta,sph.phi,sph.r,target.x,target.y,target.z,FP.on,FP.x,FP.z,FP.yaw,FP.pitch,camera.aspect].join(); /* catches camera moves from held buttons and code */
+  if(DIRTY>0||k!==camKey||drag){ camKey=k; updateCam(); renderer.render(scene,camera); if(DIRTY>0) DIRTY--; } requestAnimationFrame(loop); })();
 </script>
 </body>
 </html>

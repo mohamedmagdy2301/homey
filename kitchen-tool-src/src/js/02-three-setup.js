@@ -13,4 +13,7 @@ Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4,near:0.5,far:15
 scene.add(sun,sun.target);
 const bulb=new THREE.PointLight(0xfff1d6,0.45,7); bulb.position.set(0.9,2.6,2); scene.add(bulb);
 let root=new THREE.Group(); scene.add(root);
+// render on demand: the loop only draws while something changes (saves battery on phones)
+let DIRTY=2; function poke(n){ DIRTY=Math.max(DIRTY,n||30); }
+for(const ev of ["pointerdown","pointermove","pointerup","wheel","keydown","input","change","click"]) addEventListener(ev,()=>poke(),{capture:true,passive:true});
 let walls={};

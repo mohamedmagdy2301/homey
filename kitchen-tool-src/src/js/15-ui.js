@@ -450,7 +450,7 @@ function costBox(){
 }
 renderTabs(); renderControls();
 
-function resize(){
+function resize(){ poke(); /* setSize clears the canvas */
   const w=document.documentElement.clientWidth||innerWidth, full=document.documentElement.clientHeight||innerHeight;
   const h=panelOpen?Math.round(full*0.48):full;
   canvas.style.height=h+"px";
@@ -473,4 +473,7 @@ function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canva
   const sh=document.getElementById("shot"); sh.querySelector("img").src=url; sh.style.display="flex";
   try{ const a=document.createElement("a"); a.href=url; a.download="kitchen.png"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
 document.getElementById("shotClose").onclick=()=>document.getElementById("shot").style.display="none";
-(function loop(){ if(cfg.autoRot && pts.size===0) sph.theta+=0.004; updateCam(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
+let camKey="";
+(function loop(){ if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
+  const k=[sph.theta,sph.phi,sph.r,target.x,target.y,target.z,FP.on,FP.x,FP.z,FP.yaw,FP.pitch,camera.aspect].join(); /* catches camera moves from held buttons and code */
+  if(DIRTY>0||k!==camKey||drag){ camKey=k; updateCam(); renderer.render(scene,camera); if(DIRTY>0) DIRTY--; } requestAnimationFrame(loop); })();
