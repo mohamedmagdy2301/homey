@@ -200,8 +200,10 @@ function buildKitchen(warn){
   for(const cu of cfg.custom){ if(!W4.includes(cu.wall)) continue;
     const fr=frameOf(cu.wall), cL=wlen(cu.wall), cw=Math.min(cu.w/100,cL), a0=Math.max(0,Math.min(cL-cw,cu.pos/100)), a1=a0+cw, dp=cu.d/100; /* keep it on the wall */ curSide=fr.side; curWall=cu.wall;
     OPT={front:cu.front,n:cu.n,shelves:cu.shelves,acc:cu.acc}; KEY=cu.id;
-    if(cu.type==="lower"&&cu.shape==="corner45"){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutSize||30)/100)),false); counterLen+=a1-a0; }
-    else if(cu.type==="tall"&&cu.shape==="corner45"){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutSize||30)/100)),true,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100))); }
+    const cornerShape=cu.shape==="corner45"||cu.shape==="cornerCut"||cu.shape==="cornerRound";
+    const ccArgs=()=>[cu.cutSide==="a0"?"a0":"a1",Math.max(0.15,Math.min(a1-a0-0.15,(cu.cutA||cu.cutSize||30)/100)),Math.max(0.1,Math.min(dp-0.1,(cu.cutD||cu.cutSize||30)/100)),cu.shape==="cornerRound"];
+    if(cu.type==="lower"&&cornerShape){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,...ccArgs(),false); counterLen+=a1-a0; }
+    else if(cu.type==="tall"&&cornerShape){ cornerCutUnit(fr.f,cu.wall,a0,a1,fr.back,dp,...ccArgs(),true,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100))); }
     else if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
     else if(cu.type==="upper") uppers(fr.f,a0,a1,fr.back,cu.y/100,capUp(cu.wall,a0,a1,Math.min(H-0.01,(cu.y+cu.h)/100)),dp);
     else if(cu.type==="tall") tall(fr.f,a0,a1,fr.back,dp,0,capUp(cu.wall,a0,a1,Math.min(H-0.01,cu.h/100)));

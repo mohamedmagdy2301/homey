@@ -170,7 +170,7 @@ function unitsBox(){
     r.innerHTML=`<span class="n">${u.n}</span><span class="t">${u.label||KN[u.kind]||u.kind}<small>عرض ${w} • ارتفاع ${hh} • عمق ${Math.round(u.depth*100)} سم</small></span>`;
     r.querySelector(".t").onclick=()=>{ selectUnit(u.id,false); renderControls(); const rr=ctlEl.querySelector(`[data-uid="${u.id}"]`); if(rr) rr.scrollIntoView({block:"nearest"}); };
     if(CABK.has(u.kind)&&!cfg.openCab){ const ob=document.createElement("button"); ob.className="btn"+(OPENSET.has(u.id)?" on":""); ob.textContent="🚪"; ob.setAttribute("aria-label","افتح الدولاب"); ob.onclick=()=>{ OPENSET.has(u.id)?OPENSET.delete(u.id):OPENSET.add(u.id); SEL=u.id; build(); renderControls(); }; r.appendChild(ob); }
-    const customEntry=u.movable&&u.movable.obj==="custom"?(cfg.custom||[]).find(x=>x.id===u.movable.id):null, isCorner45=customEntry&&customEntry.shape==="corner45";
+    const customEntry=u.movable&&u.movable.obj==="custom"?(cfg.custom||[]).find(x=>x.id===u.movable.id):null, isCorner45=customEntry&&["corner45","cornerCut","cornerRound"].includes(customEntry.shape);
     const opts=isCorner45?null:FRONTS[u.kind];
     if(opts){ const sel=document.createElement("select"); for(const [v,t] of opts){ const o=document.createElement("option"); o.value=v; o.textContent=t; sel.appendChild(o); }
         const cur=cfg.units[u.id]; sel.value=(typeof cur==="string"?cur:(cur&&cur.front))||(u.kind==="sink"?"doors":"auto");
@@ -299,7 +299,9 @@ function customBox(){
     const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<span class="n">${u?u.n:"?"}</span><b>${TN[c.type]}</b><small>${shortWall(c.wall)} • ${c.w} سم</small>`;
     const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.custom=cfg.custom.filter(x=>x.id!==c.id); build(); renderControls(); };
     hd.appendChild(del);
-    if(u&&c.shape!=="corner45"){ const sp=document.createElement("button"); sp.className="btn"; sp.textContent="➗"; sp.setAttribute("aria-label","قسم الوحدة لوحدتين");
+    if(c.shape==="corner45"){ c.shape="cornerCut"; if(c.cutA==null) c.cutA=c.cutSize||30; if(c.cutD==null) c.cutD=c.cutSize||30; } // one-time upgrade from the old fixed-45° field
+    const isCornerShape=c.shape==="cornerCut"||c.shape==="cornerRound";
+    if(u&&!isCornerShape){ const sp=document.createElement("button"); sp.className="btn"; sp.textContent="➗"; sp.setAttribute("aria-label","قسم الوحدة لوحدتين");
       sp.onclick=e=>{ e.stopPropagation(); pushHist(); const id=splitUnit(u); SEL=id; build(); renderControls(); hint("اتقسمت لوحدتين ✓"); }; hd.appendChild(sp); }
     hd.onclick=e=>{ if(!e.target.closest("button")) selectUnit(c.id,false); }; card.appendChild(hd); foldCard(card,hd,c.id);
     objSelect(card,c,"wall","الحيطة",W4OPT());
@@ -307,12 +309,14 @@ function customBox(){
     objRange(card,c,"w","العرض",15,250,1); objRange(card,c,"d","العمق",10,70,1);
     if(c.type!=="lower") objRange(card,c,"h","الارتفاع",15,Math.round(H*100),1);
     if(c.type==="upper"||c.type==="shelf") objRange(card,c,"y","بتبدأ من ارتفاع",20,Math.round(H*100)-20,1);
-    if(c.type==="lower"||c.type==="tall") objSelect(card,c,"shape","الشكل",[["rect","مستطيل عادي"],["corner45","ركن بزاوية 45° (قطع الجانب)"]]);
-    const corner45=c.shape==="corner45";
-    if(corner45){ if(!c.cutSide) c.cutSide="a1";
+    if(c.type==="lower"||c.type==="tall") objSelect(card,c,"shape","الشكل",[["rect","مستطيل عادي"],["cornerCut","ركن مقطوع (أي زاوية)"],["cornerRound","ركن دائري (زاوية مدورة)"]]);
+    if(isCornerShape){ if(!c.cutSide) c.cutSide="a1";
       objSelect(card,c,"cutSide","الجنب اللي بيتقطع",[["a1","الآخر (بعيد عن أول الحيطة)"],["a0","الأول (قريب من أول الحيطة)"]]);
-      objRange(card,c,"cutSize","مقاس القطع",15,Math.max(16,Math.min(c.w,c.d)-5),1);
-      const cn=document.createElement("div"); cn.className="note"; cn.textContent="واجهة الوحدة هتتقطع بزاوية 45° من الجنب ده، زي دولاب الركن القديم."; card.appendChild(cn);
+      objRange(card,c,"cutA","المقطوع من العرض",10,Math.max(11,c.w-20),1);
+      objRange(card,c,"cutD","المقطوع من العمق",10,Math.max(11,c.d-10),1);
+      const cn=document.createElement("div"); cn.className="note";
+      cn.textContent=c.shape==="cornerRound"?"واجهة الوحدة هتتدوّر من الركن ده. زوّد الفرق بين 'من العرض' و'من العمق' عشان الدورة تبقى بيضاوي مش نص دايرة.":"واجهة الوحدة هتتقطع بخط مايل من الركن ده. خلّي 'من العرض' و'من العمق' متساويين عشان الزاوية تطلع بالظبط 45°، أو فرّق بينهم لزاوية تانية.";
+      card.appendChild(cn);
     } else {
       if(c.type!=="shelf"){ objSelect(card,c,"front","الواجهة",(c.type==="lower"?FRONTS.base:c.type==="upper"?FRONTS.upper:FRONTS.tall));
         objSelect(card,c,"n","عدد الضلف / الأدراج",[["","تلقائي"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]]); }

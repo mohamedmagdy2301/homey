@@ -347,18 +347,21 @@ function prismAO(w,pts,y0,y1,mat){
   const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); geo.setIndex(idx); geo.computeVertexNormals();
   const m=new THREE.Mesh(geo,mat); m.castShadow=m.receiveShadow=true; if(curSide) m.userData.side=curSide; if(curUid) m.userData.uid=curUid; root.add(m); return m;
 }
-function cutPentagon(a0,a1,o0,o1,side,cut){ // back edge (o0) stays a square corner, the FRONT (o1) corner at `side` gets chamfered by `cut`
-  cut=Math.max(0.05,Math.min(cut,(a1-a0)*0.85,(o1-o0)*0.92));
-  return side==="a1" ? [[a0,o0],[a1,o0],[a1,o1-cut],[a1-cut,o1],[a0,o1]] : [[a0,o0],[a1,o0],[a1,o1],[a0+cut,o1],[a0,o1-cut]];
+function cornerPoly(a0,a1,o0,o1,side,cutA,cutD,round){ // back edge (o0) stays a square corner; the FRONT (o1) corner at `side` gets cut by cutA (along the wall) x cutD (into the depth) — straight (any angle, from the cutA:cutD ratio) or, if round, a quarter-ellipse fillet
+  cutA=Math.max(0.03,Math.min(cutA,(a1-a0)*0.85)); cutD=Math.max(0.03,Math.min(cutD,(o1-o0)*0.92));
+  const sgn=side==="a1"?1:-1, corner=side==="a1"?a1:a0, cA=corner-sgn*cutA, mid=[];
+  if(round){ const n=10; for(let i=0;i<=n;i++){ const t=i/n*Math.PI/2; mid.push([corner-sgn*cutA*Math.sin(t),o1-cutD*Math.cos(t)]); } }
+  else mid.push([corner,o1-cutD],[cA,o1]);
+  return side==="a1" ? [[a0,o0],[a1,o0],...mid,[a0,o1]] : [[a0,o0],[a1,o0],[a1,o1],...mid.slice().reverse()];
 }
-function cornerCutUnit(f,wall,a0,a1,back,depth,side,cut,tallCab,capTop){
+function cornerCutUnit(f,wall,a0,a1,back,depth,side,cutA,cutD,round,tallCab,capTop){
   const dr=dirOf(f), ch=CH(), y1=tallCab?Math.min(capTop||H-0.01,H-0.01):ch;
-  const u=newUnit(tallCab?"tall":"base",f,a0,a1,back,depth,0,y1,{front:"ركن 45° (واجهة مقطوعة)"}); const prevUid=curUid; curUid=u.id;
+  const u=newUnit(tallCab?"tall":"base",f,a0,a1,back,depth,0,y1,{front:round?"ركن دائري (واجهة مدورة)":"ركن مقطوع (واجهة مايلة)"}); const prevUid=curUid; curUid=u.id;
   if(HIDDEN.has(u.id)){ curUid=prevUid; return u; }
   const dbl=mat=>{ const c=mat.clone(); c.side=THREE.DoubleSide; return c; }, body=dbl(MAT.base);
   place(f,a0,a1,back,back+(depth-0.05)*dr,0,0.1,MAT.plinth);
-  prismAO(wall,cutPentagon(a0,a1,0.02,depth-0.02,side,cut),0.1,tallCab?y1:ch-0.04,body);
-  if(!tallCab) prismAO(wall,cutPentagon(a0-0.01,a1+0.01,0,depth,side,Math.max(0.05,cut-0.01)),ch-0.04,ch,dbl(MAT.counter));
+  prismAO(wall,cornerPoly(a0,a1,0.02,depth-0.02,side,cutA,cutD,round),0.1,tallCab?y1:ch-0.04,body);
+  if(!tallCab) prismAO(wall,cornerPoly(a0-0.01,a1+0.01,0,depth,side,Math.max(0.03,cutA-0.01),Math.max(0.03,cutD-0.01),round),ch-0.04,ch,dbl(MAT.counter));
   ACC[tallCab?"tall":"lower"]+=a1-a0; if(!tallCab) ACC.marble+=a1-a0;
   curUid=prevUid; return u;
 }
