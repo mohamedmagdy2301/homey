@@ -126,7 +126,7 @@ async function openApt(){ await saveNow(); await loadApt(); document.getElementB
 function closeApt(){ document.getElementById("apt").style.display="none"; saveApt(); }
 function renderApt(){
   const body=document.getElementById("aptBody"); body.innerHTML="";
-  const tabs=document.createElement("div"); tabs.className="tabs"; tabs.style.cssText="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px";
+  const tabs=document.createElement("div"); tabs.className="tabs"; tabs.style.cssText="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none";
   for(const t of ["المسقط","السباكة والكهربا","المناسيب","الإجمالي","الرسومات","المشتريات والميزانية"]){ const b=document.createElement("button"); b.className="btn"+(aptTab===t?" on":""); b.textContent=t; b.onclick=()=>{ aptTab=t; aptPlace=null; renderApt(); }; tabs.appendChild(b); }
   body.appendChild(tabs);
   const pl=document.createElement("div"); pl.className="planbox"; pl.innerHTML=aptPlanSVG(); body.appendChild(pl); bindAptSvg();
@@ -144,10 +144,10 @@ function renderApt(){
     if(APT.heaterMode==="shared"&&!APT.heaterAt&&sv.heater){ const nn=document.createElement("div"); nn.className="note"; nn.textContent=`السخان المشترك: اللي في ${sv.heater} (تقدر تحدد مكان تاني بعلامة 🔥)`; box.appendChild(nn); }
     const f=v=>v.toFixed(1);
     const d=document.createElement("div"); d.className="sum";
-    d.innerHTML=`🟦 <b>الصرف:</b> ${f(sv.drain.m4)} م مواسير 4 بوصة + ${f(sv.drain.m2)} م مواسير 2 و3 بوصة<br>💧 <b>المية البارد:</b> ${f(sv.cold.main)} م خط رئيسي (25 مم) + ${f(sv.cold.br)} م فروع (20 مم)<br>🔥 <b>المية السخنة:</b> ${f(sv.hot.main)} م رئيسي + ${f(sv.hot.br)} م فروع<br>⚡ <b>الكهربا:</b> ${sv.circuits} دايرة • الحمل حوالي ${(sv.demand/1000).toFixed(1)} ك.و (${sv.amps} أمبير) ← قاطع رئيسي ${sv.main} أمبير<br>`+Object.entries(sv.wire).sort().map(([mm,m])=>`سلك ${mm} مم²: ${Math.ceil(m)} م`).join(" • ")+`<br><small>الأطوال تقريبية (مسار على الحيطان بزوايا قايمة) + زود 10% احتياطي.</small><br><small style="color:#8a2a1c">${DISCLAIM}</small>`;
+    d.innerHTML=`🟦 <b>الصرف:</b> ${f(sv.drain.m4)} م مواسير 4 بوصة + ${f(sv.drain.m2)} م مواسير 2 و3 بوصة<br>💧 <b>المية البارد:</b> ${f(sv.cold.main)} م خط رئيسي (25 مم) + ${f(sv.cold.br)} م فروع (20 مم)<br>🔥 <b>المية السخنة:</b> ${f(sv.hot.main)} م رئيسي + ${f(sv.hot.br)} م فروع<br>⚡ <b>الكهربا:</b> ${sv.circuits} دايرة • الحمل حوالي ${(sv.demand/1000).toFixed(1)} ك.و (${sv.amps} أمبير) ← قاطع رئيسي ${sv.main} أمبير<br>`+Object.entries(sv.wire).sort().map(([mm,m])=>`سلك ${mm} مم²: ${Math.ceil(m)} م`).join(" • ")+`<br><small>الأطوال تقريبية (مسار على الحيطان بزوايا قايمة) + زود 10% احتياطي.</small><br><small style="color:#A6473A">${DISCLAIM}</small>`;
     box.appendChild(d);
     const n2=document.createElement("div"); n2.className="note"; n2.textContent="كل أوضة بتصرّف على أقرب صرف: اللي جواها (لو محدده في تصميمها) أو العمود اللي على المسقط."; box.appendChild(n2);
-    const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>أبعد حنفية سخن</th></tr>${sv.rooms.map(r=>`<tr><td>${esc(r.name)}</td><td>${f(r.drainL)} م</td><td>${f(r.coldL)} م</td><td>${f(r.hotL)} م</td><td style="color:${r.farHot>7?"#b3452c":"inherit"}">${r.farHot?f(r.farHot)+" م":"—"}</td></tr>`).join("")}</table>`; box.appendChild(t); }
+    const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>صرف</th><th>بارد</th><th>سخن</th><th>أبعد حنفية سخن</th></tr>${sv.rooms.map(r=>`<tr><td>${esc(r.name)}</td><td>${f(r.drainL)} م</td><td>${f(r.coldL)} م</td><td>${f(r.hotL)} م</td><td style="color:${r.farHot>7?"#A6473A":"inherit"}">${r.farHot?f(r.farHot)+" م":"—"}</td></tr>`).join("")}</table>`; box.appendChild(t); }
   if(aptTab==="المناسيب"){
     aRange(box,"منسوب الأرضية العادي (مونة + بلاط)",3,15,APT.baseFill,"سم",async v=>{ APT.baseFill=v; APT_SVC=aptServices(); await saveApt(); renderApt(); });
     const n=document.createElement("div"); n.className="note"; n.textContent="المنسوب = ارتفاع البلاط النهائي فوق البلاطة الخرسانة. الحمام بياخد ردم أكتر عشان ميول الصرف لحد العمود."; box.appendChild(n);
@@ -161,7 +161,7 @@ function renderApt(){
     const t=document.createElement("div"); t.className="tbl"; t.innerHTML=`<table style="min-width:0"><tr><th>الأوضة</th><th>الأرضية</th><th>سيراميك حيطان</th><th>برايز/مية/صرف</th><th>التكلفة</th></tr>${rows}<tr style="font-weight:bold;background:#f1f4f6"><td>الشقة</td><td>${ta.toFixed(1)} م²</td><td>${tw?tw.toFixed(1)+" م²":"—"}</td><td>${tp.socket}/${tp.water}/${tp.drain}</td><td>${tc>0?Math.round(tc).toLocaleString("ar-EG")+" ج":"—"}</td></tr></table>`; box.appendChild(t);
     const allW=[...APT_SVC.warn,...APT.rooms.filter(r=>SNAP[r.id]).flatMap(r=>SNAP[r.id].warn.map(w=>SNAP[r.id].name+": "+w))];
     const h=document.createElement("div"); h.className="head"; h.textContent=`⚠ ملاحظات (${allW.length})`; box.appendChild(h);
-    const ul=document.createElement("ul"); ul.style.cssText="font-size:13px;line-height:1.7;color:#8a2a1c;padding-inline-start:18px"; ul.innerHTML=allW.slice(0,25).map(w=>`<li>${esc(w)}</li>`).join(""); box.appendChild(ul); }
+    const ul=document.createElement("ul"); ul.style.cssText="font-size:13px;line-height:1.7;color:#A6473A;padding-inline-start:18px"; ul.innerHTML=allW.slice(0,25).map(w=>`<li>${esc(w)}</li>`).join(""); box.appendChild(ul); }
   ctlEl=saveCtl;
 }
 function svgPt(svg,e){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
@@ -224,7 +224,7 @@ function arrangeUI(box){
   const h2=document.createElement("div"); h2.className="head"; h2.textContent="2️⃣ مكان كل أوضة"; box.appendChild(h2);
   const rs=APT.rooms.filter(r=>SNAP[r.id]);
   rs.forEach((r,i)=>{ const sn=SNAP[r.id]; const card=document.createElement("div"); card.className="card"+(aptSel===r.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${{kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||""} ${esc(sn.name)}</b><small style="color:#6b737c">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</small></div>`;
+    card.innerHTML=`<div class="ch"><b>${{kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||""} ${esc(sn.name)}</b><small style="color:#66716C">${Math.round(sn.RW*100)}×${Math.round(sn.RL*100)}</small></div>`;
     card.onclick=e=>{ if(e.target.closest("select,input,button")) return; aptSel=r.id; renderApt(); };
     if(i===0){ const n=document.createElement("div"); n.className="note"; n.textContent="📍 دي الأوضة الأساس، الباقي بيترص حواليها."; card.appendChild(n); }
     else { const others=rs.filter(x=>x!==r).map(x=>[x.id,SNAP[x.id].name]); const rel=r.rel||{to:rs[0].id,side:"right",off:0};
@@ -246,7 +246,7 @@ function arrangeUI(box){
   if(!pairs.length){ const n=document.createElement("div"); n.className="note"; n.textContent="مفيش أوض لازقة في بعض لسه. رتّبهم في الخطوة 2 الأول."; box.appendChild(n); }
   APT.doors=APT.doors||[];
   for(const s of pairs){ const na=SNAP[s.a].name, nb=SNAP[s.b].name, len=Math.round((s.s1-s.s0)*100);
-    const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="ch"><b>${na} ↔ ${nb}</b><small style="color:#6b737c">حيطة مشتركة ${len} سم</small></div>`;
+    const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="ch"><b>${na} ↔ ${nb}</b><small style="color:#66716C">حيطة مشتركة ${len} سم</small></div>`;
     const fromDesign=APTLINKS.some(L=>!L.apt&&L.B&&((L.A===s.a&&L.B===s.b)||(L.A===s.b&&L.B===s.a)));
     const d=APT.doors.find(x=>(x.a===s.a&&x.b===s.b)||(x.a===s.b&&x.b===s.a));
     if(fromDesign){ const n=document.createElement("div"); n.className="note"; n.style.color="#2e7d4f"; n.textContent="✓ فيه باب بينهم من تصميم الأوضة نفسها"; card.appendChild(n); }
@@ -347,6 +347,7 @@ function enterApt3D(walk){
   // floor under the walls between rooms
   const fl=new THREE.Mesh(new THREE.BoxGeometry(X1-X0+0.4,0.02,Z1-Z0+0.4),M("#d8d4cc")); fl.position.set((X0+X1)/2,-0.02,(Z0+Z1)/2); root.add(fl);
   APT_BUILD=false; SLIDING=false; loadingP=sl; APT3D=true; aptBox={X0,Z0,X1,Z1}; bulb.position.set((X0+X1)/2,2.6,(Z0+Z1)/2); bulb.intensity=0.6; fitSun((X0+X1)/2,(Z0+Z1)/2,Math.hypot(X1-X0,Z1-Z0)/2+0.8);
+  document.body.classList.add("apt3d"); if(panelOpen) setPanel(false);
   document.querySelector(".top").style.display="none"; document.getElementById("stats").style.display="none"; document.getElementById("open").style.display="none"; document.getElementById("aptBar").style.display="flex";
   aptView(walk);
 }
@@ -360,5 +361,5 @@ function aptView(walk){
   document.getElementById("aptWalk").textContent=FP.on?"🧊 من فوق":"🚶 امشي";
 }
 function exitApt3D(){ for(const g of aptRoots){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); scene.remove(g); } aptRoots=[];
-  APT3D=false; FP.on=false; cfg=aptSaved||cfg; aptSaved=null; document.querySelector(".top").style.display=""; document.getElementById("stats").style.display=""; document.getElementById("open").style.display=""; document.getElementById("aptBar").style.display="none";
-  build(); setView("out"); }
+  APT3D=false; FP.on=false; cfg=aptSaved||cfg; aptSaved=null; document.body.classList.remove("apt3d"); document.querySelector(".top").style.display=""; document.getElementById("stats").style.display=""; document.getElementById("open").style.display=""; document.getElementById("aptBar").style.display="none";
+  build(); if(MQ.desk.matches&&!panelOpen){ setPanel(true); renderTabs(); renderControls(); } setView("out"); }

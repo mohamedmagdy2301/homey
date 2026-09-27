@@ -2,127 +2,328 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#EEF0EC">
 <title>المطبخ 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#e9ecef;font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#23272d}
-  #c{position:fixed;top:0;left:0;width:100%;height:100%;display:block;touch-action:none}
-  .top{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:6px;z-index:3}
-  select,.btn{font:inherit;font-size:13px;padding:7px 8px;border:1px solid #b9c0c7;border-radius:10px;background:#fff;color:#23272d}
-  .top select{flex:1;min-width:0}
-  .btn{cursor:pointer;white-space:nowrap}
-  .btn.main{background:#2d5f7a;color:#fff;border-color:#2d5f7a}
-  #stats{position:fixed;top:50px;right:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
-  #stats span{background:#ffffffe6;border:1px solid #d3d8dd;border-radius:8px;padding:3px 8px;font-size:12px}
-  #stats span.warn{background:#fdecea;border-color:#e3a39a;color:#8a2a1c}
-  #panel{position:fixed;left:0;right:0;bottom:0;height:52vh;background:#fff;border-top:1px solid #cfd4d9;border-radius:16px 16px 0 0;z-index:4;transform:translateY(100%);transition:transform .3s;display:flex;flex-direction:column;box-shadow:0 -6px 20px #0002}
+  /* ---------- tokens: plaster + eucalyptus, brass for selection ---------- */
+  :root{
+    color-scheme:light;
+    --plaster:#EEF0EC; --paper:#FFFFFF; --paper-2:#F6F7F4; --paper-3:#ECEFEA;
+    --ink:#24302C; --ink-2:#46524D; --muted:#66716C;
+    --line:#DCE1DC; --line-2:#C9D0CA; --line-soft:#EBEEEA;
+    --pri:#2F5D50; --pri-2:#264D42; --pri-soft:#E2ECE7; --pri-ink:#1F4A3E;
+    --brass:#B08545; --brass-soft:#F5ECDD; --brass-ink:#7A5823;
+    --clay:#A6473A; --clay-soft:#F8E8E4; --clay-line:#E9C8C1;
+    --ok:#3F7A55;
+    --r-s:8px; --r:10px; --r-l:14px; --r-xl:20px;
+    --lift:0 1px 2px rgba(36,48,44,.08),0 4px 14px rgba(36,48,44,.07);
+    --lift-2:0 10px 34px rgba(36,48,44,.16),0 2px 6px rgba(36,48,44,.08);
+    --font:"IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif;
+    --sheet-h:56vh; --panel-w:0px;
+  }
+  @supports (height:1dvh){ :root{ --sheet-h:56dvh } }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--plaster);font-family:var(--font);color:var(--ink);font-size:14px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+  button,select,input,textarea{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+  .ico{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;scroll-behavior:auto!important} }
+
+  /* ---------- stage (3D canvas + everything floating over it) ---------- */
+  #stage{position:fixed;inset:0;overflow:hidden;background:var(--plaster);container-type:inline-size;container-name:stage}
+  #c{position:absolute;top:0;left:0;width:100%;height:100%;display:block;touch-action:none}
+  body.panel-open #stage{bottom:calc(var(--sheet-h) - 18px)}
+
+  .top{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:flex;align-items:center;gap:6px;z-index:3}
+  .top .grow{display:none}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 13px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--paper);color:var(--ink);font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s;user-select:none;-webkit-user-select:none}
+  .btn:hover{background:var(--paper-2)}
+  .btn:active{background:var(--paper-3)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.main{background:var(--pri);border-color:var(--pri);color:#fff}
+  .btn.main:hover{background:var(--pri-2)}
+  .btn.on{background:var(--brass-soft);border-color:var(--brass);color:var(--brass-ink)}
+  .btn.wide{width:100%;min-height:44px}
+  .btn.quiet{border-color:transparent;background:transparent}
+  .btn.quiet:hover{background:var(--paper-3)}
+  .btn.danger{color:var(--clay);border-color:var(--clay-line)}
+  .btn.icon{padding:0;width:38px}
+  .top .btn{box-shadow:var(--lift);border-color:transparent;height:40px}
+  .top .btn.icon{width:40px}
+  .top .btn .lbl{display:none}
+  #projBtn{max-width:36%;min-width:0;padding:0 10px 0 8px}
+  #projBtn #projName{overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  #projBtn .ico:last-child{color:var(--muted)}
+  .viewsel{position:relative;flex:1;min-width:0;display:flex;align-items:center;height:40px;background:var(--paper);border-radius:var(--r);box-shadow:var(--lift)}
+  .viewsel .ico{position:absolute;right:10px;color:var(--muted);pointer-events:none}
+  .viewsel select{width:100%;height:100%;border:0;background-color:transparent;padding-right:36px;box-shadow:none;min-height:0}
+  #open,#aptBtn{display:none}
+  /* the toolbar follows the width of the 3D area, not the screen (the docked panel takes part of it) */
+  @container stage (min-width:640px){
+    .top{left:14px;right:14px;top:14px;gap:8px}
+    .top .grow{display:block;flex:1}
+    .top .btn .lbl{display:inline}
+    .top .btn.icon{width:auto;padding:0 12px}
+    #projBtn{max-width:240px}
+    .viewsel{flex:0 1 220px}
+    #stats{top:66px;left:14px;right:14px}
+  }
+  #fab{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:3;height:50px;padding:0 24px;border-radius:25px;font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(31,74,62,.28)}
+  body.panel-open #fab,body.apt3d #fab,body.apt3d .top,body.apt3d #stats{display:none!important}
+
+  #stats{position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 50px);right:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
+  #stats span{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  #stats span.warn{background:var(--clay-soft);border-color:var(--clay-line);color:var(--clay)}
+  #hint{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);background:rgba(36,48,44,.9);color:#fff;font-size:13px;padding:7px 16px;border-radius:999px;z-index:2;transition:opacity .6s;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+  body.panel-open #hint{bottom:30px}
+  #pad{position:absolute;bottom:84px;left:14px;z-index:3;display:none;grid-template-columns:repeat(3,52px);gap:6px}
+  #pad button{width:52px;height:52px;border-radius:var(--r-l);border:1px solid var(--line);background:rgba(255,255,255,.94);font-size:20px;color:var(--ink);box-shadow:var(--lift);touch-action:none}
+  #aptBar{position:absolute;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:5;background:var(--paper);padding:6px;border-radius:var(--r-l);box-shadow:var(--lift-2)}
+
+  /* ---------- controls panel: bottom sheet on phones ---------- */
+  #panel{position:fixed;left:0;right:0;bottom:0;height:var(--sheet-h);background:var(--paper);border-radius:var(--r-xl) var(--r-xl) 0 0;z-index:4;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1),height .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(36,48,44,.14)}
   #panel.open{transform:none}
-  #panel header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e3e6e9}
-  #panel header h2{flex:1;margin:0;font-size:15px}
-  #tabs{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;border-bottom:1px solid #eef0f2}
-  #tabs button{border:1px solid #c9ced3;background:#f5f6f7;border-radius:16px;padding:5px 12px;font:inherit;font-size:13px;white-space:nowrap}
-  #tabs button.on{background:#2d5f7a;color:#fff;border-color:#2d5f7a}
-  #controls{overflow-y:auto;padding:4px 14px 30px;flex:1}
-  .ctl{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f0f1f3;font-size:14px}
-  .ctl label{flex:1}
-  .ctl select{max-width:58%}
-  .ctl input[type=range]{width:45%}
-  .ctl output{min-width:48px;text-align:left;font-size:12px;color:#5b636c}
-  .numw{display:flex;align-items:center;gap:3px;flex:none}
-  .numw small{font-size:11px;color:#6b737c}
-  input.num{width:58px;font:inherit;font-size:13px;padding:4px 3px;border:1px solid #c9ced3;border-radius:7px;text-align:center;background:#fff}
-  .addrow input.num{flex:none}
-  .ctl input[type=color]{width:44px;height:30px;border:1px solid #c9ced3;border-radius:6px;padding:0;background:none}
-  .sw{position:relative;width:44px;height:26px}
-  .sw input{opacity:0;width:0;height:0}
-  .sw i{position:absolute;inset:0;background:#c9ced3;border-radius:13px;transition:.2s}
-  .sw i:before{content:"";position:absolute;width:20px;height:20px;top:3px;right:3px;background:#fff;border-radius:50%;transition:.2s}
-  .sw input:checked+i{background:#2d5f7a}
+  #panel.full{height:92vh;height:92dvh}
+  #grab{display:flex;justify-content:center;padding:8px 0 2px;cursor:grab;touch-action:none;border:0;background:none;width:100%}
+  #grab i{width:40px;height:5px;border-radius:3px;background:var(--line-2)}
+  #panel header{display:flex;align-items:center;gap:6px;padding:2px 12px 8px 10px}
+  #panel header h2{flex:1;margin:0;font-size:17px;font-weight:600;padding-right:4px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #tabs{display:flex;gap:6px;padding:4px 12px 10px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line-soft);flex:none}
+  #tabs::-webkit-scrollbar{display:none}
+  #tabs button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);border-radius:999px;height:34px;padding:0 12px 0 14px;font-size:13px;white-space:nowrap;cursor:pointer;color:var(--ink-2)}
+  #tabs button .ico{color:var(--muted)}
+  #tabs button.on{background:var(--pri-soft);border-color:var(--pri-soft);color:var(--pri-ink);font-weight:600}
+  #tabs button.on .ico{color:var(--pri)}
+  #controls{overflow-y:auto;padding:4px 16px 40px;flex:1;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+
+  /* ---------- form rows ---------- */
+  select{appearance:none;-webkit-appearance:none;min-height:38px;padding:0 12px 0 32px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2366716C' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat left 10px center;font-size:14px;color:var(--ink);cursor:pointer;max-width:100%}
+  .ctl{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);font-size:14px;min-height:56px}
+  .ctl>label:first-child{flex:1;min-width:0;color:var(--ink)}
+  .ctl select{max-width:60%}
+  .ctl.stack{flex-wrap:wrap;gap:8px}
+  .ctl.stack>label:first-child{flex-basis:100%}
+  .ctl.stack>.seg,.ctl.stack>select{flex:1 1 100%;max-width:none}
+  .ctl.rng{display:grid;grid-template-columns:1fr auto;row-gap:8px}
+  .ctl.rng>input[type=range]{grid-column:1/-1}
+  .ctl.act1{border-bottom:0;padding:6px 0;min-height:0}
+  .ctl output{min-width:48px;text-align:left;font-size:12px;color:var(--muted)}
+  /* measurement stepper: the one bold element */
+  .numw{display:inline-flex;align-items:center;flex:none;height:40px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--paper);overflow:hidden}
+  .numw:focus-within{border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+  .numw small{font-size:12px;color:var(--muted);padding-left:4px;min-width:0}
+  .numw small:empty{display:none}
+  .stb{width:36px;height:100%;border:0;background:var(--paper-2);color:var(--pri);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  .stb:hover{background:var(--pri-soft)}
+  .stb:active{background:#d3e2db}
+  input.num{width:58px;height:100%;border:0;padding:0 2px;text-align:center;background:transparent;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);-moz-appearance:textfield}
+  input.num::-webkit-outer-spin-button,input.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input.num:focus{outline:none}
+  .addrow input.num,.card .addrow input.num{flex:none;width:64px;height:38px;border:1px solid var(--line-2);border-radius:var(--r)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0;cursor:pointer;--p:50%}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to left,var(--pri) var(--p),var(--line) var(--p))}
+  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+  input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--pri)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-9px;border-radius:50%;background:var(--paper);border:2px solid var(--pri);box-shadow:0 1px 4px rgba(36,48,44,.25)}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--paper);border:2px solid var(--pri)}
+  input[type=range]:focus-visible{outline:none}
+  input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px var(--pri-soft)}
+  .ctl input[type=color]{width:46px;height:34px;border:1px solid var(--line-2);border-radius:var(--r-s);padding:3px;background:var(--paper);cursor:pointer}
+  .ctl input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+  .ctl input[type=color]::-webkit-color-swatch{border:0;border-radius:5px}
+  .money{display:inline-flex;align-items:center;gap:6px;height:40px;border:1px solid var(--line-2);border-radius:var(--r);padding:0 10px;width:46%;background:var(--paper)}
+  .money:focus-within{border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+  .money input{border:0;background:none;width:100%;min-width:0;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;padding:0}
+  .money input:focus{outline:none}
+  .money small{color:var(--muted);font-size:12px}
+  .ctl input[type=number]:not(.num){width:40%;font-size:14px;height:38px;padding:0 10px;border:1px solid var(--line-2);border-radius:var(--r)}
+  .ctl textarea,textarea{width:100%;height:76px;font-size:11px;direction:ltr;border:1px solid var(--line-2);border-radius:var(--r);padding:8px;background:var(--paper-2)}
+  .txt{flex:1;min-width:0;height:40px;font-size:15px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--paper)}
+  .txt:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
+  .txt.big{width:100%;height:46px;font-size:16px;margin:4px 0 10px}
+  /* segmented choice */
+  .seg{display:inline-flex;gap:2px;padding:3px;background:var(--paper-3);border-radius:var(--r);flex:none;max-width:100%}
+  .seg button{flex:1;min-height:34px;padding:0 12px;border:0;border-radius:7px;background:transparent;font-size:13px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+  .seg button:hover{color:var(--ink)}
+  .seg button.on{background:var(--paper);color:var(--pri-ink);font-weight:600;box-shadow:0 1px 3px rgba(36,48,44,.14)}
+  /* switch */
+  .sw{position:relative;width:46px;height:28px;flex:none;cursor:pointer}
+  .sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .sw i{position:absolute;inset:0;background:var(--line-2);border-radius:14px;transition:background .2s;pointer-events:none}
+  .sw i:before{content:"";position:absolute;width:22px;height:22px;top:3px;right:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .sw input:checked+i{background:var(--pri)}
   .sw input:checked+i:before{transform:translateX(-18px)}
-  .head{font-weight:bold;font-size:14px;color:#2d5f7a;padding:14px 0 2px;border-bottom:2px solid #e3eaef}
-  .note{font-size:12px;color:#6b737c;padding:8px 0}
-  .ctl input[type=number]{width:40%;font:inherit;font-size:14px;padding:6px 8px;border:1px solid #c9ced3;border-radius:8px}
-  .ctl textarea{width:100%;height:70px;font-size:11px;direction:ltr;border:1px solid #c9ced3;border-radius:8px}
-  .act{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0}
+  .sw input:focus-visible+i{outline:2px solid var(--pri);outline-offset:2px}
+
+  /* ---------- content blocks ---------- */
+  .head{font-weight:600;font-size:15px;color:var(--ink);padding:22px 0 6px;display:flex;align-items:center;gap:8px}
+  .head:first-child{padding-top:10px}
+  .note{font-size:13px;color:var(--muted);padding:8px 0;line-height:1.75}
+  .act{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0}
   .act .btn{flex:1;min-width:30%}
-  .sum{background:#f3f6f8;border:1px solid #dce3e8;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px;line-height:1.9}
-  .sum b{color:#2d5f7a}
-  #pad{position:fixed;bottom:56px;left:12px;z-index:3;display:none;grid-template-columns:repeat(3,48px);gap:6px}
-  #pad button{width:48px;height:48px;border-radius:12px;border:1px solid #b9c0c7;background:#fffffff0;font-size:20px}
-  #shot{position:fixed;inset:0;background:#000d;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
-  #shot img{max-width:100%;max-height:78vh;border-radius:8px}
-  #shot p{color:#fff;font-size:13px;margin:0;text-align:center}
-  #draw{position:fixed;inset:0;background:#fff;z-index:10;display:none;flex-direction:column}
-  #draw .dhead{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #dde2e6;flex-wrap:wrap}
-  #draw .dhead b{font-size:15px;margin-left:auto}
-  .dtabs{display:flex;gap:6px;overflow-x:auto;width:100%;padding-top:4px}
-  .dtabs button{border:1px solid #c9ced3;background:#f5f6f7;border-radius:14px;padding:4px 10px;font:inherit;font-size:12px;white-space:nowrap}
-  #dbody{overflow:auto;padding:10px 12px 40px;-webkit-overflow-scrolling:touch}
-  #dbody section{margin-bottom:22px}
-  #dbody h3{font-size:15px;margin:6px 0 2px;color:#2d5f7a}
-  #dbody .sub{font-size:12px;color:#6b737c;margin-bottom:6px}
-  .elev{overflow-x:auto;border:1px solid #e3e6e9;border-radius:8px}
-  .elev svg{display:block;min-width:620px;width:100%;height:auto}
-  .tbl{overflow-x:auto}
-  .tbl table{border-collapse:collapse;font-size:12px;min-width:560px;width:100%}
-  .tbl th,.tbl td{border:1px solid #dfe3e6;padding:5px 6px;text-align:center}
-  .tbl th{background:#f1f4f6}
-  .urow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f2f4}
-  .urow .n{min-width:26px;height:26px;border-radius:50%;background:#2d5f7a;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
-  .urow .t{flex:1;font-size:13px}
-  .urow .t small{display:block;color:#6b737c}
-  .urow.sel{background:#fff4e5}
+  .sum{background:var(--pri-soft);border-radius:var(--r-l);padding:12px 14px;margin:10px 0;font-size:14px;line-height:1.9;color:var(--ink)}
+  .sum b{color:var(--pri-ink);font-variant-numeric:tabular-nums}
+  .sum hr{border:0;border-top:1px solid rgba(47,93,80,.18);margin:8px 0}
+  .sum small{color:var(--ink-2)}
+  .card{border:1px solid var(--line);border-radius:var(--r-l);padding:4px 12px 10px;margin:10px 0;background:var(--paper)}
+  .card .ch{display:flex;align-items:center;gap:8px;min-height:46px;cursor:default}
+  .card[data-key] .ch{cursor:pointer}
+  .card .ch b{flex:1;font-size:14px;font-weight:600;min-width:0}
+  .card .ch small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .card .ch .btn{min-height:34px;padding:0 10px;font-size:13px}
+  .card.sel{border-color:var(--brass);background:#FDFAF4;box-shadow:0 0 0 3px var(--brass-soft)}
+  .card.closed{padding-bottom:4px}
+  .card.closed>:not(.ch){display:none!important}
+  .card .ctl:last-child{border-bottom:0}
+  .fold{width:30px;height:30px;border:0;background:var(--paper-2);border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;flex:none}
+  .fold .ico{transition:transform .2s}
+  .card.closed .fold .ico{transform:rotate(90deg)}
+  .n,.urow .n{min-width:26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;flex:none}
+  .addrow{display:flex;gap:8px;padding:10px 0;align-items:center}
+  .addrow select{flex:1;min-width:0}
+  .adder{background:var(--paper-2);border:1px dashed var(--line-2);border-radius:var(--r-l);padding:12px;margin:10px 0}
+  .adder .adder-l{font-size:13px;color:var(--muted);margin-bottom:6px}
+  .adder .seg{width:100%;margin-bottom:10px;background:var(--paper-3)}
+  .adder .addrow{padding:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chipbtn{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 12px 0 14px;border:1px solid var(--line-2);border-radius:999px;background:var(--paper);font-size:13px;cursor:pointer;color:var(--ink)}
+  .chipbtn .ico{color:var(--pri)}
+  .chipbtn:hover{border-color:var(--pri);background:var(--pri-soft)}
+  .step{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line-soft);cursor:pointer}
+  .step input{width:20px;height:20px;margin-top:3px;flex:none;accent-color:var(--pri)}
+  .step div{font-size:13.5px;line-height:1.7}
+  .step.done div{color:var(--muted);text-decoration:line-through}
+  .urow{display:flex;align-items:center;gap:8px;padding:10px 6px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;border-radius:var(--r)}
+  .urow .t{flex:1;font-size:14px;cursor:pointer;min-width:0}
+  .urow .t small{display:block;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .urow.sel{background:var(--brass-soft)}
   .urow select{max-width:44%}
-  @media print{ body>*:not(#draw){display:none!important} #draw{position:static;display:block!important} #draw .dhead{display:none} #dbody{overflow:visible} .elev svg{min-width:0} section{page-break-inside:avoid} }
-  .btn.on{background:#e07b00;border-color:#e07b00;color:#fff}
-  .card{border:1px solid #dfe4e8;border-radius:12px;padding:6px 10px 8px;margin:10px 0;background:#fbfcfd}
-  .card .ch{display:flex;align-items:center;gap:8px;padding:4px 0}
-  .card .ch b{flex:1;font-size:14px}
-  .addrow{display:flex;gap:6px;padding:8px 0}
-  .addrow select{flex:1}
-  .step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #eef0f2}
-  .step input{width:20px;height:20px;margin-top:2px;flex:none}
-  .step div{font-size:13px;line-height:1.6}
-  .step.done div{color:#8a9097;text-decoration:line-through}
+  .urow .btn{min-height:36px}
   .urow .det{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 2px 34px}
-  .urow{flex-wrap:wrap}
-  #projBtn{max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ovl{position:fixed;inset:0;background:#fff;z-index:11;display:none;flex-direction:column}
-  .ovh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #dde2e6}
-  .ovh b{flex:1;font-size:15px}
-  .ovb{flex:1;overflow:auto;padding:10px 12px 30px;-webkit-overflow-scrolling:touch}
-  .ovf{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-top:1px solid #dde2e6}
-  .ovf .btn{flex:1;padding:10px}
-  .card.sel{border-color:#e07b00;background:#fff8ef}
-  #aptBar{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:5;background:#ffffffe6;padding:6px;border-radius:12px;box-shadow:0 2px 8px #0002}
-  .planbox{border:1px solid #e3e6e9;border-radius:8px;padding:6px;margin-bottom:6px;direction:ltr}
+  .tbl{overflow-x:auto;border-radius:var(--r)}
+  .tbl table{border-collapse:collapse;font-size:12.5px;min-width:560px;width:100%;font-variant-numeric:tabular-nums}
+  .tbl th,.tbl td{border:1px solid var(--line);padding:6px 7px;text-align:center}
+  .tbl th{background:var(--paper-2);font-weight:600}
+  .planbox{border:1px solid var(--line);border-radius:var(--r-l);padding:8px;margin-bottom:8px;direction:ltr;background:var(--paper)}
   .planbox svg{width:100%;height:auto;max-height:44vh;display:block}
-  #hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#23272dcc;color:#fff;font-size:12px;padding:5px 12px;border-radius:14px;z-index:2;transition:opacity .6s;white-space:nowrap}
+  #wizBody .planbox svg{max-height:30vh}
+  .tplgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .btn.tpl{flex-direction:column;gap:4px;padding:10px 4px;height:auto;white-space:normal;font-size:12.5px;line-height:1.35;text-align:center}
+  .btn.tpl.on{box-shadow:0 0 0 3px var(--brass-soft)}
+  .rtypes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .rtypes .btn{min-height:46px;font-size:15px}
+  .tabs .btn{min-height:34px;border-radius:999px;font-size:13px}
+
+  /* ---------- overlays ---------- */
+  .ovl{position:fixed;inset:0;z-index:11;display:none;align-items:stretch;justify-content:center;background:rgba(36,48,44,.42)}
+  .dlg{background:var(--paper);display:flex;flex-direction:column;width:100%;height:100%;overflow:hidden}
+  .ovh{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line-soft);min-height:60px}
+  .ovh b{flex:1;font-size:17px;font-weight:600}
+  .ovb{flex:1;overflow:auto;padding:12px 16px 30px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .ovf{display:flex;justify-content:space-between;gap:8px;padding:12px 14px max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line-soft)}
+  .ovf .btn{flex:1;min-height:46px}
+  .progress{height:4px;background:var(--line-soft)}
+  .progress div{height:4px;background:var(--pri);width:0;transition:width .3s}
+  #shot{position:fixed;inset:0;background:rgba(20,26,24,.85);z-index:12;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
+  #shot img{max-width:100%;max-height:76vh;border-radius:var(--r-l)}
+  #shot p{color:#fff;font-size:14px;margin:0;text-align:center}
+  /* drawings document */
+  #draw{position:fixed;inset:0;background:var(--paper);z-index:10;display:none;flex-direction:column}
+  #draw .dhead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+  #draw .dhead b{font-size:16px;font-weight:600;margin-left:auto}
+  .dwrap{flex:1;display:flex;flex-direction:column;min-height:0}
+  .dtabs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;border-bottom:1px solid var(--line-soft);flex:none;scrollbar-width:none}
+  .dtabs::-webkit-scrollbar{display:none}
+  .dtabs button{border:1px solid var(--line);background:var(--paper);border-radius:999px;min-height:32px;padding:0 12px;font-size:13px;white-space:nowrap;cursor:pointer;color:var(--ink-2)}
+  .dtabs button:hover{background:var(--pri-soft);border-color:var(--pri-soft);color:var(--pri-ink)}
+  #dbody{flex:1;overflow:auto;padding:14px 14px 50px;-webkit-overflow-scrolling:touch}
+  #dbody section{margin-bottom:28px}
+  #dbody h2{font-size:18px}
+  #dbody h3{font-size:16px;font-weight:600;margin:8px 0 4px;color:var(--pri-ink)}
+  #dbody .sub{font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.7}
+  .elev{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
+  .elev svg{display:block;min-width:620px;width:100%;height:auto}
+  @media print{ body>*:not(#draw){display:none!important} #draw{position:static;display:block!important} #draw .dhead,.dtabs{display:none!important} .dwrap{display:block!important} #dbody{overflow:visible;padding:0!important} .elev svg{min-width:0} section{page-break-inside:avoid} }
+
+  /* ---------- tablet: docked side panel, dialogs ---------- */
+  @media (min-width:760px){
+    :root{--panel-w:384px}
+    body.panel-open #stage{bottom:0;right:var(--panel-w)}
+    #open,#aptBtn{display:inline-flex}
+    body.panel-open #open{display:none}
+    #fab{display:none}
+    #hint{bottom:22px}
+    body.panel-open #hint{bottom:22px}
+    #pad{bottom:22px}
+    #panel{top:0;bottom:0;left:auto;right:0;width:var(--panel-w);height:auto;border-radius:0;transform:translateX(102%);box-shadow:-1px 0 0 var(--line),-12px 0 30px rgba(36,48,44,.06)}
+    #panel.full{height:auto}
+    #grab{display:none}
+    #panel header{padding:14px 14px 10px 12px;min-height:64px}
+    .ovl{align-items:center;padding:24px}
+    .dlg{width:min(680px,100%);height:auto;max-height:min(880px,100%);border-radius:var(--r-xl);box-shadow:var(--lift-2)}
+    #apt .dlg{width:min(1100px,100%);height:100%}
+    #wiz .dlg{width:min(760px,100%);height:100%}
+    .tplgrid{grid-template-columns:repeat(4,1fr)}
+    .rtypes{grid-template-columns:repeat(4,1fr)}
+    #draw .dhead{padding:12px 20px}
+    #dbody{padding:20px 24px 60px}
+  }
+  /* ---------- desktop: tab rail + wide panel, two-column wizard and document ---------- */
+  @media (min-width:1180px){
+    :root{--panel-w:476px}
+    #panel{display:grid;grid-template-columns:92px 1fr;grid-template-rows:auto 1fr}
+    #panel header{grid-column:1/-1;border-bottom:1px solid var(--line-soft)}
+    #tabs{flex-direction:column;overflow-x:hidden;overflow-y:auto;padding:10px 6px;gap:2px;border-bottom:0;border-left:1px solid var(--line-soft);background:var(--paper-2)}
+    #tabs button{flex-direction:column;height:auto;min-height:62px;padding:9px 4px 8px;border:0;border-radius:var(--r);background:transparent;white-space:normal;text-align:center;font-size:11.5px;line-height:1.3;gap:5px;flex:none}
+    #tabs button .ico{width:22px;height:22px}
+    #tabs button:hover{background:var(--paper-3)}
+    #tabs button.on{background:var(--pri-soft)}
+    #controls{padding:8px 22px 50px}
+    .ctl>label:first-child{font-size:14.5px}
+    #wiz .dlg{width:min(1140px,100%)}
+    #wizBody{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;padding:18px 24px 30px}
+    #wizBody>:first-child{position:sticky;top:0;order:2}
+    #wizBody>:first-child .planbox svg{max-height:62vh}
+    .dwrap{flex-direction:row}
+    .dtabs{flex-direction:column;width:230px;border-bottom:0;border-left:1px solid var(--line-soft);padding:16px 12px;overflow-y:auto;background:var(--paper-2);gap:4px}
+    .dtabs button{border:0;background:transparent;border-radius:var(--r-s);text-align:right;min-height:36px;white-space:normal}
+    #dbody{padding:24px max(28px,calc((100% - 1040px)/2)) 70px}
+  }
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-<div class="top">
-  <button class="btn" id="projBtn" aria-label="المشاريع">🏠 <span id="projName">مطبخي</span></button>
-  <select id="view" aria-label="المنظر"></select>
-  <button class="btn" id="measBtn" aria-label="شريط قياس">📏</button>
-  <button class="btn" id="drawBtn" aria-label="رسومات النجار">📐</button>
-  <button class="btn main" id="open">⚙ التحكم</button>
-</div>
-<div id="stats"></div>
-<div id="pad"><span></span><button data-m="f" aria-label="قدام">▲</button><span></span><button data-m="l" aria-label="لف شمال">⟲</button><button data-m="b" aria-label="ورا">▼</button><button data-m="r" aria-label="لف يمين">⟳</button></div>
-<div id="shot"><img alt="صورة المطبخ"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
-<div id="draw"><div class="dhead"><b>📐 رسومات ومقاسات للتنفيذ</b><button class="btn" id="dprint">🖨 طباعة / PDF</button><button class="btn" id="dclose">✕</button><div class="dtabs" id="dtabs"></div></div><div id="dbody"></div></div>
-<div id="sheet" class="ovl"><div class="ovh"><b>🏠 المطابخ بتاعتي</b><button class="btn" onclick="closeSheet()">✕</button></div><div id="sheetBody" class="ovb"></div></div>
-<div id="apt" class="ovl"><div class="ovh"><b>🏢 الشقة</b><button class="btn" onclick="closeApt()">✕</button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div>
-<div id="aptBar"><button class="btn" id="aptWalk" onclick="aptView(!FP.on)">🚶 امشي</button><button class="btn" onclick="exitApt3D(); openApt();">🏢 المسقط</button><button class="btn main" onclick="exitApt3D()">✕ رجوع</button></div>
-<div id="wiz" class="ovl"><div class="ovh"><b id="wizTitle"></b><button class="btn" id="wizClose">✕</button></div><div style="height:4px;background:#e3e8ec"><div id="wizBar" style="height:4px;background:#2d5f7a;width:0"></div></div><div id="wizBody" class="ovb"></div><div class="ovf"><button class="btn" id="wizBack">→ رجوع</button><button class="btn main" id="wizNext">التالي ←</button></div></div>
-<div id="hint">اسحب عشان تلف، وصباعين للتقريب</div>
-<div id="panel">
-  <header><h2>التحكم في التصميم</h2><button class="btn" id="undo">↶ تراجع</button><button class="btn" id="reset">رجّع الافتراضي</button><button class="btn" id="close">✕</button></header>
-  <div id="tabs"></div>
+<main id="stage">
+  <canvas id="c" aria-label="التصميم 3D"></canvas>
+  <div class="top" role="toolbar" aria-label="أدوات">
+    <button class="btn" id="projBtn" aria-label="المشاريع" title="مشاريعي"><span data-ico="home"></span><span id="projName">مطبخي</span><span data-ico="chev" data-s="16"></span></button>
+    <label class="viewsel" title="زاوية العرض"><span data-ico="eye" data-s="18"></span><select id="view" aria-label="المنظر"></select></label>
+    <span class="grow"></span>
+    <button class="btn icon" id="measBtn" aria-label="شريط قياس" title="شريط قياس"><span data-ico="ruler"></span><span class="lbl">قياس</span></button>
+    <button class="btn icon" id="drawBtn" aria-label="رسومات التنفيذ" title="رسومات ومقاسات للتنفيذ"><span data-ico="square"></span><span class="lbl">الرسومات</span></button>
+    <button class="btn icon" id="aptBtn" aria-label="الشقة" title="الشقة كلها"><span data-ico="building"></span><span class="lbl">الشقة</span></button>
+    <button class="btn main" id="open" aria-label="التحكم في التصميم"><span data-ico="sliders"></span><span>التحكم</span></button>
+  </div>
+  <div id="stats"></div>
+  <div id="pad"><span></span><button data-m="f" aria-label="قدام">▲</button><span></span><button data-m="l" aria-label="لف شمال">⟲</button><button data-m="b" aria-label="ورا">▼</button><button data-m="r" aria-label="لف يمين">⟳</button></div>
+  <div id="aptBar"><button class="btn" id="aptWalk" onclick="aptView(!FP.on)">🚶 امشي</button><button class="btn" onclick="exitApt3D(); openApt();">🏢 المسقط</button><button class="btn main" onclick="exitApt3D()">✕ رجوع</button></div>
+  <div id="hint">اسحب عشان تلف، وصباعين للتقريب</div>
+  <button class="btn main" id="fab"><span data-ico="sliders"></span><span>التحكم</span></button>
+</main>
+<aside id="panel" aria-label="التحكم في التصميم">
+  <button id="grab" aria-label="كبّر أو صغّر اللوحة"><i></i></button>
+  <header><h2 id="ptitle">التحكم في التصميم</h2><button class="btn quiet" id="undo" title="تراجع (Ctrl+Z)"><span data-ico="undo" data-s="18"></span><span>تراجع</span></button><button class="btn quiet icon" id="reset" aria-label="رجّع الافتراضي" title="رجّع الافتراضي"><span data-ico="reset" data-s="18"></span></button><button class="btn quiet icon" id="close" aria-label="قفل" title="قفل"><span data-ico="x"></span></button></header>
+  <nav id="tabs" aria-label="الأقسام"></nav>
   <div id="controls"></div>
-</div>
+</aside>
+<div id="shot"><img alt="صورة المطبخ"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
+<div id="draw"><div class="dhead"><b>📐 رسومات ومقاسات للتنفيذ</b><button class="btn" id="dprint"><span data-ico="print" data-s="18"></span><span>طباعة / PDF</span></button><button class="btn icon" id="dclose" aria-label="قفل"><span data-ico="x"></span></button></div><div class="dwrap"><nav class="dtabs" id="dtabs" aria-label="أجزاء المستند"></nav><div id="dbody"></div></div></div>
+<div id="sheet" class="ovl"><div class="dlg" role="dialog" aria-label="مشاريعي"><div class="ovh"><b>🏠 مشاريعي</b><button class="btn icon quiet" onclick="closeSheet()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="sheetBody" class="ovb"></div></div></div>
+<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-label="الشقة"><div class="ovh"><b>🏢 الشقة</b><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
+<div id="wiz" class="ovl"><div class="dlg" role="dialog" aria-labelledby="wizTitle"><div class="ovh"><b id="wizTitle"></b><button class="btn icon quiet" id="wizClose" aria-label="إلغاء"><span data-ico="x"></span></button></div><div class="progress"><div id="wizBar"></div></div><div id="wizBody" class="ovb"></div><div class="ovf"><button class="btn" id="wizBack">→ رجوع</button><button class="btn main" id="wizNext">التالي ←</button></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>

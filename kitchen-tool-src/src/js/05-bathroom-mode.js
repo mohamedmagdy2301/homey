@@ -146,16 +146,11 @@ let BATH_DRAIN=null;
 function buildHall(warn){ drawPts(); const w=Math.round(Math.min(RW,RL)*100); if(w<90) warn.push(`عرض الطرقة ${w} سم، الأحسن 100 سم أو أكتر`); return {walk:w,counter:0}; }
 function bathBox(el){
   el=el||ctlEl;
-  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select");
-  for(const [k,v] of Object.entries(BFIX)){ const o=document.createElement("option"); o.value=k; o.textContent=v.n; ts.appendChild(o); }
-  const ws=document.createElement("select"); for(const [k,v] of W4OPT()){ const o=document.createElement("option"); o.value=k; o.textContent=v; ws.appendChild(o); } ws.value="L";
-  const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕";
-  ab.onclick=()=>{ pushHist(); const T=BFIX[ts.value]; const L=Math.round(wlen(ws.value)*100); const b={id:"f"+Math.random().toString(36).slice(2,6),type:ts.value,wall:ws.value,pos:Math.max(0,Math.round((L-T.w)/2)),w:T.w,d:T.d}; if(T.var) b.var=T.var[0][0]; if(T.wallY) b.y=T.wallY; if(ts.value==="basin") b.mirror="mirror"; cfg.bfix=[...(cfg.bfix||[]),b]; build(); UI_REFRESH(); hint(`اتضاف ${T.n} ✓`); };
-  ar.append(ts,ws,ab); el.appendChild(ar);
+  chipAdder(el,"bfix",Object.entries(BFIX).map(([k,v])=>[k,v.n]),(type,wall)=>{ pushHist(); const T=BFIX[type]; const L=Math.round(wlen(wall)*100); const b={id:"f"+Math.random().toString(36).slice(2,6),type:type,wall:wall,pos:Math.max(0,Math.round((L-T.w)/2)),w:T.w,d:T.d}; if(T.var) b.var=T.var[0][0]; if(T.wallY) b.y=T.wallY; if(type==="basin") b.mirror="mirror"; cfg.bfix=[...(cfg.bfix||[]),b]; OPENC.add(b.id); build(); UI_REFRESH(); hint(`اتضاف ${T.n} ✓`); },"L");
   const n=document.createElement("div"); n.className="note"; n.textContent="اسحب أي جهاز بصباعك في الـ3D عشان تحركه على الحيطة. المكان بيتقاس من أول الحيطة."; el.appendChild(n);
   for(const b of cfg.bfix||[]){ const T=BFIX[b.type]; if(!T) continue; const lim=BLIM[b.type];
-    const card=document.createElement("div"); card.className="card"; const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${T.n}</b>`;
-    const del=document.createElement("button"); del.className="btn"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.bfix=cfg.bfix.filter(x=>x!==b); build(); UI_REFRESH(); }; hd.appendChild(del); card.appendChild(hd);
+    const card=document.createElement("div"); card.className="card"; const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${T.n}</b><small>${shortWall(b.wall)} • ${b.w} سم</small>`;
+    const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.bfix=cfg.bfix.filter(x=>x!==b); build(); UI_REFRESH(); }; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,b.id);
     if(T.var) objSelect(card,b,"var","النوع",T.var);
     objSelect(card,b,"wall","على أنهي حيطة",W4OPT());
     objRange(card,b,"pos","بعده عن أول الحيطة",0,Math.max(1,Math.round(wlen(b.wall)*100)-b.w),1);

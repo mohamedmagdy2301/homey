@@ -203,24 +203,25 @@ function elecLoadsRoom(){
 }
 function furnBox(el){
   el=el||ctlEl;
-  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select"); const cats={};
+  const box=document.createElement("div"); box.className="adder"; box.innerHTML=`<div class="adder-l">اختار القطعة وضيفها، وبعدين اسحبها لمكانها في الـ3D:</div>`;
+  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select"); ts.setAttribute("aria-label","القطعة"); const cats={};
   for(const [k,v] of Object.entries(FURN)) (cats[v.cat]=cats[v.cat]||[]).push([k,v.n]);
   ts.innerHTML=Object.entries(cats).map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("");
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
   ab.onclick=()=>{ pushHist(); const T=FURN[ts.value]; const it={id:"i"+Math.random().toString(36).slice(2,7),type:ts.value,w:T.w,d:T.d};
     if(T.var) it.var=T.var[0][0]; if(T.wall){ it.snap="W"; it.pos=Math.max(0,Math.round((RW*100-T.w)/2)); it.y=T.y; } else { it.x=Math.round(RW*50); it.z=Math.round(RL*50); it.rot=0; }
-    cfg.furn=[...(cfg.furn||[]),it]; build(); UI_REFRESH(); hint(`اتضاف ${T.n} في نص الأوضة، اسحبه بصباعك لمكانه ✓`,3500); };
-  ar.append(ts,ab); el.appendChild(ar);
+    cfg.furn=[...(cfg.furn||[]),it]; OPENC.add(it.id); build(); UI_REFRESH(); hint(`اتضاف ${T.n} في نص الأوضة، اسحبه بصباعك لمكانه ✓`,3500); };
+  ar.append(ts,ab); box.appendChild(ar); el.appendChild(box);
   const n=document.createElement("div"); n.className="note"; n.textContent="اسحب أي قطعة بصباعك في الـ3D. «لازقة في حيطة» بتخليها تتحرك على الحيطة بس، و«حرة» تتحرك في أي حتة وتلفها."; el.appendChild(n);
   const YN=[["","لأ"],["1","أيوه"]];
   for(const it of cfg.furn||[]){ const T=FURN[it.type]; if(!T) continue; const E=effDims(it,T);
-    const card=document.createElement("div"); card.className="card"; const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${T.n}</b><small style="color:#6b737c">${E.w}×${it.d}×${E.h}</small>`;
-    const cp=document.createElement("button"); cp.className="btn"; cp.textContent="📄"; cp.setAttribute("aria-label","نسخة"); cp.onclick=()=>{ pushHist(); const c=JSON.parse(JSON.stringify(it)); c.id="i"+Math.random().toString(36).slice(2,7); c.fillW=""; if(c.snap) c.pos=(c.pos||0)+E.w+5; else c.x=(c.x||0)+30; cfg.furn=[...cfg.furn,c]; build(); UI_REFRESH(); };
-    const del=document.createElement("button"); del.className="btn"; del.textContent="🗑"; del.onclick=()=>{ pushHist(); cfg.furn=cfg.furn.filter(x=>x!==it); build(); UI_REFRESH(); }; hd.append(cp,del); card.appendChild(hd);
+    const card=document.createElement("div"); card.className="card"; const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${T.n}</b><small>${E.w}×${it.d}×${E.h}</small>`;
+    const cp=document.createElement("button"); cp.className="btn icon"; cp.textContent="📄"; cp.setAttribute("aria-label","نسخة"); cp.onclick=()=>{ pushHist(); const c=JSON.parse(JSON.stringify(it)); c.id="i"+Math.random().toString(36).slice(2,7); c.fillW=""; if(c.snap) c.pos=(c.pos||0)+E.w+5; else c.x=(c.x||0)+30; cfg.furn=[...cfg.furn,c]; build(); UI_REFRESH(); };
+    const del=document.createElement("button"); del.className="btn icon danger"; del.textContent="🗑"; del.setAttribute("aria-label","شيل"); del.onclick=()=>{ pushHist(); cfg.furn=cfg.furn.filter(x=>x!==it); build(); UI_REFRESH(); }; hd.append(cp,del); card.appendChild(hd); foldCard(card,hd,it.id);
     if(T.var) objSelect(card,it,"var","النوع",T.var,()=>{ if(it.type==="tv"){ it.w=Math.round(+it.var*2.21); } if(it.type==="bed2") it.w=+it.var; });
     const snapOpts=T.wall?W4OPT():[["","حرة (في أي حتة)"],...W4.map(w=>[w,"لازقة في "+WNAME[w]])];
     objSelect(card,it,"snap","مكانها",snapOpts,()=>{ if(it.snap){ it.pos=Math.max(0,Math.round(((it.snap==="W"||it.snap==="D")?RW:RL)*50-it.w/2)); } else { it.fillW=""; it.x=Math.round(RW*50); it.z=Math.round(RL*50); it.rot=it.rot||0; } });
-    const sub=t=>{ const h=document.createElement("div"); h.className="note"; h.style.cssText="font-weight:bold;color:#2d5f7a;margin-top:6px"; h.textContent=t; card.appendChild(h); };
+    const sub=t=>{ const h=document.createElement("div"); h.className="note"; h.style.cssText="font-weight:600;color:var(--pri-ink);margin-top:6px"; h.textContent=t; card.appendChild(h); };
     if(it.snap){ sub("📍 المكان");
       if(!T.wall) objSelect(card,it,"fillW","ملو عرض الحيطة؟",YN);
       const L=Math.round(wlen(it.snap)*100);
@@ -248,7 +249,7 @@ function furnBox(el){
         const dl=document.createElement("button"); dl.className="btn"; dl.textContent="✕"; dl.onclick=()=>{ pushHist(); own(); secs.splice(idx,1); if(!secs.length) delete it.secs; build(); UI_REFRESH(); };
         row.append(ks,wi,un,up,dl); card.appendChild(row);
         if(sc.k==="gap"||sc.k==="desk"||sc.k==="dresser"){ if((it.topH||0)>0){ const tg={v:sc.top==="0"?"0":""}; objSelect(card,tg,"v","  ↳ فوقه شنطة؟",[["","أيوه"],["0","لأ، فاضي للسقف"]],()=>{ own(); sc.top=tg.v; }); } } });
-      const n=document.createElement("div"); n.className="note"; n.style.color=over?"#b3452c":"#6b737c"; n.textContent=(over?"⚠ ":"")+`سيب العرض فاضي عشان القسم ياخد الباقي لوحده. العرض الكلي ${E.w} سم.`; card.appendChild(n);
+      const n=document.createElement("div"); n.className="note"; n.style.color=over?"var(--clay)":""; n.textContent=(over?"⚠ ":"")+`سيب العرض فاضي عشان القسم ياخد الباقي لوحده. العرض الكلي ${E.w} سم.`; card.appendChild(n);
       const act=document.createElement("div"); act.className="act";
       const ad=document.createElement("button"); ad.className="btn"; ad.textContent="➕ قسم"; ad.onclick=()=>{ pushHist(); own(); secs.push({k:"doors",w:0}); build(); UI_REFRESH(); };
       const rs=document.createElement("button"); rs.className="btn"; rs.textContent="↺ الأقسام الافتراضية"; rs.onclick=()=>{ pushHist(); delete it.secs; build(); UI_REFRESH(); };

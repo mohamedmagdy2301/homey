@@ -56,9 +56,9 @@ function measurePick(cx,cy){
   const h=castAt(cx,cy).find(visibleHit); if(!h) return;
   if(mPts.length>=2) clearMeasure();
   const p=h.point.clone(); mPts.push(p);
-  const dot=new THREE.Mesh(new THREE.SphereGeometry(0.025,12,8),new THREE.MeshBasicMaterial({color:0xe07b00,depthTest:false})); dot.position.copy(p); dot.renderOrder=29; measureG.add(dot);
-  if(mPts.length===2){ const [a,b]=mPts; const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xe07b00,depthTest:false})); ln.renderOrder=29; measureG.add(ln);
-    const cm=Math.round(a.distanceTo(b)*100); measureG.add(spriteLabel(`${cm} سم`,a.clone().add(b).multiplyScalar(0.5).add(new THREE.Vector3(0,0.06,0)),"#e07b00")); hint(`المسافة ${cm} سم • دوس على نقطتين تانيين للقياس من جديد`,4000); }
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(0.025,12,8),new THREE.MeshBasicMaterial({color:0xb07a35,depthTest:false})); dot.position.copy(p); dot.renderOrder=29; measureG.add(dot);
+  if(mPts.length===2){ const [a,b]=mPts; const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:0xb07a35,depthTest:false})); ln.renderOrder=29; measureG.add(ln);
+    const cm=Math.round(a.distanceTo(b)*100); measureG.add(spriteLabel(`${cm} سم`,a.clone().add(b).multiplyScalar(0.5).add(new THREE.Vector3(0,0.06,0)),"#b07a35")); hint(`المسافة ${cm} سم • دوس على نقطتين تانيين للقياس من جديد`,4000); }
   else hint("دوس على النقطة التانية",0);
 }
 document.getElementById("measBtn").onclick=()=>{ measure=!measure; document.getElementById("measBtn").classList.toggle("on",measure); if(measure){ hint("📏 دوس على أي نقطتين وهقولك المسافة بينهم",0); } else { clearMeasure(); hint("اتقفل شريط القياس"); } };

@@ -1,10 +1,49 @@
 // =================== UI ===================
-const panel=document.getElementById("panel");
+// line icons (24×24, stroked with currentColor)
+const ICONS={home:"M3 10.5 12 3l9 7.5M5 9v11h14V9M10 20v-6h4v6",chev:"m6 9 6 6 6-6",eye:"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
+  ruler:"M3 8h18v8H3zM7 8v3M11 8v4M15 8v3M19 8v4",square:"M4 4v16h16L4 4ZM8 12v4h4Z",building:"M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2",
+  sliders:"M4 7h8M16 7h4M4 17h4M12 17h8M14 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z",undo:"M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h4",reset:"M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4",
+  x:"M6 6l12 12M18 6 6 18",plus:"M12 5v14M5 12h14",minus:"M5 12h14",print:"M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z",dot:"M12 12h.01",
+  stove:"M4 3h16v18H4zM4 8h16M8 5.5h.01M12 5.5h.01M9 14a3 3 0 1 0 6 0 3 3 0 0 0-6 0",addbox:"M4 4h16v16H4zM12 8v8M8 12h8",dims:"M5 19 19 5M5 19v-5M5 19h5M19 5h-5M19 5v5",
+  cabinet:"M4 3h16v18H4zM12 3v18M9.5 11v2M14.5 11v2",grid:"M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",plan:"M3 3h18v18H3zM3 12h7M14 3v6M14 21v-5",
+  height:"M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4",palette:"M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.5 0-1.2-1-1.5-1-2.5s.9-1.5 2-1.5H17a4 4 0 0 0 4-4c0-4.7-4-8.5-9-8.5ZM7.5 11.5h.01M10 7.5h.01M15 7.5h.01",
+  utility:"M9 3S4 9 4 13a5 5 0 0 0 10 0c0-4-5-10-5-10ZM19 3l-2.5 5h4L18 13",steps:"M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17M11 6h9M11 12h9M11 18h9",
+  coins:"M12 4c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3ZM4 7v5c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5",
+  folder:"M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z",bath:"M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 12V5a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2",
+  lamp:"M3 4h18M6 4v3h12V4M12 7v4M9 14a3 3 0 0 0 6 0Z",sofa:"M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2M19 18v2",
+  roller:"M4 4h13v5H4zM17 6.5h3V12h-8v3M11 15h2v6h-2z",tiles:"M4 4h16v16H4zM4 10h16M4 15h16M10 4v6M14 10v5M9 15v5"};
+function ico(n,s){ s=s||20; return `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"><path d="${ICONS[n]||ICONS.dot}"/></svg>`; }
+document.querySelectorAll("[data-ico]").forEach(el=>{ el.outerHTML=ico(el.dataset.ico,+el.dataset.s||20); });
+const TABICO={"الأجهزة":"stove","➕ أجهزة":"addbox","مقاسات الأجهزة":"dims","التخزين":"cabinet","الوحدات":"grid","الأوضة":"plan","الارتفاعات":"height","الشكل":"palette","العرض":"eye",
+  "المية والكهربا":"utility","خطوات التنفيذ":"steps","التكلفة":"coins","المشاريع":"folder","الحمام":"bath","السقف":"lamp","الأثاث":"sofa","الدهان والأرضية":"roller","التشطيب":"tiles"};
+const tabLabel=t=>t==="➕ أجهزة"?"أجهزة إضافية":t;
+// phone < 760 ≤ tablet < 1180 ≤ desktop (same breakpoints as the CSS)
+const MQ={tab:matchMedia("(min-width:760px)"),desk:matchMedia("(min-width:1180px)")};
+const panel=document.getElementById("panel"), stage=document.getElementById("stage");
 let panelOpen=false;
-function setPanel(o){ panelOpen=o; panel.classList.toggle("open",o); document.getElementById("stats").style.display=o?"none":"flex"; resize(); }
+function setPanel(o){ panelOpen=o; panel.classList.toggle("open",o); if(!o) panel.classList.remove("full"); document.body.classList.toggle("panel-open",o); document.getElementById("stats").style.display=(o&&!MQ.tab.matches)?"none":"flex"; resize(); }
 document.getElementById("open").onclick=()=>setPanel(!panelOpen);
+document.getElementById("fab").onclick=()=>setPanel(true);
+document.getElementById("aptBtn").onclick=()=>openApt();
+MQ.tab.addEventListener&&MQ.tab.addEventListener("change",()=>setPanel(panelOpen));
 document.getElementById("drawBtn").onclick=()=>openDraw();
 document.getElementById("projBtn").onclick=()=>openSheet();
+// phone bottom sheet: tap the handle to expand, drag down to shrink or close, drag up to expand
+(function(){ const g=document.getElementById("grab"); let y0=null, moved=false;
+  const reset=()=>{ panel.style.transition=""; panel.style.transform=""; };
+  g.addEventListener("pointerdown",e=>{ if(MQ.tab.matches) return; y0=e.clientY; moved=false; g.setPointerCapture(e.pointerId); });
+  g.addEventListener("pointermove",e=>{ if(y0==null) return; const dy=e.clientY-y0; if(Math.abs(dy)>6) moved=true; if(dy>0){ panel.style.transition="none"; panel.style.transform=`translateY(${dy}px)`; } });
+  g.addEventListener("pointerup",e=>{ if(y0==null) return; const dy=e.clientY-y0; y0=null; reset();
+    if(!moved){ panel.classList.toggle("full"); return; }
+    if(dy>70){ if(panel.classList.contains("full")) panel.classList.remove("full"); else setPanel(false); } else if(dy<-40) panel.classList.add("full"); });
+  g.addEventListener("pointercancel",()=>{ y0=null; reset(); });
+})();
+// Ctrl+Z = undo, Esc = close the top-most layer (the wizard keeps its own ✕ so work isn't lost by accident)
+addEventListener("keydown",e=>{ const tg=e.target, typing=tg&&(tg.tagName==="TEXTAREA"||(tg.tagName==="INPUT"&&!["range","checkbox","color"].includes(tg.type)));
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.code==="KeyZ"&&!typing&&!WIZ&&!APT3D){ e.preventDefault(); document.getElementById("undo").click(); return; }
+  if(e.key!=="Escape") return; const vis=id=>document.getElementById(id).style.display==="flex";
+  if(vis("shot")) document.getElementById("shot").style.display="none"; else if(vis("draw")) document.getElementById("dclose").click();
+  else if(vis("sheet")) closeSheet(); else if(vis("apt")) closeApt(); else if(!WIZ&&panelOpen&&!MQ.desk.matches) setPanel(false); });
 document.getElementById("wizClose").onclick=()=>closeWizard(false);
 document.getElementById("wizBack").onclick=()=>{ if(WIZ&&WIZ.step>0){ WIZ.step--; renderWiz(); } };
 document.getElementById("wizNext").onclick=()=>{ if(!WIZ) return; if(WIZ.step<WSTEPS.length-1){ WIZ.step++; renderWiz(); document.getElementById("wizBody").scrollTop=0; } else closeWizard(true); };
@@ -21,29 +60,32 @@ const viewSel=document.getElementById("view"); fill(viewSel,VIEWS,"out"); viewSe
 let tab=Object.keys(SCHEMA)[0];
 const tabsEl=document.getElementById("tabs"); let ctlEl=document.getElementById("controls");
 function tabsFor(){ if(cfg.roomType==="room") return ["الأثاث","الأوضة","السقف","الدهان والأرضية","المية والكهربا","الشكل","العرض","الوحدات","خطوات التنفيذ","المشاريع"]; if(cfg.roomType==="hall") return ["الأوضة","السقف","الدهان والأرضية","الشكل","العرض","المشاريع"]; return cfg.roomType==="bath"?["الحمام","الأوضة","السقف","التشطيب","المية والكهربا","الشكل","العرض","الوحدات","خطوات التنفيذ","المشاريع"]:Object.keys(SCHEMA).filter(t=>!["الحمام","التشطيب","الأثاث","الدهان والأرضية","السقف"].includes(t)).flatMap(t=>t==="الارتفاعات"?[t,"السقف"]:[t]); }
-function renderTabs(){ tabsEl.innerHTML=""; if(!tabsFor().includes(tab)) tab=tabsFor()[0]; for(const t of tabsFor()){ const b=document.createElement("button"); b.textContent=t; b.className=t===tab?"on":""; b.onclick=()=>{tab=t;renderTabs();renderControls();}; tabsEl.appendChild(b);} }
+function renderTabs(){ tabsEl.innerHTML=""; if(!tabsFor().includes(tab)) tab=tabsFor()[0];
+  for(const t of tabsFor()){ const b=document.createElement("button"); b.type="button"; b.innerHTML=ico(TABICO[t],18)+`<span>${tabLabel(t)}</span>`; b.className=t===tab?"on":""; if(t===tab) b.setAttribute("aria-current","page");
+    b.onclick=()=>{tab=t;renderTabs();renderControls();ctlEl.scrollTop=0;}; tabsEl.appendChild(b);}
+  document.getElementById("ptitle").textContent=tabLabel(tab);
+  // keep the active tab visible without scrollIntoView (that can scroll the whole page while the sheet is hidden)
+  const on=tabsEl.querySelector(".on"); if(on&&panelOpen){ const r=on.getBoundingClientRect(), p=tabsEl.getBoundingClientRect();
+    if(r.left<p.left) tabsEl.scrollBy(r.left-p.left-24,0); else if(r.right>p.right) tabsEl.scrollBy(r.right-p.right+24,0);
+    if(r.top<p.top) tabsEl.scrollBy(0,r.top-p.top-8); else if(r.bottom>p.bottom) tabsEl.scrollBy(0,r.bottom-p.bottom+8); } }
 function renderControls(){
   ctlEl.innerHTML="";
+  let acts=null;
   for(const c of SCHEMA[tab]){
+    if(c.t!=="action") acts=null;
     if(c.t==="head"){ const h=document.createElement("div"); h.className="head"; h.textContent=c.l; ctlEl.appendChild(h); continue; }
-    const row=document.createElement("div"); row.className="ctl";
-    const lb=document.createElement("label"); lb.textContent=c.l; row.appendChild(lb);
+    if(c.t==="range"){ rangeField(ctlEl,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },c.min,c.max,c.step,c.u,()=>renderControls()); continue; }
+    if(c.t==="select"){ const el=choice(c.o,c.k==="style"?(cfg.style||"light"):cfg[c.k],v=>{ pushHist(); if(c.k==="style"){ cfg.style=v; Object.assign(cfg,STYLES[v]); if(cfg.handles!=="none") cfg.handles=["#c6a25a","#c9a45c","#b8925a"].includes(cfg.cHandle)?"gold":"black"; /* the style's handle color picks the handle finish */ build(); renderControls(); return; } cfg[c.k]=v; build(); renderControls(); },c.l);
+      fieldRow(ctlEl,c.l,el); continue; }
+    if(c.t==="action"){ if(!acts){ acts=document.createElement("div"); acts.className="ctl act1"; acts.style.flexDirection="column"; ctlEl.appendChild(acts); }
+      const b=document.createElement("button"); b.className="btn wide"; b.textContent=c.l; b.onclick=c.fn; acts.appendChild(b); continue; }
     let el;
-    if(c.t==="select"){ el=document.createElement("select"); for(const [v,n] of c.o){const o=document.createElement("option");o.value=v;o.textContent=n;el.appendChild(o);}
-      el.value=c.k==="style"?(cfg.style||"light"):cfg[c.k];
-      el.onchange=()=>{ pushHist(); if(c.k==="style"){ cfg.style=v; Object.assign(cfg,STYLES[el.value]); if(cfg.handles!=="none") cfg.handles=["#c6a25a","#c9a45c","#b8925a"].includes(cfg.cHandle)?"gold":"black"; /* the style's handle color picks the handle finish */ build(); renderControls(); return;} cfg[c.k]=el.value;
-        build(); renderControls(); }; row.appendChild(el); }
-    if(c.t==="toggle"){ const w=document.createElement("label"); w.className="sw"; el=document.createElement("input"); el.type="checkbox"; el.checked=!!cfg[c.k];
-      el.onchange=()=>{pushHist(); cfg[c.k]=el.checked; build();}; w.appendChild(el); w.appendChild(document.createElement("i")); row.appendChild(w); }
-    if(c.t==="range"){ el=document.createElement("input"); el.type="range"; el.min=c.min; el.max=c.max; el.step=c.step; el.value=+cfg[c.k];
-      const out=numIn(cfg[c.k],c.min,c.max,c.u,v=>{ pushHist(); cfg[c.k]=v; el.value=v; build(); renderControls(); });
-      el.addEventListener("pointerdown",pushHist); el.addEventListener("keydown",pushHist);
-      el.oninput=()=>{cfg[c.k]=+el.value; out.set(el.value); SLIDING=true; build(); SLIDING=false;}; row.appendChild(el); row.appendChild(out); }
-    if(c.t==="color"){ el=document.createElement("input"); el.type="color"; el.value=cfg[c.k]; el.addEventListener("click",pushHist); el.oninput=()=>{cfg[c.k]=el.value; build();}; row.appendChild(el); }
-    if(c.t==="num"){ el=document.createElement("input"); el.type="number"; el.min=0; el.inputMode="numeric"; el.placeholder="جنيه"; el.value=cfg[c.k]||"";
-      el.onchange=()=>{ pushHist(); cfg[c.k]=+el.value||0; renderControls(); }; row.appendChild(el); }
-    if(c.t==="action"){ row.innerHTML=""; const b=document.createElement("button"); b.className="btn main"; b.style.flex="1"; b.textContent=c.l; b.onclick=c.fn; row.appendChild(b); }
-    ctlEl.appendChild(row);
+    if(c.t==="toggle"){ el=document.createElement("label"); el.className="sw"; const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!cfg[c.k]; cb.setAttribute("aria-label",c.l);
+      cb.onchange=()=>{pushHist(); cfg[c.k]=cb.checked; build();}; el.append(cb,document.createElement("i")); }
+    if(c.t==="color"){ el=document.createElement("input"); el.type="color"; el.value=cfg[c.k]; el.setAttribute("aria-label",c.l); el.addEventListener("click",pushHist); el.oninput=()=>{cfg[c.k]=el.value; build();}; }
+    if(c.t==="num"){ el=document.createElement("label"); el.className="money"; const n=document.createElement("input"); n.type="number"; n.min=0; n.inputMode="numeric"; n.placeholder="0"; n.value=cfg[c.k]||""; n.setAttribute("aria-label",c.l);
+      n.onchange=()=>{ pushHist(); cfg[c.k]=+n.value||0; renderControls(); }; const u=document.createElement("small"); u.textContent="جنيه"; el.append(n,u); }
+    const row=fieldRow(ctlEl,c.l,el); if(c.t==="toggle") row.querySelector("label").onclick=()=>el.querySelector("input").click();
   }
   if(tab==="مقاسات الأجهزة"){ const n=document.createElement("div"); n.className="note"; n.textContent="المقاس = العرض × العمق. المسافات الجانبية بتتساب فاضية للتهوية والمواسير والسلوك، وبتتحسب من طول الرخامة."; ctlEl.insertBefore(n,ctlEl.firstChild); }
   if(tab==="الوحدات"){ customBox(); unitsBox(); }
@@ -95,26 +137,67 @@ function unitsBox(){
   const b=document.createElement("button"); b.className="btn"; b.style.marginTop="10px"; b.textContent="رجّع كل الوحدات تلقائي";
   b.onclick=()=>{ pushHist(); cfg.units={}; build(); }; ctlEl.appendChild(b);
 }
-function fieldRow(parent,label,el,out){ const row=document.createElement("div"); row.className="ctl"; const lb=document.createElement("label"); lb.textContent=label; row.appendChild(lb); row.appendChild(el); if(out) row.appendChild(out); parent.appendChild(row); }
-function objSelect(parent,obj,k,label,opts,after){ const el=document.createElement("select"); for(const [v,t] of opts){ const o=document.createElement("option"); o.value=v; o.textContent=t; el.appendChild(o);} el.value=obj[k]==null?"":String(obj[k]);
-  el.onchange=()=>{ pushHist(); obj[k]=el.value; if(after) after(); build(); UI_REFRESH(); }; fieldRow(parent,label,el); }
-function numIn(val,min,max,unit,onSet){ const w=document.createElement("span"); w.className="numw"; const n=document.createElement("input"); n.type="number"; n.inputMode="decimal"; n.className="num"; n.value=val; n.min=min; n.max=max;
-  const u=document.createElement("small"); u.textContent=unit||""; n.onchange=()=>{ let v=+n.value; if(isNaN(v)) return; v=Math.max(min,Math.min(max,v)); n.value=v; onSet(v); }; n.onkeydown=e=>{ if(e.key==="Enter") n.blur(); }; w.append(n,u); w.set=v=>{ n.value=v; }; return w; }
-function objRange(parent,obj,k,label,min,max,step){ if(obj[k]==null) obj[k]=min; const el=document.createElement("input"); el.type="range"; el.min=min; el.max=Math.max(min+1,max); el.step=step||1; el.value=obj[k];
-  const out=numIn(obj[k],min,Math.max(min+1,max),"سم",v=>{ pushHist(); obj[k]=v; el.value=v; build(); UI_REFRESH(); }); el.addEventListener("pointerdown",pushHist); el.addEventListener("keydown",pushHist);
-  el.oninput=()=>{ obj[k]=+el.value; out.set(el.value); SLIDING=true; build(); SLIDING=false; }; fieldRow(parent,label,el,out); }
+function fieldRow(parent,label,el,out){ const row=document.createElement("div"); row.className="ctl"+(el.kind==="stack"?" stack":""); const lb=document.createElement("label"); lb.textContent=label; row.appendChild(lb); row.appendChild(el); if(out) row.appendChild(out); parent.appendChild(row); return row; }
+// one picker for every option list: a switch for yes/no, segmented buttons for a few short options, a dropdown otherwise
+function choice(opts,val,onPick,label){ val=val==null?"":String(val);
+  const yes=opts.length===2&&opts.find(([,t])=>/^أيوه/.test(t)), no=opts.length===2&&opts.find(([,t])=>/^لأ/.test(t));
+  if(yes&&no){ const w=document.createElement("label"); w.className="sw"; const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=val===String(yes[0]); if(label) cb.setAttribute("aria-label",label);
+    cb.onchange=()=>onPick(String(cb.checked?yes[0]:no[0])); w.append(cb,document.createElement("i")); w.kind="inline"; return w; }
+  const tot=opts.reduce((s,[,t])=>s+String(t).length,0);
+  if(opts.length>=2&&opts.length<=4&&opts.every(([,t])=>String(t).length<=16)&&tot<=40){ const g=document.createElement("div"); g.className="seg"; g.setAttribute("role","radiogroup"); if(label) g.setAttribute("aria-label",label);
+    for(const [v,t] of opts){ const b=document.createElement("button"); b.type="button"; b.textContent=t; b.setAttribute("role","radio"); b.setAttribute("aria-checked",String(v)===val); if(String(v)===val) b.className="on";
+      b.onclick=()=>{ if(String(v)===val) return; val=String(v); g.querySelectorAll("button").forEach(x=>{ const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-checked",on); }); onPick(val); }; g.appendChild(b); }
+    g.kind=opts.length<=2&&tot<=14?"inline":"stack"; return g; }
+  const el=document.createElement("select"); for(const [v,t] of opts){ const o=document.createElement("option"); o.value=v; o.textContent=t; el.appendChild(o); } el.value=val; if(label) el.setAttribute("aria-label",label);
+  el.onchange=()=>onPick(el.value); el.kind="inline"; return el; }
+function objSelect(parent,obj,k,label,opts,after){ fieldRow(parent,label,choice(opts,obj[k],v=>{ pushHist(); obj[k]=v; if(after) after(); build(); UI_REFRESH(); },label)); }
+// number box with −/+ ; onLive (optional) = change without re-rendering the panel, which lets a held button repeat
+function numIn(val,min,max,unit,onSet,step,onLive,label){ step=step||1; const w=document.createElement("span"); w.className="numw"; const n=document.createElement("input"); n.type="number"; n.inputMode="decimal"; n.className="num"; n.value=val; n.min=min; n.max=max; n.step="any"; if(label) n.setAttribute("aria-label",label);
+  const u=document.createElement("small"); u.textContent=unit||""; n.onchange=()=>{ let v=+n.value; if(n.value===""||isNaN(v)){ n.value=val; return; } v=Math.max(min,Math.min(max,v)); n.value=v; onSet(v); }; n.onkeydown=e=>{ if(e.key==="Enter") n.blur(); };
+  const mk=(d,ic,lab)=>{ const b=document.createElement("button"); b.type="button"; b.className="stb"; b.innerHTML=ico(ic,16); b.setAttribute("aria-label",lab+(label?" "+label:"")); let t0=null, t=null;
+    const once=()=>{ const v=+Math.max(min,Math.min(max,(+n.value||0)+d*step)).toFixed(3); if(v===+n.value) return; if(onLive) onLive(v); else { n.value=v; onSet(v); } };
+    const stop=()=>{ clearTimeout(t0); clearInterval(t); t0=t=null; };
+    b.addEventListener("pointerdown",e=>{ if(e.button) return; e.preventDefault(); if(onLive){ pushHist(); once(); t0=setTimeout(()=>{ t=setInterval(once,70); },400); } else once(); });
+    for(const ev of ["pointerup","pointerleave","pointercancel"]) b.addEventListener(ev,stop);
+    b.addEventListener("click",e=>{ if(e.detail===0){ if(onLive) pushHist(); once(); } }); // keyboard Enter/Space
+    return b; };
+  w.append(mk(-1,"minus","قلّل"),n,u,mk(1,"plus","زوّد")); w.set=v=>{ n.value=v; }; return w; }
+// a measurement: label + stepper on the first line, a full-width slider under it
+function rangeField(parent,label,get,set,min,max,step,unit,commit){ step=step||1;
+  const row=document.createElement("div"); row.className="ctl rng"; const lb=document.createElement("label"); lb.textContent=label;
+  const sl=document.createElement("input"); sl.type="range"; sl.min=min; sl.max=max; sl.step=step; sl.value=+get(); sl.setAttribute("aria-label",label);
+  const fill=()=>sl.style.setProperty("--p",Math.max(0,Math.min(100,(+sl.value-min)/((max-min)||1)*100))+"%");
+  const live=v=>{ set(v); sl.value=v; out.set(v); fill(); SLIDING=true; build(); SLIDING=false; };
+  const out=numIn(get(),min,max,unit,v=>{ pushHist(); set(v); sl.value=v; fill(); build(); commit(); },step,live,label);
+  sl.addEventListener("pointerdown",pushHist); sl.addEventListener("keydown",pushHist); sl.oninput=()=>live(+sl.value); fill();
+  row.append(lb,out,sl); parent.appendChild(row); return row; }
+function objRange(parent,obj,k,label,min,max,step){ if(obj[k]==null) obj[k]=min; rangeField(parent,label,()=>obj[k],v=>{ obj[k]=v; },min,Math.max(min+1,max),step||1,"سم",()=>UI_REFRESH()); }
+// cards for added items fold to one line; the ones you just added or picked in 3D stay open
+const OPENC=new Set();
+function foldCard(card,hd,key){ card.dataset.key=key; const open=OPENC.has(key); card.classList.toggle("closed",!open);
+  const t=document.createElement("button"); t.type="button"; t.className="fold"; t.innerHTML=ico("chev",18); t.setAttribute("aria-label","افتح أو اقفل التفاصيل"); t.setAttribute("aria-expanded",open);
+  hd.addEventListener("click",e=>{ if(e.target.closest("button:not(.fold),select,input")) return; const o=!OPENC.has(key); o?OPENC.add(key):OPENC.delete(key); card.classList.toggle("closed",!o); t.setAttribute("aria-expanded",o); });
+  hd.prepend(t); }
+const shortWall=w=>String(WNAME[w]||(WALLS[w]&&WALLS[w].name)||w).replace(/^الحيطة /,"");
+const WALLOPT_SHORT=()=>W4.map(w=>[w,shortWall(w)]);
+// quick-add bar: pick the wall once, then one tap per item
+const ADDW={};
+function chipAdder(parent,id,items,onAdd,defWall,title){ const box=document.createElement("div"); box.className="adder";
+  if(defWall){ if(!ADDW[id]) ADDW[id]=defWall; const l=document.createElement("div"); l.className="adder-l"; l.textContent=title||"هيتضاف على الحيطة:"; box.appendChild(l);
+    const s=choice(WALLOPT_SHORT(),ADDW[id],v=>{ ADDW[id]=v; },"الحيطة"); box.appendChild(s); }
+  else if(title){ const l=document.createElement("div"); l.className="adder-l"; l.textContent=title; box.appendChild(l); }
+  const ch=document.createElement("div"); ch.className="chips";
+  for(const [k,t] of items){ const b=document.createElement("button"); b.type="button"; b.className="chipbtn"; b.innerHTML=ico("plus",16)+`<span>${t}</span>`; b.onclick=()=>onAdd(k,ADDW[id]); ch.appendChild(b); }
+  box.appendChild(ch); parent.appendChild(box); return box; }
 function appsBox(){
   const n=document.createElement("div"); n.className="note"; n.textContent="ضيف أي جهاز تاني وحدد مكانه ومقاسه. الأجهزة اللي على الحيطة الشمال بتدخل في ترتيبها، وكل الأجهزة تقدر تسحبها بصباعك في الـ3D.";
   ctlEl.appendChild(n);
-  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select"); for(const [k,v] of Object.entries(APPS)){ const o=document.createElement("option"); o.value=k; o.textContent=v.n; ts.appendChild(o); }
-  const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
-  ab.onclick=()=>{ pushHist(); const T=APPS[ts.value], id="a"+Math.random().toString(36).slice(2,7);
+  chipAdder(ctlEl,"apps",Object.entries(APPS).map(([k,v])=>[k,v.n]),k=>{ pushHist(); const T=APPS[k], id="a"+Math.random().toString(36).slice(2,7);
     const lo=locOpts(T.cls), loc=T.cls==="wall"?"RT":(lo[0]?lo[0][0]:"L"); const pos=Math.max(0,Math.round((wlen(W4.includes(loc)?loc:"L")*100-T.w)/2));
-    cfg.apps=[...(cfg.apps||[]),{id,type:ts.value,w:T.w,d:T.d,h:T.h,y:T.y||0,loc,pos}]; build(); renderControls(); hint(`اتضاف ${T.n} ✓`); };
-  ar.append(ts,ab); ctlEl.appendChild(ar);
+    cfg.apps=[...(cfg.apps||[]),{id,type:k,w:T.w,d:T.d,h:T.h,y:T.y||0,loc,pos}]; OPENC.add(id); build(); renderControls(); hint(`اتضاف ${T.n} ✓`); },null,"دوس على الجهاز عشان تضيفه:");
   for(const a of cfg.apps||[]){ const T=APPS[a.type]; if(!T) continue; const card=document.createElement("div"); card.className="card";
-    const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${T.n}</b>`; const del=document.createElement("button"); del.className="btn"; del.textContent="🗑 شيل";
-    del.onclick=()=>{ pushHist(); cfg.apps=cfg.apps.filter(x=>x.id!==a.id); build(); renderControls(); }; hd.appendChild(del); card.appendChild(hd);
+    const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${T.n}</b><small>${a.w}×${a.d}×${a.h}</small>`; const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل";
+    del.onclick=()=>{ pushHist(); cfg.apps=cfg.apps.filter(x=>x.id!==a.id); build(); renderControls(); }; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,a.id);
     objSelect(card,a,"loc","المكان",locOpts(T.cls));
     const inRun=(T.cls==="slot"||T.cls==="tall")&&((cfg.wallCfg[a.loc]||{}).type==="counter"||String(a.loc).startsWith("N:"));
     if(inRun){ const nn=document.createElement("div"); nn.className="note"; nn.textContent="مكانه بيتحدد من ترتيب الأجهزة على الحيطة. اسحبه بصباعك في الـ3D عشان تغيّر ترتيبه."; card.appendChild(nn); }
@@ -128,18 +211,14 @@ function customBox(){
   const h=document.createElement("div"); h.className="head"; h.textContent="➕ وحدات تخزين إضافية"; ctlEl.appendChild(h);
   const n=document.createElement("div"); n.className="note"; n.textContent="ضيف دولاب أو أرفف في أي حيطة بالمقاس اللي عايزه. لو عايز تصمم الحيطة اليمين كلها بنفسك، خليها 'فاضية' من تاب التخزين. تقدر تسحب أي وحدة بصباعك.";
   ctlEl.appendChild(n);
-  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select");
-  for(const [k,v] of [["lower","دولاب سفلي برخامة"],["upper","دولاب علوي"],["tall","دولاب طول من الأرض"],["shelf","أرفف مفتوحة"]]){ const o=document.createElement("option"); o.value=k; o.textContent=v; ts.appendChild(o); }
-  const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
-  ab.onclick=()=>{ pushHist(); const t=ts.value, id="c"+Math.random().toString(36).slice(2,7);
-    const c={id,type:t,wall:"RT",pos:100,w:60,d:t==="shelf"?25:t==="upper"?35:(t==="tall"?40:35),h:t==="tall"?Math.round(H*100)-1:t==="upper"?72:90,y:t==="upper"?cfg.uStart:130,front:t==="shelf"?"open":(t==="tall"?"auto":"doors"),n:"",shelves:3,acc:""};
-    cfg.custom=[...(cfg.custom||[]),c]; SEL=id; build(); renderControls(); hint("اتضافت الوحدة ✓"); };
-  ar.append(ts,ab); ctlEl.appendChild(ar);
+  chipAdder(ctlEl,"custom",[["lower","دولاب سفلي برخامة"],["upper","دولاب علوي"],["tall","دولاب طول من الأرض"],["shelf","أرفف مفتوحة"]],(t,wall)=>{ pushHist(); const id="c"+Math.random().toString(36).slice(2,7);
+    const c={id,type:t,wall:wall||"RT",pos:Math.max(0,Math.min(100,Math.round(wallLen(wall||"RT")*100)-60)),w:60,d:t==="shelf"?25:t==="upper"?35:(t==="tall"?40:35),h:t==="tall"?Math.round(H*100)-1:t==="upper"?72:90,y:t==="upper"?cfg.uStart:130,front:t==="shelf"?"open":(t==="tall"?"auto":"doors"),n:"",shelves:3,acc:""};
+    cfg.custom=[...(cfg.custom||[]),c]; SEL=id; OPENC.add(id); build(); renderControls(); hint("اتضافت الوحدة ✓"); },"RT");
   const TN={lower:"دولاب سفلي",upper:"دولاب علوي",tall:"دولاب طول",shelf:"أرفف مفتوحة"};
   for(const c of cfg.custom||[]){ const u=UNITS.find(x=>x.id===c.id); const card=document.createElement("div"); card.className="card"+(c.id===SEL?" sel":"");
-    const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<span class="n" style="min-width:24px;height:24px;border-radius:50%;background:#2d5f7a;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${u?u.n:"?"}</span><b>${TN[c.type]}</b>`;
-    const del=document.createElement("button"); del.className="btn"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.custom=cfg.custom.filter(x=>x.id!==c.id); build(); renderControls(); };
-    hd.onclick=e=>{ if(e.target!==del) selectUnit(c.id,false); }; hd.appendChild(del); card.appendChild(hd);
+    const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<span class="n">${u?u.n:"?"}</span><b>${TN[c.type]}</b><small>${shortWall(c.wall)} • ${c.w} سم</small>`;
+    const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=()=>{ pushHist(); cfg.custom=cfg.custom.filter(x=>x.id!==c.id); build(); renderControls(); };
+    hd.onclick=e=>{ if(e.target!==del) selectUnit(c.id,false); }; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,c.id);
     objSelect(card,c,"wall","الحيطة",W4OPT());
     objRange(card,c,"pos","بعدها عن الركن",0,Math.round(wallLen(c.wall)*100)-c.w,1);
     objRange(card,c,"w","العرض",15,250,1); objRange(card,c,"d","العمق",10,70,1);
@@ -167,13 +246,13 @@ function defFeat(type,wall){
 function featCard(parent,f,onDel){
   const card=document.createElement("div"); card.className="card";
   if(f.type==="cut"){ if(f.a==null){ f.a=Math.round(cfg.roomW*0.4); f.b=Math.round(cfg.roomL*0.4); f.corner=f.corner||"WL"; f.shape=f.shape||"rect"; }
-    const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${FT.cut}</b>`; const del=document.createElement("button"); del.className="btn"; del.textContent="🗑 شيل"; del.onclick=onDel; hd.appendChild(del); card.appendChild(hd);
+    const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${FT.cut}</b>`; const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=onDel; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,f.id);
     objSelect(card,f,"corner","أنهي ركن",[["WL","القدامي الشمال"],["WR","القدامي اليمين"],["DL","اللي ورا الشمال"],["DR","اللي ورا اليمين"]]);
     objSelect(card,f,"shape","الشكل",[["rect","ركن مقصوص (الأوضة L)"],["diag","حيطة مايلة (ركن مشطوف)"]]);
     objRange(card,f,"a","المقصوص من العرض",20,Math.max(21,cfg.roomW-40),1); objRange(card,f,"b","المقصوص من الطول",20,Math.max(21,cfg.roomL-40),1);
     const n=document.createElement("div"); n.className="note"; n.textContent="الجزء ده بيبقى برة الأوضة: مفيش فيه أرضية ولا دواليب ولا أثاث، والحيطان بتلف حواليه."; card.appendChild(n); parent.appendChild(card); return; }
-  const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${FT[f.type]}</b>`;
-  const del=document.createElement("button"); del.className="btn"; del.textContent="🗑 شيل"; del.onclick=onDel; hd.appendChild(del); card.appendChild(hd);
+  const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${FT[f.type]}</b><small>${shortWall(f.wall)} • ${f.w} سم</small>`;
+  const del=document.createElement("button"); del.className="btn danger"; del.textContent="🗑 شيل"; del.onclick=onDel; hd.appendChild(del); card.appendChild(hd); foldCard(card,hd,f.id);
   objSelect(card,f,"wall","على أنهي حيطة",W4OPT());
   const L=measLen(f.wall);
   objRange(card,f,"pos","بعده عن أول الحيطة",0,Math.max(1,L-(f.w||0)),1);
@@ -200,13 +279,8 @@ function setNicheUse(f,v){ const id="N:"+f.id;
   else if(v==="washer"){ cfg.place.w=id; if(cfg.place.f===id) cfg.place.f=firstCounter(); }
   else { if(cfg.place.f===id) cfg.place.f=firstCounter(); if(cfg.place.w===id) cfg.place.w=firstCounter(); f.use=v; } }
 function featuresEditor(parent,types){
-  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select");
-  for(const t of types){ const o=document.createElement("option"); o.value=t; o.textContent=FT[t]; ts.appendChild(o); }
-  const ws=document.createElement("select"); for(const [k,v] of W4OPT()){ const o=document.createElement("option"); o.value=k; o.textContent=v; ws.appendChild(o); }
-  ws.value=types.includes("door")?"D":types.includes("window")?"W":"L";
-  const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕";
-  ab.onclick=()=>{ pushHist(); cfg.feats=[...(cfg.feats||[]),defFeat(ts.value,ws.value)]; build(); UI_REFRESH(); hint(`اتضاف ${FT[ts.value]} ✓`); };
-  ar.append(ts,ws,ab); parent.appendChild(ar);
+  chipAdder(parent,"feat:"+types.join(),types.map(t=>[t,FT[t]]),(t,w)=>{ pushHist(); const f=defFeat(t,w); cfg.feats=[...(cfg.feats||[]),f]; OPENC.add(f.id); build(); UI_REFRESH(); hint(`اتضاف ${FT[t]} ✓`); },
+    types.includes("door")?"D":types.includes("window")?"W":"L");
   for(const f of (cfg.feats||[]).filter(x=>types.includes(x.type))) featCard(parent,f,()=>{ pushHist(); cfg.feats=cfg.feats.filter(x=>x!==f); if(cfg.place.f==="N:"+f.id) cfg.place.f=firstCounter(); if(cfg.place.w==="N:"+f.id) cfg.place.w=firstCounter(); build(); UI_REFRESH(); });
 }
 function planSVG(){
@@ -314,18 +388,18 @@ async function openProject(id){ const rd=await stRead("kproj:"+id); let d=rd.v; 
 function projectsBox(){ renderProjects(ctlEl); }
 function renderProjects(el){
   const n=document.createElement("div"); n.className="note"; n.textContent=storageOK===false?"⚠ الحفظ الدايم متعطل دلوقتي، وبحاول تاني لوحدي كل شوية. شغلك محفوظ طول ما الصفحة مفتوحة، ولو هتقفلها انسخ الإعدادات من تحت.":"كل مطبخ بيتحفظ لوحده تلقائي. تقدر تعمل أكتر من مطبخ وتقارن بينهم."; el.appendChild(n);
-  const ab=document.createElement("button"); ab.className="btn"; ab.style.cssText="width:100%;margin-bottom:8px;padding:10px"; ab.innerHTML="🏢 <b>الشقة</b> — اربط المطبخ والحمامات والطرقة"; ab.onclick=()=>{ closeSheet(); openApt(); }; el.appendChild(ab);
-  const nb=document.createElement("button"); nb.className="btn main"; nb.style.width="100%"; nb.textContent="➕ مطبخ أو حمام أو أوضة جديدة (بالمعالج)"; nb.onclick=()=>{ closeSheet(); openWizard(true); }; el.appendChild(nb);
+  const ab=document.createElement("button"); ab.className="btn wide"; ab.style.marginBottom="8px"; ab.innerHTML="🏢 <b>الشقة</b>: اربط المطبخ والحمامات والطرقة"; ab.onclick=()=>{ closeSheet(); openApt(); }; el.appendChild(ab);
+  const nb=document.createElement("button"); nb.className="btn main wide"; nb.textContent="➕ مطبخ أو حمام أو أوضة جديدة (بالمعالج)"; nb.onclick=()=>{ closeSheet(); openWizard(true); }; el.appendChild(nb);
   const list=[...projIndex]; if(!list.some(p=>p.id===PROJ.id)) list.push({id:PROJ.id,name:PROJ.name,t:Date.now()});
   list.sort((a,b)=>b.t-a.t).forEach(p=>{ const card=document.createElement("div"); card.className="card"+(p.id===PROJ.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${p.id===PROJ.id?"✓ ":""}${esc(p.name)}</b><small style="color:#6b737c">${new Date(p.t).toLocaleDateString("ar-EG")}</small></div>`;
+    card.innerHTML=`<div class="ch"><b>${p.id===PROJ.id?"✓ ":""}${esc(p.name)}</b><small>${new Date(p.t).toLocaleDateString("ar-EG")}</small></div>`;
     const act=document.createElement("div"); act.className="act";
     const mk=(t,fn)=>{ const b=document.createElement("button"); b.className="btn"; b.textContent=t; b.onclick=fn; act.appendChild(b); };
     if(p.id!==PROJ.id) mk("فتح",()=>openProject(p.id));
-    mk("✏️ اسم",async()=>{ const inp=document.createElement("input"); inp.value=p.name; inp.style.cssText="flex:1;font:inherit;padding:6px;border:1px solid #c9ced3;border-radius:8px"; const ok=document.createElement("button"); ok.className="btn main"; ok.textContent="حفظ";
+    mk("✏️ اسم",async()=>{ const inp=document.createElement("input"); inp.value=p.name; inp.className="txt"; inp.setAttribute("aria-label","اسم المشروع"); const ok=document.createElement("button"); ok.className="btn main"; ok.textContent="حفظ";
       act.innerHTML=""; act.append(inp,ok); inp.focus(); ok.onclick=async()=>{ const nm=cleanName(inp.value)||p.name; if(p.id===PROJ.id){ PROJ.name=nm; updProjName(); await saveNow(); } else { const d=await stGet("kproj:"+p.id); if(d){ d.name=nm; await stSet("kproj:"+p.id,d); } const i=projIndex.findIndex(x=>x.id===p.id); if(i>=0) projIndex[i].name=nm; await stSet("kproj:index",projIndex); } refreshSheet(); }; });
     mk("📄 نسخة",async()=>{ const d=p.id===PROJ.id?{name:PROJ.name,cfg}:await stGet("kproj:"+p.id); if(!d) return; const id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:d.name+" (نسخة)",cfg:d.cfg}); projIndex.push({id,name:d.name+" (نسخة)",t:Date.now()}); await stSet("kproj:index",projIndex); refreshSheet(); });
-    if(list.length>1) mk("🗑",async()=>{ act.innerHTML=""; const q=document.createElement("span"); q.textContent="متأكد؟"; q.style.alignSelf="center"; const y=document.createElement("button"); y.className="btn main"; y.textContent="امسح"; const c=document.createElement("button"); c.className="btn"; c.textContent="لأ";
+    if(list.length>1) mk("🗑",async()=>{ act.innerHTML=""; const q=document.createElement("span"); q.textContent="متأكد؟"; q.style.alignSelf="center"; const y=document.createElement("button"); y.className="btn main"; y.style.background="var(--clay)"; y.style.borderColor="var(--clay)"; y.textContent="امسح"; const c=document.createElement("button"); c.className="btn"; c.textContent="لأ";
       act.append(q,y,c); c.onclick=refreshSheet; y.onclick=async()=>{ DELETED.add(p.id); if(p.id===PROJ.id) clearTimeout(saveT); await stDel("kproj:"+p.id); projIndex=projIndex.filter(x=>x.id!==p.id); await stSet("kproj:index",projIndex);
         if(p.id===PROJ.id){ const nx=projIndex[0]; if(nx) await openProject(nx.id); if(PROJ.id===p.id){ PROJ={id:"p"+Date.now().toString(36),name:PROJ.name}; hist.length=0; updProjName(); await saveNow(); } } refreshSheet(); }; });
     card.appendChild(act); el.appendChild(card); });
@@ -378,15 +452,15 @@ function renderWiz(){
   if(!WIZ) return; const body=document.getElementById("wizBody"); body.innerHTML="";
   document.getElementById("wizTitle").textContent=`${WIZ.step+1}/${WSTEPS.length} • ${WSTEPS[WIZ.step]}`;
   document.getElementById("wizBar").style.width=((WIZ.step+1)/WSTEPS.length*100)+"%";
-  const pv=document.createElement("div"); pv.innerHTML=`<div id="wizPlan" class="planbox"></div><div id="wizWarn" class="note" style="color:#8a2a1c"></div>`; body.appendChild(pv);
+  const pv=document.createElement("div"); pv.innerHTML=`<div id="wizPlan" class="planbox"></div><div id="wizWarn" class="note" style="color:var(--clay)"></div>`; body.appendChild(pv);
   const hostEl=document.createElement("div"); body.appendChild(hostEl); const saveCtl=ctlEl; ctlEl=hostEl;
   const st=WIZ.step;
-  if(st===0){ const inp=document.createElement("input"); inp.value=WIZ.name; inp.placeholder="اسم المطبخ"; inp.style.cssText="width:100%;font:inherit;font-size:15px;padding:9px;border:1px solid #c9ced3;border-radius:10px;margin:6px 0";
+  if(st===0){ const inp=document.createElement("input"); inp.value=WIZ.name; inp.placeholder="اسم المطبخ"; inp.className="txt big"; inp.setAttribute("aria-label","الاسم");
     inp.oninput=()=>{ WIZ.name=inp.value; }; hostEl.appendChild(inp);
-    const tg=document.createElement("div"); tg.className="act"; for(const [rt,lb,def] of [["kitchen","🍳 مطبخ","L"],["bath","🚿 حمام","b_std"],["hall","🚪 طرقة","h_hall"],["room","🛋 أوضة / صالة","r_living"]]){ const bb=document.createElement("button"); bb.className="btn"+(cfg.roomType===rt?" on":""); bb.style.flex="1"; bb.textContent=lb; bb.onclick=()=>{ if(cfg.roomType===rt) return; pushHist(); applyTemplate(cfg,def,false); if(["مطبخ جديد","حمام جديد","طرقة جديدة","أوضة جديدة"].includes(WIZ.name)) WIZ.name=rt==="bath"?"حمام جديد":rt==="hall"?"طرقة جديدة":rt==="room"?"أوضة جديدة":"مطبخ جديد"; build(); renderWiz(); }; tg.appendChild(bb); } hostEl.appendChild(tg);
-    const g=document.createElement("div"); g.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px";
-    for(const [k,v] of Object.entries(cfg.roomType==="bath"?BTEMPLATES:cfg.roomType==="hall"?HTEMPLATES:cfg.roomType==="room"?RTEMPLATES:TEMPLATES)){ const b=document.createElement("button"); b.className="btn"+(cfg.template===k?" on":""); b.style.cssText="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px";
-      b.innerHTML=tplIcon(k)+`<span style="font-size:12px">${v.name}</span>`; b.onclick=()=>{ pushHist(); applyTemplate(cfg,k,false); build(); renderWiz(); }; g.appendChild(b); }
+    const tg=document.createElement("div"); tg.className="rtypes"; for(const [rt,lb,def] of [["kitchen","🍳 مطبخ","L"],["bath","🚿 حمام","b_std"],["hall","🚪 طرقة","h_hall"],["room","🛋 أوضة / صالة","r_living"]]){ const bb=document.createElement("button"); bb.className="btn"+(cfg.roomType===rt?" on":""); bb.textContent=lb; bb.onclick=()=>{ if(cfg.roomType===rt) return; pushHist(); applyTemplate(cfg,def,false); if(["مطبخ جديد","حمام جديد","طرقة جديدة","أوضة جديدة"].includes(WIZ.name)) WIZ.name=rt==="bath"?"حمام جديد":rt==="hall"?"طرقة جديدة":rt==="room"?"أوضة جديدة":"مطبخ جديد"; build(); renderWiz(); }; tg.appendChild(bb); } hostEl.appendChild(tg);
+    const g=document.createElement("div"); g.className="tplgrid";
+    for(const [k,v] of Object.entries(cfg.roomType==="bath"?BTEMPLATES:cfg.roomType==="hall"?HTEMPLATES:cfg.roomType==="room"?RTEMPLATES:TEMPLATES)){ const b=document.createElement("button"); b.className="btn tpl"+(cfg.template===k?" on":"");
+      b.innerHTML=tplIcon(k)+`<span>${v.name}</span>`; b.onclick=()=>{ pushHist(); applyTemplate(cfg,k,false); build(); renderWiz(); }; g.appendChild(b); }
     hostEl.appendChild(g); }
   if(st===1){ for(const c of SCHEMA["الأوضة"].filter(x=>x.t!=="head")) schemaRow(hostEl,c); schemaRow(hostEl,SCHEMA["الارتفاعات"][0]); }
   if(st===2){ const n=document.createElement("div"); n.className="note"; n.textContent="ضيف كل باب وشباك وحدد حيطته ومكانه. أول الحيطة القدامية واللي ورا من ناحية الشمال."; hostEl.appendChild(n); featuresEditor(hostEl,["door","window","opening"]); }
@@ -404,12 +478,9 @@ function renderWiz(){
 function wallsBoxMini(el){ const h=document.createElement("div"); h.className="head"; h.textContent="🧱 أنهي حيطان عليها دواليب ورخامة؟"; el.appendChild(h);
   for(const w of W4){ const c=cfg.wallCfg[w]=cfg.wallCfg[w]||{type:"none",depth:60,up:false}; objSelect(el,c,"type",wallName(w),WTYPE); } }
 function schemaRow(parent,c){ // minimal renderer for a schema control inside another container
-  const row=document.createElement("div"); row.className="ctl"; const lb=document.createElement("label"); lb.textContent=c.l; row.appendChild(lb);
-  if(c.t==="select"){ const el=document.createElement("select"); for(const [v,n] of c.o){ const o=document.createElement("option"); o.value=v; o.textContent=n; el.appendChild(o); } el.value=cfg[c.k]; el.onchange=()=>{ pushHist(); cfg[c.k]=el.value; build(); UI_REFRESH(); }; row.appendChild(el); }
-  if(c.t==="toggle"){ const w=document.createElement("label"); w.className="sw"; const el=document.createElement("input"); el.type="checkbox"; el.checked=!!cfg[c.k]; el.onchange=()=>{ pushHist(); cfg[c.k]=el.checked; build(); UI_REFRESH(); }; w.append(el,document.createElement("i")); row.appendChild(w); }
-  if(c.t==="range"){ const el=document.createElement("input"); el.type="range"; el.min=c.min; el.max=c.max; el.step=c.step; el.value=+cfg[c.k]; const out=document.createElement("output"); out.textContent=cfg[c.k]+" "+c.u;
-    el.addEventListener("pointerdown",pushHist); el.oninput=()=>{ cfg[c.k]=+el.value; out.textContent=el.value+" "+c.u; SLIDING=true; build(); SLIDING=false; }; row.append(el,out); }
-  parent.appendChild(row);
+  if(c.t==="range"){ rangeField(parent,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },c.min,c.max,c.step,c.u,()=>UI_REFRESH()); return; }
+  if(c.t==="select"){ fieldRow(parent,c.l,choice(c.o,cfg[c.k],v=>{ pushHist(); cfg[c.k]=v; build(); UI_REFRESH(); },c.l)); return; }
+  if(c.t==="toggle"){ const w=document.createElement("label"); w.className="sw"; const el=document.createElement("input"); el.type="checkbox"; el.checked=!!cfg[c.k]; el.setAttribute("aria-label",c.l); el.onchange=()=>{ pushHist(); cfg[c.k]=el.checked; build(); UI_REFRESH(); }; w.append(el,document.createElement("i")); fieldRow(parent,c.l,w); }
 }
 
 function STEPS(){ if(cfg.roomType==="bath") return BSTEPS(); if(cfg.roomType==="room"){ const c=k=>POINTS.filter(p=>p.type===k).length, Q=ROOMQ||{floorA:0,paintA:0,liters:0,skirt:0,floorPcs:0};
@@ -450,15 +521,15 @@ function costBox(){
 }
 renderTabs(); renderControls();
 
-function resize(){ poke(); /* setSize clears the canvas */
-  const w=document.documentElement.clientWidth||innerWidth, full=document.documentElement.clientHeight||innerHeight;
-  const h=panelOpen?Math.round(full*0.48):full;
-  canvas.style.height=h+"px";
-  renderer.setSize(w,h,false); canvas.style.width=w+"px";
+function resize(){ poke(); /* setSize clears the canvas. The stage is sized by CSS: full screen, above the phone sheet, or beside the docked panel */
+  const w=stage.clientWidth||innerWidth, h=stage.clientHeight||innerHeight; if(w<2||h<2) return;
+  canvas.style.width=w+"px"; canvas.style.height=h+"px";
+  renderer.setSize(w,h,false);
   camera.aspect=w/h; camera.updateProjectionMatrix();
   if(APT3D){ if(!FP.on) aptView(false); } else if(VIEWS[view] && (VIEWS[view].fit||VIEWS[view].sideW) && !camTouched) setView(view);
 }
 addEventListener("resize",resize);
+if(MQ.desk.matches){ panelOpen=true; panel.classList.add("open"); document.body.classList.add("panel-open"); } // desktop starts with the panel docked
 resize(); setView("out"); build(); initProjects();
 document.querySelectorAll("#pad button").forEach(b=>{
   let t=null; const step=()=>{ const m=b.dataset.m;
