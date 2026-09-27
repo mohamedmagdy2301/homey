@@ -456,17 +456,17 @@ function resize(){
   canvas.style.height=h+"px";
   renderer.setSize(w,h,false); canvas.style.width=w+"px";
   camera.aspect=w/h; camera.updateProjectionMatrix();
-  if(APT3D){ if(!FP.on) aptView(false); } else if(VIEWS[view] && (VIEWS[view].fit||VIEWS[view].sideW)) setView(view);
+  if(APT3D){ if(!FP.on) aptView(false); } else if(VIEWS[view] && (VIEWS[view].fit||VIEWS[view].sideW) && !camTouched) setView(view);
 }
 addEventListener("resize",resize);
 resize(); setView("out"); build(); initProjects();
 document.querySelectorAll("#pad button").forEach(b=>{
   let t=null; const step=()=>{ const m=b.dataset.m;
     if(FP.on){ if(m==="l") FP.yaw+=0.05; if(m==="r") FP.yaw-=0.05; if(m==="f") fpMove(0.05); if(m==="b") fpMove(-0.05); return; }
-    if(m==="l") sph.theta+=0.06; if(m==="r") sph.theta-=0.06;
+    camTouched=true; if(m==="l") sph.theta+=0.06; if(m==="r") sph.theta-=0.06;
     if(m==="f"||m==="b"){ const dx=target.x-camera.position.x, dz=target.z-camera.position.z, L=Math.hypot(dx,dz)||1, k=(m==="f"?0.06:-0.06);
       target.x=Math.max(0.6,Math.min(RW-0.3,target.x+dx/L*k)); target.z=Math.max(0.3,Math.min(RL+0.6,target.z+dz/L*k)); } };
-  const start=e=>{ e.preventDefault(); step(); t=setInterval(step,40); }, stop=()=>{ clearInterval(t); t=null; };
+  const start=e=>{ e.preventDefault(); clearInterval(t); step(); t=setInterval(step,40); }, stop=()=>{ clearInterval(t); t=null; };
   b.addEventListener("pointerdown",start); b.addEventListener("pointerup",stop); b.addEventListener("pointerleave",stop); b.addEventListener("pointercancel",stop);
 });
 function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canvas.toDataURL("image/png");

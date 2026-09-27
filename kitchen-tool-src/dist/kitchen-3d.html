@@ -998,7 +998,7 @@ function buildBath(warn){
     const wallItem=!!T.wallY, y0=wallItem?(b.y||T.wallY)/100:0;
     let y1=0.9; if(b.type==="toilet") y1=b.var==="hung"?1.15:0.83; if(b.type==="bidet") y1=0.42; if(b.type==="basin") y1=0.86; if(b.type==="shower") y1=2.0; if(b.type==="tub") y1=0.56; if(b.type==="heater") y1=y0+0.72; if(b.type==="cab") y1=2.1; if(b.type==="towel") y1=y0+0.25; if(b.type==="washer") y1=cfg.washerH/100; if(b.type==="dryer") y1=0.85; if(b.type==="usink") y1=0.9;
     let u=null;
-    if(b.type==="washer"){ const g=0.01; u=washer(fr.f,a0,a1,fr.back,false); u.label=nmOf(b); }
+    if(b.type==="washer"){ const sv=[cfg.washerW,cfg.washerD]; cfg.washerW=Math.round(w*100); cfg.washerD=Math.round(d*100); /* draw with this fixture's size, not the kitchen washer's */ try{ u=washer(fr.f,a0,a1,fr.back,false); } finally{ [cfg.washerW,cfg.washerD]=sv; } u.label=nmOf(b); }
     else if(b.type==="cab"){ KEY="B-"+b.id; tall(fr.f,a0,a1,fr.back,d,0,Math.min(H-0.01,2.1)); u=UNITS[UNITS.length-1]; u.label=nmOf(b); }
     else { u=newUnit(b.type,fr.f,a0,a1,fr.back,d,y0,y1,{label:nmOf(b)}); curUid=u.id;
       if(b.type==="toilet"){ if(b.var==="hung"){ P(a0-0.08,a1+0.08,0,0.18,0,1.12,bathTileMat(w+0.16,1.12)); P(m-0.12,m+0.12,0.18,0.19,0.95,1.1,chrome); E(m,0.18+0.27,0.38,0.19,0.16,cer,1.4); E(m,0.18+0.27,0.465,0.195,0.02,M("#fdfdfd"),1.4); }
@@ -1727,20 +1727,20 @@ function furnBox(el){
     if(T.wall) objRange(card,it,"y","ارتفاعها من الأرض",0,Math.round(H*100)-10,1); else if(!["rug"].includes(it.type)) objRange(card,it,"y","مرفوعة عن الأرض",0,200,1);
     if(T.modular){ sub("🗄 أقسام الدولاب (من الشمال لليمين وإنت باصص عليه)");
       objRange(card,it,"topH","ارتفاع الشنط فوق (0 = من غير)",0,120,1);
-      if(!it.secs||!it.secs.length) it.secs=defaultSecs(it,E.w);
-      const {ws,over}=secWidths(it.secs,E.w/100);
-      it.secs.forEach((sc,idx)=>{ const row=document.createElement("div"); row.className="addrow"; row.style.alignItems="center";
-        const ks=document.createElement("select"); ks.innerHTML=SECK.map(([k,n])=>`<option value="${k}">${n}</option>`).join(""); ks.value=sc.k; ks.onchange=()=>{ pushHist(); sc.k=ks.value; build(); UI_REFRESH(); };
+      const secs=it.secs&&it.secs.length?it.secs:defaultSecs(it,E.w), own=()=>{ if(it.secs!==secs) it.secs=secs; }; /* only store the default sections once the user edits them */
+      const {ws,over}=secWidths(secs,E.w/100);
+      secs.forEach((sc,idx)=>{ const row=document.createElement("div"); row.className="addrow"; row.style.alignItems="center";
+        const ks=document.createElement("select"); ks.innerHTML=SECK.map(([k,n])=>`<option value="${k}">${n}</option>`).join(""); ks.value=sc.k; ks.onchange=()=>{ pushHist(); own(); sc.k=ks.value; build(); UI_REFRESH(); };
         const wi=document.createElement("input"); wi.type="number"; wi.inputMode="numeric"; wi.className="num"; wi.value=sc.w>0?sc.w:""; wi.placeholder=String(Math.round(ws[idx]*100)); wi.setAttribute("aria-label","عرض القسم");
-        wi.onchange=()=>{ pushHist(); sc.w=Math.max(0,+wi.value||0); build(); UI_REFRESH(); };
+        wi.onchange=()=>{ pushHist(); own(); sc.w=Math.max(0,+wi.value||0); build(); UI_REFRESH(); };
         const un=document.createElement("small"); un.textContent="سم"; un.style.color="#6b737c";
-        const up=document.createElement("button"); up.className="btn"; up.textContent="↑"; up.disabled=idx===0; up.onclick=()=>{ pushHist(); const a=it.secs; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; build(); UI_REFRESH(); };
-        const dl=document.createElement("button"); dl.className="btn"; dl.textContent="✕"; dl.onclick=()=>{ pushHist(); it.secs.splice(idx,1); if(!it.secs.length) delete it.secs; build(); UI_REFRESH(); };
+        const up=document.createElement("button"); up.className="btn"; up.textContent="↑"; up.disabled=idx===0; up.onclick=()=>{ pushHist(); own(); const a=secs; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; build(); UI_REFRESH(); };
+        const dl=document.createElement("button"); dl.className="btn"; dl.textContent="✕"; dl.onclick=()=>{ pushHist(); own(); secs.splice(idx,1); if(!secs.length) delete it.secs; build(); UI_REFRESH(); };
         row.append(ks,wi,un,up,dl); card.appendChild(row);
-        if(sc.k==="gap"||sc.k==="desk"||sc.k==="dresser"){ if((it.topH||0)>0){ const tg={v:sc.top==="0"?"0":""}; objSelect(card,tg,"v","  ↳ فوقه شنطة؟",[["","أيوه"],["0","لأ، فاضي للسقف"]],()=>{ sc.top=tg.v; }); } } });
+        if(sc.k==="gap"||sc.k==="desk"||sc.k==="dresser"){ if((it.topH||0)>0){ const tg={v:sc.top==="0"?"0":""}; objSelect(card,tg,"v","  ↳ فوقه شنطة؟",[["","أيوه"],["0","لأ، فاضي للسقف"]],()=>{ own(); sc.top=tg.v; }); } } });
       const n=document.createElement("div"); n.className="note"; n.style.color=over?"#b3452c":"#6b737c"; n.textContent=(over?"⚠ ":"")+`سيب العرض فاضي عشان القسم ياخد الباقي لوحده. العرض الكلي ${E.w} سم.`; card.appendChild(n);
       const act=document.createElement("div"); act.className="act";
-      const ad=document.createElement("button"); ad.className="btn"; ad.textContent="➕ قسم"; ad.onclick=()=>{ pushHist(); it.secs.push({k:"doors",w:0}); build(); UI_REFRESH(); };
+      const ad=document.createElement("button"); ad.className="btn"; ad.textContent="➕ قسم"; ad.onclick=()=>{ pushHist(); own(); secs.push({k:"doors",w:0}); build(); UI_REFRESH(); };
       const rs=document.createElement("button"); rs.className="btn"; rs.textContent="↺ الأقسام الافتراضية"; rs.onclick=()=>{ pushHist(); delete it.secs; build(); UI_REFRESH(); };
       act.append(ad,rs); card.appendChild(act); }
     el.appendChild(card); }
@@ -2133,7 +2133,7 @@ function buildKitchen(warn){
   // ================= extra appliances (wall / counter / pos-based) =================
   for(const a of apps){ const T=APPS[a.type]; if(!W4.includes(a.loc)) continue; const c=wc(a.loc);
     if((T.cls==="slot"||T.cls==="tall")&&c.type==="counter") continue;
-    const fr=frameOf(a.loc), a0=a.pos/100, a1=a0+a.w/100; curSide=fr.side; curWall=a.loc; let u=null;
+    const fr=frameOf(a.loc), aL=wlen(a.loc), aw=Math.min(a.w/100,aL), a0=Math.max(0,Math.min(aL-aw,a.pos/100)), a1=a0+aw; /* keep it on the wall */ curSide=fr.side; curWall=a.loc; let u=null;
     if(T.cls==="slot"||T.cls==="tall") u=appUnit(fr.f,a0,a1,fr.back,a,false);
     if(T.cls==="wall") u=appWall(fr.f,a0,a1,fr.back,a);
     if(T.cls==="counter"){ u=appCounter(fr.f,a0,a1,fr.back,a); if(c.type!=="counter"&&c.type!=="shallow"&&c.type!=="bar") warn.push(`${T.n} محطوط على حيطة من غير رخامة`); }
@@ -2143,7 +2143,7 @@ function buildKitchen(warn){
   }
   // ================= custom storage units =================
   for(const cu of cfg.custom){ if(!W4.includes(cu.wall)) continue;
-    const fr=frameOf(cu.wall), a0=cu.pos/100, a1=a0+cu.w/100, dp=cu.d/100; curSide=fr.side; curWall=cu.wall;
+    const fr=frameOf(cu.wall), cL=wlen(cu.wall), cw=Math.min(cu.w/100,cL), a0=Math.max(0,Math.min(cL-cw,cu.pos/100)), a1=a0+cw, dp=cu.d/100; /* keep it on the wall */ curSide=fr.side; curWall=cu.wall;
     OPT={front:cu.front,n:cu.n,shelves:cu.shelves,acc:cu.acc}; KEY=cu.id;
     if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
     else if(cu.type==="upper") uppers(fr.f,a0,a1,fr.back,cu.y/100,capUp(cu.wall,a0,a1,Math.min(H-0.01,(cu.y+cu.h)/100)),dp);
@@ -2406,8 +2406,8 @@ const VIEWS={
 VIEWS.walk={name:"🚶 امشي جوه المطبخ",fp:true};
 let view="out"; const FP={on:false,x:0.9,z:2,yaw:0,pitch:-0.1};
 function unitRect(u){ const dr=dirOf(u.f), b=u.back, e=u.back+dr*u.depth; return alongZ(u.f)?{x0:Math.min(b,e),x1:Math.max(b,e),z0:u.a0,z1:u.a1}:{x0:u.a0,x1:u.a1,z0:Math.min(b,e),z1:Math.max(b,e)}; }
-function fpFree(x,z){ if(APT3D) return aptFree(x,z); if(inCut(x,z,0.15)) return false; if(x<0.18||x>RW-0.18||z<0.18||z>RL-0.18) return false; for(const u of UNITS){ if(u.y0>1||!(W4.includes(u.wall)||u.wall==="IS")) continue; const r=unitRect(u); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } for(const f of FEATS) if(f.type==="column"||(f.type==="shaft"||f.type==="stack")){ const r=rectAO(f.wall,f.a0,f.a1,0,f.dep); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } return true; }
-function fpMove(k){ const nx=FP.x+Math.sin(FP.yaw)*k, nz=FP.z+Math.cos(FP.yaw)*k; if(fpFree(nx,nz)){ FP.x=nx; FP.z=nz; } else if(fpFree(nx,FP.z)) FP.x=nx; else if(fpFree(FP.x,nz)) FP.z=nz; }
+function fpFree(x,z){ if(APT3D) return aptFree(x,z); if(inCut(x,z,0.15)) return false; if(x<0.18||x>RW-0.18||z<0.18||z>RL-0.18) return false; for(const u of UNITS){ if(u.y0>1||!(W4.includes(u.wall)||u.wall==="IS"||(u.wall==="FR"&&u.ft!=="rug"))) continue; const r=unitRect(u); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } for(const f of FEATS) if(f.type==="column"||(f.type==="shaft"||f.type==="stack")){ const r=rectAO(f.wall,f.a0,f.a1,0,f.dep); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } return true; }
+function fpMove(k){ const nx=FP.x+Math.sin(FP.yaw)*k, nz=FP.z+Math.cos(FP.yaw)*k; if(fpFree(nx,nz)||!fpFree(FP.x,FP.z)) /* started inside furniture: let them walk out */{ FP.x=nx; FP.z=nz; } else if(fpFree(nx,FP.z)) FP.x=nx; else if(fpFree(FP.x,nz)) FP.z=nz; }
 function enterWalk(){ view="walk"; FP.on=true; let x=RW/2, z=RL/2; const d=FEATS.find(f=>f.type==="door"||f.type==="opening");
   if(d){ for(let o=0.35;o<=2.5;o+=0.1){ const [px,pz]=aoToXZ(d.wall,(d.a0+d.a1)/2,o); if(fpFree(px,pz)){ x=px; z=pz; break; } } }
   else { let best=null; for(let i=1;i<10;i++) for(let j=1;j<10;j++){ const px=RW*i/10, pz=RL*j/10; if(fpFree(px,pz)){ const dd=Math.hypot(px-RW/2,pz-RL/2); if(!best||dd<best[2]) best=[px,pz,dd]; } } if(best){ x=best[0]; z=best[1]; } }
@@ -2415,7 +2415,8 @@ function enterWalk(){ view="walk"; FP.on=true; let x=RW/2, z=RL/2; const d=FEATS
   document.getElementById("pad").style.display="grid"; hint("🚶 اسحب بصباعك تبص حواليك • الأسهم تحت للمشي • صباعين للقدام وورا",5000); }
 function fitR(v){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect);
   return Math.max(v.s.r,(RW/2+1.5)/Math.tan(hf),(RL/2+1.4)/Math.tan(vf)); }
-function setView(k){ if(VIEWS[k].fp){ enterWalk(); return; } if(FP.on){ FP.on=false; document.getElementById("pad").style.display=cfg.walkPad?"grid":"none"; } view=k; const v0=VIEWS[k]; const v=v0.dyn?{...v0,...v0.dyn()}:v0; target.set(...(typeof v.t==="function"?v.t():v.t)); sph={...v.s}; if(v.fit)sph.r=fitR(v); if(v.side){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(RL/2+0.1)/Math.tan(hf),1.6/Math.tan(vf)); } if(v.sideW){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(wlen(v.sideW)/2+0.15)/Math.tan(hf),1.6/Math.tan(vf)); } }
+let camTouched=false; /* user orbited/zoomed: resize() keeps their camera */
+function setView(k){ if(VIEWS[k].fp){ enterWalk(); return; } camTouched=false; if(FP.on){ FP.on=false; document.getElementById("pad").style.display=cfg.walkPad?"grid":"none"; } view=k; const v0=VIEWS[k]; const v=v0.dyn?{...v0,...v0.dyn()}:v0; target.set(...(typeof v.t==="function"?v.t():v.t)); sph={...v.s}; if(v.fit)sph.r=fitR(v); if(v.side){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(RL/2+0.1)/Math.tan(hf),1.6/Math.tan(vf)); } if(v.sideW){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(wlen(v.sideW)/2+0.15)/Math.tan(hf),1.6/Math.tan(vf)); } }
 function updateCam(){
   { const wf=FP.on?75:55; if(camera.fov!==wf){ camera.fov=wf; camera.updateProjectionMatrix(); } }
   if(FP.on){ FP.pitch=Math.max(-1.2,Math.min(1.1,FP.pitch)); camera.position.set(FP.x,1.6,FP.z);
@@ -2489,15 +2490,17 @@ canvas.addEventListener("pointerdown",e=>{ canvas.setPointerCapture(e.pointerId)
 canvas.addEventListener("pointermove",e=>{
   if(!pts.has(e.pointerId))return; const pr=pts.get(e.pointerId), c={x:e.clientX,y:e.clientY}; pts.set(e.pointerId,c);
   if(drag && pts.size===1){ moveDrag(e); return; }
-  if(pts.size===1){ if(FP.on){ FP.yaw+=(c.x-pr.x)*0.006; FP.pitch+=(c.y-pr.y)*0.005; } else { sph.theta-=(c.x-pr.x)*0.008; sph.phi-=(c.y-pr.y)*0.006; } }
-  else if(pts.size===2){ const [a,b]=[...pts.values()]; const dd=Math.hypot(a.x-b.x,a.y-b.y); if(lastPinch){ if(FP.on) fpMove((dd-lastPinch)*0.01); else sph.r*=lastPinch/dd; } lastPinch=dd; }
+  if(pts.size===1){ if(FP.on){ FP.yaw+=(c.x-pr.x)*0.006; FP.pitch+=(c.y-pr.y)*0.005; } else { sph.theta-=(c.x-pr.x)*0.008; sph.phi-=(c.y-pr.y)*0.006; camTouched=true; } }
+  else if(pts.size===2){ const [a,b]=[...pts.values()]; const dd=Math.hypot(a.x-b.x,a.y-b.y); if(lastPinch){ if(FP.on) fpMove((dd-lastPinch)*0.01); else { sph.r*=lastPinch/dd; camTouched=true; } } lastPinch=dd; }
 });
 const up=e=>{
   let handled=false; if(drag) handled=endDrag();
   if(!handled && tapStart && pts.size===1){ const dx=e.clientX-tapStart.x, dy=e.clientY-tapStart.y; if(Math.hypot(dx,dy)<7 && performance.now()-tapStart.t<450){ if(measure) measurePick(e.clientX,e.clientY); else pick(e.clientX,e.clientY); } }
   tapStart=null; pts.delete(e.pointerId); if(pts.size<2)lastPinch=0;};
-canvas.addEventListener("pointerup",up); canvas.addEventListener("pointercancel",up);
-canvas.addEventListener("wheel",e=>{e.preventDefault(); if(FP.on) fpMove(-e.deltaY*0.002); else sph.r*=1+e.deltaY*0.001;},{passive:false});
+canvas.addEventListener("pointerup",up);
+canvas.addEventListener("pointercancel",e=>{ if(drag){ for(const [o,p0] of drag.meshes) o.position.copy(p0); drag=null; hint("",1); } /* the system took the touch: undo the half-done drag instead of saving it */
+  tapStart=null; pts.delete(e.pointerId); if(pts.size<2)lastPinch=0; });
+canvas.addEventListener("wheel",e=>{e.preventDefault(); if(FP.on) fpMove(-e.deltaY*0.002); else { sph.r*=1+e.deltaY*0.001; camTouched=true; }},{passive:false});
 
 // =================== UI ===================
 const panel=document.getElementById("panel");
@@ -2957,17 +2960,17 @@ function resize(){
   canvas.style.height=h+"px";
   renderer.setSize(w,h,false); canvas.style.width=w+"px";
   camera.aspect=w/h; camera.updateProjectionMatrix();
-  if(APT3D){ if(!FP.on) aptView(false); } else if(VIEWS[view] && (VIEWS[view].fit||VIEWS[view].sideW)) setView(view);
+  if(APT3D){ if(!FP.on) aptView(false); } else if(VIEWS[view] && (VIEWS[view].fit||VIEWS[view].sideW) && !camTouched) setView(view);
 }
 addEventListener("resize",resize);
 resize(); setView("out"); build(); initProjects();
 document.querySelectorAll("#pad button").forEach(b=>{
   let t=null; const step=()=>{ const m=b.dataset.m;
     if(FP.on){ if(m==="l") FP.yaw+=0.05; if(m==="r") FP.yaw-=0.05; if(m==="f") fpMove(0.05); if(m==="b") fpMove(-0.05); return; }
-    if(m==="l") sph.theta+=0.06; if(m==="r") sph.theta-=0.06;
+    camTouched=true; if(m==="l") sph.theta+=0.06; if(m==="r") sph.theta-=0.06;
     if(m==="f"||m==="b"){ const dx=target.x-camera.position.x, dz=target.z-camera.position.z, L=Math.hypot(dx,dz)||1, k=(m==="f"?0.06:-0.06);
       target.x=Math.max(0.6,Math.min(RW-0.3,target.x+dx/L*k)); target.z=Math.max(0.3,Math.min(RL+0.6,target.z+dz/L*k)); } };
-  const start=e=>{ e.preventDefault(); step(); t=setInterval(step,40); }, stop=()=>{ clearInterval(t); t=null; };
+  const start=e=>{ e.preventDefault(); clearInterval(t); step(); t=setInterval(step,40); }, stop=()=>{ clearInterval(t); t=null; };
   b.addEventListener("pointerdown",start); b.addEventListener("pointerup",stop); b.addEventListener("pointerleave",stop); b.addEventListener("pointercancel",stop);
 });
 function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canvas.toDataURL("image/png");

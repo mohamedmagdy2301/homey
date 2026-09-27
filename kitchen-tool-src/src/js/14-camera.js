@@ -13,8 +13,8 @@ const VIEWS={
 VIEWS.walk={name:"🚶 امشي جوه المطبخ",fp:true};
 let view="out"; const FP={on:false,x:0.9,z:2,yaw:0,pitch:-0.1};
 function unitRect(u){ const dr=dirOf(u.f), b=u.back, e=u.back+dr*u.depth; return alongZ(u.f)?{x0:Math.min(b,e),x1:Math.max(b,e),z0:u.a0,z1:u.a1}:{x0:u.a0,x1:u.a1,z0:Math.min(b,e),z1:Math.max(b,e)}; }
-function fpFree(x,z){ if(APT3D) return aptFree(x,z); if(inCut(x,z,0.15)) return false; if(x<0.18||x>RW-0.18||z<0.18||z>RL-0.18) return false; for(const u of UNITS){ if(u.y0>1||!(W4.includes(u.wall)||u.wall==="IS")) continue; const r=unitRect(u); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } for(const f of FEATS) if(f.type==="column"||(f.type==="shaft"||f.type==="stack")){ const r=rectAO(f.wall,f.a0,f.a1,0,f.dep); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } return true; }
-function fpMove(k){ const nx=FP.x+Math.sin(FP.yaw)*k, nz=FP.z+Math.cos(FP.yaw)*k; if(fpFree(nx,nz)){ FP.x=nx; FP.z=nz; } else if(fpFree(nx,FP.z)) FP.x=nx; else if(fpFree(FP.x,nz)) FP.z=nz; }
+function fpFree(x,z){ if(APT3D) return aptFree(x,z); if(inCut(x,z,0.15)) return false; if(x<0.18||x>RW-0.18||z<0.18||z>RL-0.18) return false; for(const u of UNITS){ if(u.y0>1||!(W4.includes(u.wall)||u.wall==="IS"||(u.wall==="FR"&&u.ft!=="rug"))) continue; const r=unitRect(u); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } for(const f of FEATS) if(f.type==="column"||(f.type==="shaft"||f.type==="stack")){ const r=rectAO(f.wall,f.a0,f.a1,0,f.dep); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } return true; }
+function fpMove(k){ const nx=FP.x+Math.sin(FP.yaw)*k, nz=FP.z+Math.cos(FP.yaw)*k; if(fpFree(nx,nz)||!fpFree(FP.x,FP.z)) /* started inside furniture: let them walk out */{ FP.x=nx; FP.z=nz; } else if(fpFree(nx,FP.z)) FP.x=nx; else if(fpFree(FP.x,nz)) FP.z=nz; }
 function enterWalk(){ view="walk"; FP.on=true; let x=RW/2, z=RL/2; const d=FEATS.find(f=>f.type==="door"||f.type==="opening");
   if(d){ for(let o=0.35;o<=2.5;o+=0.1){ const [px,pz]=aoToXZ(d.wall,(d.a0+d.a1)/2,o); if(fpFree(px,pz)){ x=px; z=pz; break; } } }
   else { let best=null; for(let i=1;i<10;i++) for(let j=1;j<10;j++){ const px=RW*i/10, pz=RL*j/10; if(fpFree(px,pz)){ const dd=Math.hypot(px-RW/2,pz-RL/2); if(!best||dd<best[2]) best=[px,pz,dd]; } } if(best){ x=best[0]; z=best[1]; } }
@@ -22,7 +22,8 @@ function enterWalk(){ view="walk"; FP.on=true; let x=RW/2, z=RL/2; const d=FEATS
   document.getElementById("pad").style.display="grid"; hint("🚶 اسحب بصباعك تبص حواليك • الأسهم تحت للمشي • صباعين للقدام وورا",5000); }
 function fitR(v){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect);
   return Math.max(v.s.r,(RW/2+1.5)/Math.tan(hf),(RL/2+1.4)/Math.tan(vf)); }
-function setView(k){ if(VIEWS[k].fp){ enterWalk(); return; } if(FP.on){ FP.on=false; document.getElementById("pad").style.display=cfg.walkPad?"grid":"none"; } view=k; const v0=VIEWS[k]; const v=v0.dyn?{...v0,...v0.dyn()}:v0; target.set(...(typeof v.t==="function"?v.t():v.t)); sph={...v.s}; if(v.fit)sph.r=fitR(v); if(v.side){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(RL/2+0.1)/Math.tan(hf),1.6/Math.tan(vf)); } if(v.sideW){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(wlen(v.sideW)/2+0.15)/Math.tan(hf),1.6/Math.tan(vf)); } }
+let camTouched=false; /* user orbited/zoomed: resize() keeps their camera */
+function setView(k){ if(VIEWS[k].fp){ enterWalk(); return; } camTouched=false; if(FP.on){ FP.on=false; document.getElementById("pad").style.display=cfg.walkPad?"grid":"none"; } view=k; const v0=VIEWS[k]; const v=v0.dyn?{...v0,...v0.dyn()}:v0; target.set(...(typeof v.t==="function"?v.t():v.t)); sph={...v.s}; if(v.fit)sph.r=fitR(v); if(v.side){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(RL/2+0.1)/Math.tan(hf),1.6/Math.tan(vf)); } if(v.sideW){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(wlen(v.sideW)/2+0.15)/Math.tan(hf),1.6/Math.tan(vf)); } }
 function updateCam(){
   { const wf=FP.on?75:55; if(camera.fov!==wf){ camera.fov=wf; camera.updateProjectionMatrix(); } }
   if(FP.on){ FP.pitch=Math.max(-1.2,Math.min(1.1,FP.pitch)); camera.position.set(FP.x,1.6,FP.z);
@@ -96,12 +97,14 @@ canvas.addEventListener("pointerdown",e=>{ canvas.setPointerCapture(e.pointerId)
 canvas.addEventListener("pointermove",e=>{
   if(!pts.has(e.pointerId))return; const pr=pts.get(e.pointerId), c={x:e.clientX,y:e.clientY}; pts.set(e.pointerId,c);
   if(drag && pts.size===1){ moveDrag(e); return; }
-  if(pts.size===1){ if(FP.on){ FP.yaw+=(c.x-pr.x)*0.006; FP.pitch+=(c.y-pr.y)*0.005; } else { sph.theta-=(c.x-pr.x)*0.008; sph.phi-=(c.y-pr.y)*0.006; } }
-  else if(pts.size===2){ const [a,b]=[...pts.values()]; const dd=Math.hypot(a.x-b.x,a.y-b.y); if(lastPinch){ if(FP.on) fpMove((dd-lastPinch)*0.01); else sph.r*=lastPinch/dd; } lastPinch=dd; }
+  if(pts.size===1){ if(FP.on){ FP.yaw+=(c.x-pr.x)*0.006; FP.pitch+=(c.y-pr.y)*0.005; } else { sph.theta-=(c.x-pr.x)*0.008; sph.phi-=(c.y-pr.y)*0.006; camTouched=true; } }
+  else if(pts.size===2){ const [a,b]=[...pts.values()]; const dd=Math.hypot(a.x-b.x,a.y-b.y); if(lastPinch){ if(FP.on) fpMove((dd-lastPinch)*0.01); else { sph.r*=lastPinch/dd; camTouched=true; } } lastPinch=dd; }
 });
 const up=e=>{
   let handled=false; if(drag) handled=endDrag();
   if(!handled && tapStart && pts.size===1){ const dx=e.clientX-tapStart.x, dy=e.clientY-tapStart.y; if(Math.hypot(dx,dy)<7 && performance.now()-tapStart.t<450){ if(measure) measurePick(e.clientX,e.clientY); else pick(e.clientX,e.clientY); } }
   tapStart=null; pts.delete(e.pointerId); if(pts.size<2)lastPinch=0;};
-canvas.addEventListener("pointerup",up); canvas.addEventListener("pointercancel",up);
-canvas.addEventListener("wheel",e=>{e.preventDefault(); if(FP.on) fpMove(-e.deltaY*0.002); else sph.r*=1+e.deltaY*0.001;},{passive:false});
+canvas.addEventListener("pointerup",up);
+canvas.addEventListener("pointercancel",e=>{ if(drag){ for(const [o,p0] of drag.meshes) o.position.copy(p0); drag=null; hint("",1); } /* the system took the touch: undo the half-done drag instead of saving it */
+  tapStart=null; pts.delete(e.pointerId); if(pts.size<2)lastPinch=0; });
+canvas.addEventListener("wheel",e=>{e.preventDefault(); if(FP.on) fpMove(-e.deltaY*0.002); else { sph.r*=1+e.deltaY*0.001; camTouched=true; }},{passive:false});

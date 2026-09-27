@@ -184,7 +184,7 @@ function buildKitchen(warn){
   // ================= extra appliances (wall / counter / pos-based) =================
   for(const a of apps){ const T=APPS[a.type]; if(!W4.includes(a.loc)) continue; const c=wc(a.loc);
     if((T.cls==="slot"||T.cls==="tall")&&c.type==="counter") continue;
-    const fr=frameOf(a.loc), a0=a.pos/100, a1=a0+a.w/100; curSide=fr.side; curWall=a.loc; let u=null;
+    const fr=frameOf(a.loc), aL=wlen(a.loc), aw=Math.min(a.w/100,aL), a0=Math.max(0,Math.min(aL-aw,a.pos/100)), a1=a0+aw; /* keep it on the wall */ curSide=fr.side; curWall=a.loc; let u=null;
     if(T.cls==="slot"||T.cls==="tall") u=appUnit(fr.f,a0,a1,fr.back,a,false);
     if(T.cls==="wall") u=appWall(fr.f,a0,a1,fr.back,a);
     if(T.cls==="counter"){ u=appCounter(fr.f,a0,a1,fr.back,a); if(c.type!=="counter"&&c.type!=="shallow"&&c.type!=="bar") warn.push(`${T.n} محطوط على حيطة من غير رخامة`); }
@@ -194,7 +194,7 @@ function buildKitchen(warn){
   }
   // ================= custom storage units =================
   for(const cu of cfg.custom){ if(!W4.includes(cu.wall)) continue;
-    const fr=frameOf(cu.wall), a0=cu.pos/100, a1=a0+cu.w/100, dp=cu.d/100; curSide=fr.side; curWall=cu.wall;
+    const fr=frameOf(cu.wall), cL=wlen(cu.wall), cw=Math.min(cu.w/100,cL), a0=Math.max(0,Math.min(cL-cw,cu.pos/100)), a1=a0+cw, dp=cu.d/100; /* keep it on the wall */ curSide=fr.side; curWall=cu.wall;
     OPT={front:cu.front,n:cu.n,shelves:cu.shelves,acc:cu.acc}; KEY=cu.id;
     if(cu.type==="lower"){ base(fr.f,a0,a1,fr.back,dp); counterLen+=a1-a0; }
     else if(cu.type==="upper") uppers(fr.f,a0,a1,fr.back,cu.y/100,capUp(cu.wall,a0,a1,Math.min(H-0.01,(cu.y+cu.h)/100)),dp);

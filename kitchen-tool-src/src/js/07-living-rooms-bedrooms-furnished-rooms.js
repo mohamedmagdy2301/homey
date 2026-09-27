@@ -237,20 +237,20 @@ function furnBox(el){
     if(T.wall) objRange(card,it,"y","ارتفاعها من الأرض",0,Math.round(H*100)-10,1); else if(!["rug"].includes(it.type)) objRange(card,it,"y","مرفوعة عن الأرض",0,200,1);
     if(T.modular){ sub("🗄 أقسام الدولاب (من الشمال لليمين وإنت باصص عليه)");
       objRange(card,it,"topH","ارتفاع الشنط فوق (0 = من غير)",0,120,1);
-      if(!it.secs||!it.secs.length) it.secs=defaultSecs(it,E.w);
-      const {ws,over}=secWidths(it.secs,E.w/100);
-      it.secs.forEach((sc,idx)=>{ const row=document.createElement("div"); row.className="addrow"; row.style.alignItems="center";
-        const ks=document.createElement("select"); ks.innerHTML=SECK.map(([k,n])=>`<option value="${k}">${n}</option>`).join(""); ks.value=sc.k; ks.onchange=()=>{ pushHist(); sc.k=ks.value; build(); UI_REFRESH(); };
+      const secs=it.secs&&it.secs.length?it.secs:defaultSecs(it,E.w), own=()=>{ if(it.secs!==secs) it.secs=secs; }; /* only store the default sections once the user edits them */
+      const {ws,over}=secWidths(secs,E.w/100);
+      secs.forEach((sc,idx)=>{ const row=document.createElement("div"); row.className="addrow"; row.style.alignItems="center";
+        const ks=document.createElement("select"); ks.innerHTML=SECK.map(([k,n])=>`<option value="${k}">${n}</option>`).join(""); ks.value=sc.k; ks.onchange=()=>{ pushHist(); own(); sc.k=ks.value; build(); UI_REFRESH(); };
         const wi=document.createElement("input"); wi.type="number"; wi.inputMode="numeric"; wi.className="num"; wi.value=sc.w>0?sc.w:""; wi.placeholder=String(Math.round(ws[idx]*100)); wi.setAttribute("aria-label","عرض القسم");
-        wi.onchange=()=>{ pushHist(); sc.w=Math.max(0,+wi.value||0); build(); UI_REFRESH(); };
+        wi.onchange=()=>{ pushHist(); own(); sc.w=Math.max(0,+wi.value||0); build(); UI_REFRESH(); };
         const un=document.createElement("small"); un.textContent="سم"; un.style.color="#6b737c";
-        const up=document.createElement("button"); up.className="btn"; up.textContent="↑"; up.disabled=idx===0; up.onclick=()=>{ pushHist(); const a=it.secs; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; build(); UI_REFRESH(); };
-        const dl=document.createElement("button"); dl.className="btn"; dl.textContent="✕"; dl.onclick=()=>{ pushHist(); it.secs.splice(idx,1); if(!it.secs.length) delete it.secs; build(); UI_REFRESH(); };
+        const up=document.createElement("button"); up.className="btn"; up.textContent="↑"; up.disabled=idx===0; up.onclick=()=>{ pushHist(); own(); const a=secs; [a[idx-1],a[idx]]=[a[idx],a[idx-1]]; build(); UI_REFRESH(); };
+        const dl=document.createElement("button"); dl.className="btn"; dl.textContent="✕"; dl.onclick=()=>{ pushHist(); own(); secs.splice(idx,1); if(!secs.length) delete it.secs; build(); UI_REFRESH(); };
         row.append(ks,wi,un,up,dl); card.appendChild(row);
-        if(sc.k==="gap"||sc.k==="desk"||sc.k==="dresser"){ if((it.topH||0)>0){ const tg={v:sc.top==="0"?"0":""}; objSelect(card,tg,"v","  ↳ فوقه شنطة؟",[["","أيوه"],["0","لأ، فاضي للسقف"]],()=>{ sc.top=tg.v; }); } } });
+        if(sc.k==="gap"||sc.k==="desk"||sc.k==="dresser"){ if((it.topH||0)>0){ const tg={v:sc.top==="0"?"0":""}; objSelect(card,tg,"v","  ↳ فوقه شنطة؟",[["","أيوه"],["0","لأ، فاضي للسقف"]],()=>{ own(); sc.top=tg.v; }); } } });
       const n=document.createElement("div"); n.className="note"; n.style.color=over?"#b3452c":"#6b737c"; n.textContent=(over?"⚠ ":"")+`سيب العرض فاضي عشان القسم ياخد الباقي لوحده. العرض الكلي ${E.w} سم.`; card.appendChild(n);
       const act=document.createElement("div"); act.className="act";
-      const ad=document.createElement("button"); ad.className="btn"; ad.textContent="➕ قسم"; ad.onclick=()=>{ pushHist(); it.secs.push({k:"doors",w:0}); build(); UI_REFRESH(); };
+      const ad=document.createElement("button"); ad.className="btn"; ad.textContent="➕ قسم"; ad.onclick=()=>{ pushHist(); own(); secs.push({k:"doors",w:0}); build(); UI_REFRESH(); };
       const rs=document.createElement("button"); rs.className="btn"; rs.textContent="↺ الأقسام الافتراضية"; rs.onclick=()=>{ pushHist(); delete it.secs; build(); UI_REFRESH(); };
       act.append(ad,rs); card.appendChild(act); }
     el.appendChild(card); }

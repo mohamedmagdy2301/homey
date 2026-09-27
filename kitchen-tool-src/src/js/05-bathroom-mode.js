@@ -48,7 +48,7 @@ function buildBath(warn){
     const wallItem=!!T.wallY, y0=wallItem?(b.y||T.wallY)/100:0;
     let y1=0.9; if(b.type==="toilet") y1=b.var==="hung"?1.15:0.83; if(b.type==="bidet") y1=0.42; if(b.type==="basin") y1=0.86; if(b.type==="shower") y1=2.0; if(b.type==="tub") y1=0.56; if(b.type==="heater") y1=y0+0.72; if(b.type==="cab") y1=2.1; if(b.type==="towel") y1=y0+0.25; if(b.type==="washer") y1=cfg.washerH/100; if(b.type==="dryer") y1=0.85; if(b.type==="usink") y1=0.9;
     let u=null;
-    if(b.type==="washer"){ const g=0.01; u=washer(fr.f,a0,a1,fr.back,false); u.label=nmOf(b); }
+    if(b.type==="washer"){ const sv=[cfg.washerW,cfg.washerD]; cfg.washerW=Math.round(w*100); cfg.washerD=Math.round(d*100); /* draw with this fixture's size, not the kitchen washer's */ try{ u=washer(fr.f,a0,a1,fr.back,false); } finally{ [cfg.washerW,cfg.washerD]=sv; } u.label=nmOf(b); }
     else if(b.type==="cab"){ KEY="B-"+b.id; tall(fr.f,a0,a1,fr.back,d,0,Math.min(H-0.01,2.1)); u=UNITS[UNITS.length-1]; u.label=nmOf(b); }
     else { u=newUnit(b.type,fr.f,a0,a1,fr.back,d,y0,y1,{label:nmOf(b)}); curUid=u.id;
       if(b.type==="toilet"){ if(b.var==="hung"){ P(a0-0.08,a1+0.08,0,0.18,0,1.12,bathTileMat(w+0.16,1.12)); P(m-0.12,m+0.12,0.18,0.19,0.95,1.1,chrome); E(m,0.18+0.27,0.38,0.19,0.16,cer,1.4); E(m,0.18+0.27,0.465,0.195,0.02,M("#fdfdfd"),1.4); }
