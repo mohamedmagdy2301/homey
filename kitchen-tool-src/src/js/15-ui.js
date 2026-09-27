@@ -2,7 +2,7 @@
 // line icons (24×24, stroked with currentColor)
 const ICONS={home:"M3 10.5 12 3l9 7.5M5 9v11h14V9M10 20v-6h4v6",chev:"m6 9 6 6 6-6",eye:"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
   ruler:"M3 8h18v8H3zM7 8v3M11 8v4M15 8v3M19 8v4",square:"M4 4v16h16L4 4ZM8 12v4h4Z",building:"M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2",
-  sliders:"M4 7h8M16 7h4M4 17h4M12 17h8M14 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z",undo:"M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h4",reset:"M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4",
+  sliders:"M4 7h8M16 7h4M4 17h4M12 17h8M14 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z",undo:"M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h4",redo:"M9 14l-5-5 5-5M4 9h11a5 5 0 0 1 0 10h-4",reset:"M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4",
   x:"M6 6l12 12M18 6 6 18",plus:"M12 5v14M5 12h14",minus:"M5 12h14",print:"M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z",dot:"M12 12h.01",
   stove:"M4 3h16v18H4zM4 8h16M8 5.5h.01M12 5.5h.01M9 14a3 3 0 1 0 6 0 3 3 0 0 0-6 0",addbox:"M4 4h16v16H4zM12 8v8M8 12h8",dims:"M5 19 19 5M5 19v-5M5 19h5M19 5h-5M19 5v5",
   cabinet:"M4 3h16v18H4zM12 3v18M9.5 11v2M14.5 11v2",grid:"M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",plan:"M3 3h18v18H3zM3 12h7M14 3v6M14 21v-5",
@@ -38,9 +38,9 @@ document.getElementById("projBtn").onclick=()=>openSheet();
     if(dy>70){ if(panel.classList.contains("full")) panel.classList.remove("full"); else setPanel(false); } else if(dy<-40) panel.classList.add("full"); });
   g.addEventListener("pointercancel",()=>{ y0=null; reset(); });
 })();
-// Ctrl+Z = undo, Esc = close the top-most layer (the wizard keeps its own ✕ so work isn't lost by accident)
+// Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo, Esc = close the top-most layer (the wizard keeps its own ✕ so work isn't lost by accident)
 addEventListener("keydown",e=>{ const tg=e.target, typing=tg&&(tg.tagName==="TEXTAREA"||(tg.tagName==="INPUT"&&!["range","checkbox","color"].includes(tg.type)));
-  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.code==="KeyZ"&&!typing&&!WIZ&&!APT3D){ e.preventDefault(); document.getElementById("undo").click(); return; }
+  if((e.ctrlKey||e.metaKey)&&(e.code==="KeyZ"||e.code==="KeyY")&&!typing&&!WIZ&&!APT3D){ e.preventDefault(); document.getElementById(e.code==="KeyY"||e.shiftKey?"redo":"undo").click(); return; }
   if(e.key!=="Escape") return; const vis=id=>document.getElementById(id).style.display==="flex";
   if(vis("shot")) document.getElementById("shot").style.display="none"; else if(vis("draw")) document.getElementById("dclose").click();
   else if(vis("sheet")) closeSheet(); else if(vis("apt")) closeApt(); else if(!WIZ&&panelOpen&&!MQ.desk.matches) setPanel(false); });
@@ -50,8 +50,12 @@ document.getElementById("wizNext").onclick=()=>{ if(!WIZ) return; if(WIZ.step<WS
 document.getElementById("dclose").onclick=()=>{ document.getElementById("draw").style.display="none"; DRAW_DOC=false; };
 document.getElementById("dprint").onclick=()=>{ try{ window.print(); }catch(e){} };
 document.getElementById("close").onclick=()=>setPanel(false);
-const hist=[]; function pushHist(){ hist.push(JSON.stringify(cfg)); if(hist.length>60) hist.shift(); }
-document.getElementById("undo").onclick=()=>{ if(!hist.length) return; cfg=JSON.parse(hist.pop()); build(); renderControls(); };
+const hist=[], redo=[]; function pushHist(){ hist.push(JSON.stringify(cfg)); if(hist.length>60) hist.shift(); redo.length=0; histBtns(); } /* a new change drops whatever could be redone */
+function clearHist(){ hist.length=0; redo.length=0; histBtns(); }
+function histBtns(){ document.getElementById("undo").disabled=!hist.length; document.getElementById("redo").disabled=!redo.length; }
+document.getElementById("undo").onclick=()=>{ if(!hist.length) return; redo.push(JSON.stringify(cfg)); cfg=JSON.parse(hist.pop()); histBtns(); build(); renderControls(); };
+document.getElementById("redo").onclick=()=>{ if(!redo.length) return; hist.push(JSON.stringify(cfg)); cfg=JSON.parse(redo.pop()); histBtns(); build(); renderControls(); };
+histBtns();
 document.getElementById("reset").onclick=()=>{ pushHist(); const t=cfg.template||"mine"; const keep={roomW:cfg.roomW,roomL:cfg.roomL,dimsOn:cfg.dimsOn,plaster:cfg.plaster,tileT:cfg.tileT,ceil:cfg.ceil}; cfg=newCfg(t); if(t!=="mine"){ Object.assign(cfg,keep); applyTemplate(cfg,t,true); } SEL=null; build(); renderControls(); };
 
 function fill(sel,obj,val){ sel.innerHTML=""; for(const [k,v] of Object.entries(obj)){const o=document.createElement("option");o.value=k;o.textContent=v.name;sel.appendChild(o);} sel.value=val; }
@@ -110,10 +114,11 @@ function renderControls(){
     if(c.t==="toggle"){ el=document.createElement("label"); el.className="sw"; const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!cfg[c.k]; cb.setAttribute("aria-label",c.l);
       cb.onchange=()=>{pushHist(); cfg[c.k]=cb.checked; build();}; el.append(cb,document.createElement("i")); }
     if(c.t==="color"){ el=document.createElement("input"); el.type="color"; el.value=cfg[c.k]; el.setAttribute("aria-label",c.l); el.addEventListener("click",pushHist); el.oninput=()=>{cfg[c.k]=el.value; build();}; }
-    if(c.t==="num"){ el=document.createElement("label"); el.className="money"; const n=document.createElement("input"); n.type="number"; n.min=0; n.inputMode="numeric"; n.placeholder="0"; n.value=cfg[c.k]||""; n.setAttribute("aria-label",c.l);
-      n.onchange=()=>{ pushHist(); cfg[c.k]=+n.value||0; renderControls(); }; const u=document.createElement("small"); u.textContent="جنيه"; el.append(n,u); }
+    if(c.t==="num"){ el=document.createElement("label"); el.className="money"; const n=document.createElement("input"); n.type="text"; n.inputMode="decimal"; n.autocomplete="off"; n.placeholder="0"; n.value=cfg[c.k]||""; n.setAttribute("aria-label",c.l);
+      n.onchange=()=>{ const v=n.value.trim()===""?0:parseNum(n.value,"جنيه",true); if(isNaN(v)){ n.value=cfg[c.k]||""; return; } pushHist(); cfg[c.k]=Math.max(0,v); renderControls(); }; const u=document.createElement("small"); u.textContent="جنيه"; el.append(n,u); }
     const row=fieldRow(ctlEl,c.l,el); if(c.t==="toggle") row.querySelector("label").onclick=()=>el.querySelector("input").click();
   }
+  if(SCHEMA[tab].some(c=>c.t==="num"&&PRICE_KEYS.includes(c.k))) priceDefBox();
   if(tab==="مقاسات الأجهزة"){ const n=document.createElement("div"); n.className="note"; n.textContent="المقاس = العرض × العمق. المسافات الجانبية بتتساب فاضية للتهوية والمواسير والسلوك، وبتتحسب من طول الرخامة."; ctlEl.insertBefore(n,ctlEl.firstChild); }
   if(tab==="الوحدات"){ customBox(); unitsBox(); }
   if(tab==="➕ أجهزة") appsBox();
@@ -179,24 +184,39 @@ function choice(opts,val,onPick,label){ val=val==null?"":String(val);
   el.onchange=()=>onPick(el.value); el.kind="inline"; return el; }
 function objSelect(parent,obj,k,label,opts,after){ fieldRow(parent,label,choice(opts,obj[k],v=>{ pushHist(); obj[k]=v; if(after) after(); build(); UI_REFRESH(); },label)); }
 // number box with −/+ ; onLive (optional) = change without re-rendering the panel, which lets a held button repeat
-function numIn(val,min,max,unit,onSet,step,onLive,label){ step=step||1; const w=document.createElement("span"); w.className="numw"; const n=document.createElement("input"); n.type="number"; n.inputMode="decimal"; n.className="num"; n.value=val; n.min=min; n.max=max; n.step="any"; if(label) n.setAttribute("aria-label",label);
-  const u=document.createElement("small"); u.textContent=unit||""; n.onchange=()=>{ let v=+n.value; if(n.value===""||isNaN(v)){ n.value=val; return; } v=Math.max(min,Math.min(max,v)); n.value=v; onSet(v); }; n.onkeydown=e=>{ if(e.key==="Enter") n.blur(); };
+function numIn(val,min,max,unit,onSet,step,onLive,label,onEnd){ step=step||1; const w=document.createElement("span"); w.className="numw"; const n=document.createElement("input"); n.type="text"; n.inputMode="decimal"; n.autocomplete="off"; n.spellcheck=false; n.className="num"; n.value=val; if(label) n.setAttribute("aria-label",label);
+  /* text, not type=number, so Arabic digits, "٫" and units like "2.5م" can be typed; cur = the last value that was set */
+  let cur=+val||0; const now=()=>{ const v=parseNum(n.value,unit); return isNaN(v)?cur:v; };
+  const u=document.createElement("small"); u.textContent=unit||""; n.onchange=()=>{ let v=parseNum(n.value,unit); if(isNaN(v)){ n.value=cur; return; } v=Math.max(min,Math.min(max,v)); n.value=cur=v; onSet(v); };
+  n.onkeydown=e=>{ if(e.key==="Enter") n.blur(); else if(e.key==="ArrowUp"||e.key==="ArrowDown"){ e.preventDefault(); (e.key==="ArrowUp"?bp:bm).click(); } };
   const mk=(d,ic,lab)=>{ const b=document.createElement("button"); b.type="button"; b.className="stb"; b.innerHTML=ico(ic,16); b.setAttribute("aria-label",lab+(label?" "+label:"")); let t0=null, t=null;
-    const once=()=>{ const v=+Math.max(min,Math.min(max,(+n.value||0)+d*step)).toFixed(3); if(v===+n.value) return; if(onLive) onLive(v); else { n.value=v; onSet(v); } };
-    const stop=()=>{ clearTimeout(t0); clearInterval(t); t0=t=null; };
-    b.addEventListener("pointerdown",e=>{ if(e.button) return; e.preventDefault(); if(onLive){ pushHist(); once(); t0=setTimeout(()=>{ t=setInterval(once,70); },400); } else once(); });
+    const next=()=>+Math.max(min,Math.min(max,now()+d*step)).toFixed(3), moves=()=>next()!==now(); /* no undo step when + is pressed at the max (or − at the min) */
+    const once=()=>{ const v=next(); if(v===now()) return; if(onLive) onLive(v); else { n.value=cur=v; onSet(v); } };
+    const stop=()=>{ const held=t0||t; clearTimeout(t0); clearInterval(t); t0=t=null; if(held&&onEnd) onEnd(); };
+    b.addEventListener("pointerdown",e=>{ if(e.button) return; e.preventDefault(); if(onLive){ if(!moves()) return; pushHist(); LIVE_HELD=true; once(); t0=setTimeout(()=>{ t=setInterval(once,70); },400); } else once(); });
     for(const ev of ["pointerup","pointerleave","pointercancel"]) b.addEventListener(ev,stop);
-    b.addEventListener("click",e=>{ if(e.detail===0){ if(onLive) pushHist(); once(); } }); // keyboard Enter/Space
+    b.addEventListener("click",e=>{ if(e.detail===0){ if(onLive&&moves()) pushHist(); once(); if(onEnd) onEnd(); } }); // keyboard Enter/Space
     return b; };
-  w.append(mk(-1,"minus","قلّل"),n,u,mk(1,"plus","زوّد")); w.set=v=>{ n.value=v; }; return w; }
+  const bm=mk(-1,"minus","قلّل"), bp=mk(1,"plus","زوّد"); w.append(bm,n,u,bp); w.set=v=>{ n.value=cur=v; }; return w; }
+// live changes (slider drag, held −/+): at most one light build per frame, run by the render loop just before it draws (SLIDING skips the panel refresh);
+// when the finger lifts (or after a pause, for the keyboard) one full build brings back the panel and the rest
+let LIVE=false, LIVE_SINCE=false, LIVE_HELD=false, liveT=null;
+function liveBuild(){ LIVE=LIVE_SINCE=true; poke(); clearTimeout(liveT); if(!LIVE_HELD) liveT=setTimeout(settleBuild,400); }
+function liveEnd(){ LIVE_HELD=false; clearTimeout(liveT); liveT=setTimeout(settleBuild,150); }
+for(const ev of ["pointerup","pointercancel"]) addEventListener(ev,()=>{ if(LIVE_HELD) liveEnd(); },{capture:true,passive:true}); /* a mouse let go outside the slider */
+function flushLive(){ if(!LIVE) return; LIVE=false; renderer.shadowMap.autoUpdate=false; /* shadows stay as they were until the motion ends */ SLIDING=true; try{ build(); } finally{ SLIDING=false; } }
+function settleBuild(){ clearTimeout(liveT); liveT=null; LIVE=false; renderer.shadowMap.autoUpdate=true; if(!LIVE_SINCE||LIVE_HELD) return; LIVE_SINCE=false;
+  const a=document.activeElement, lab=a&&a.getAttribute&&a.getAttribute("aria-label"), tp=a&&a.type; build();
+  if(a&&lab&&!a.isConnected) for(const e of document.querySelectorAll("[aria-label]")) if(e.getAttribute("aria-label")===lab&&e.type===tp&&e.offsetParent){ e.focus({preventScroll:true}); break; } } /* the panel may have been redrawn: keep keyboard focus on the same control */
 // a measurement: label + stepper on the first line, a full-width slider under it
 function rangeField(parent,label,get,set,min,max,step,unit,commit){ step=step||1;
   const row=document.createElement("div"); row.className="ctl rng"; const lb=document.createElement("label"); lb.textContent=label;
   const sl=document.createElement("input"); sl.type="range"; sl.min=min; sl.max=max; sl.step=step; sl.value=+get(); sl.setAttribute("aria-label",label);
   const fill=()=>sl.style.setProperty("--p",Math.max(0,Math.min(100,(+sl.value-min)/((max-min)||1)*100))+"%");
-  const live=v=>{ set(v); sl.value=v; out.set(v); fill(); SLIDING=true; build(); SLIDING=false; };
-  const out=numIn(get(),min,max,unit,v=>{ pushHist(); set(v); sl.value=v; fill(); build(); commit(); },step,live,label);
-  sl.addEventListener("pointerdown",pushHist); sl.addEventListener("keydown",pushHist); sl.oninput=()=>live(+sl.value); fill();
+  const live=v=>{ set(v); sl.value=v; out.set(v); fill(); liveBuild(); };
+  const out=numIn(get(),min,max,unit,v=>{ pushHist(); set(v); sl.value=v; fill(); LIVE=false; build(); commit(); },step,live,label,liveEnd);
+  sl.addEventListener("pointerdown",()=>{ pushHist(); LIVE_HELD=true; }); sl.addEventListener("keydown",pushHist); sl.oninput=()=>live(+sl.value); fill();
+  for(const ev of ["pointerup","pointercancel","change"]) sl.addEventListener(ev,liveEnd);
   row.append(lb,out,sl); parent.appendChild(row); return row; }
 function objRange(parent,obj,k,label,min,max,step){ if(obj[k]==null) obj[k]=min; rangeField(parent,label,()=>obj[k],v=>{ obj[k]=v; },min,Math.max(min+1,max),step||1,"سم",()=>UI_REFRESH()); }
 // cards for added items fold to one line; the ones you just added or picked in 3D stay open
@@ -310,9 +330,10 @@ function featuresEditor(parent,types){
     types.includes("door")?"D":types.includes("window")?"W":"L");
   for(const f of (cfg.feats||[]).filter(x=>types.includes(x.type))) featCard(parent,f,()=>{ pushHist(); cfg.feats=cfg.feats.filter(x=>x!==f); if(cfg.place.f==="N:"+f.id) cfg.place.f=firstCounter(); if(cfg.place.w==="N:"+f.id) cfg.place.w=firstCounter(); build(); UI_REFRESH(); });
 }
-function planSVG(){
+// edit=true: the live plan in the room tab and the wizard (see bindPlan); the drawings document and print get the plain picture
+function planSVG(edit){
   const S=Math.min(300/Math.max(RW,0.1),380/Math.max(RL,0.1),120), m=34, W=RW*S+2*m, Hh=RL*S+2*m+10, X=x=>m+x*S, Z=z=>m+z*S;
-  let s=`<svg viewBox="0 0 ${W} ${Hh}" xmlns="http://www.w3.org/2000/svg" font-family="Tahoma,Arial" font-size="11" style="width:100%;max-height:48vh;display:block"><rect x="${X(0)}" y="${Z(0)}" width="${RW*S}" height="${RL*S}" fill="#fff" stroke="#30343a" stroke-width="5"/>`;
+  let s=`<svg viewBox="0 0 ${W} ${Hh}" xmlns="http://www.w3.org/2000/svg" font-family="Tahoma,Arial" font-size="11" ${edit?`class="pedit" data-s="${S}" data-m="${m}" `:""}style="width:100%;max-height:48vh;display:block"><rect x="${X(0)}" y="${Z(0)}" width="${RW*S}" height="${RL*S}" fill="#fff" stroke="#30343a" stroke-width="5"/>`;
   for(const u of [...UNITS].sort((a,b)=>(b.ft==="rug")-(a.ft==="rug"))){ if(u.y0>=1) continue; const hp=W4.includes(u.wall)||u.wall==="IS"||u.wall==="FR"; if(!hp&&!String(u.wall).startsWith("N:")) continue;
     let r; if(u.wall==="FR") r=unitRect(u); else if(W4.includes(u.wall)) r=rectAO(u.wall,u.a0,u.a1,0,u.depth); else { const fr=frameOf(u.wall); const dr=dirOf(u.f), b=u.back, e=u.back+u.depth*dr; r=alongZ(u.f)?{x0:Math.min(b,e),x1:Math.max(b,e),z0:u.a0,z1:u.a1}:{x0:u.a0,x1:u.a1,z0:Math.min(b,e),z1:Math.max(b,e)}; }
     s+=`<rect x="${X(r.x0)}" y="${Z(r.z0)}" width="${(r.x1-r.x0)*S}" height="${(r.z1-r.z0)*S}" fill="${UC[u.kind]||"#eee"}" stroke="#8a8f95" stroke-width="0.8"/>`; }
@@ -332,6 +353,10 @@ function planSVG(){
   if(cfg.island.on){ const iw=cfg.island.w/100, idp=cfg.island.d/100, cx=RW/2, cz=cfg.island.pos/100; s+=`<rect x="${X(cx-idp/2)}" y="${Z(cz-iw/2)}" width="${idp*S}" height="${iw*S}" fill="#ece7dc" stroke="#555"/>`; }
   s+=`<text x="${X(RW/2)}" y="${Z(0)-12}" text-anchor="middle" fill="#2d5f7a">القدامية • ${Math.round(RW*100)} سم</text><text x="${X(RW/2)}" y="${Z(RL)+22}" text-anchor="middle" fill="#2d5f7a">اللي ورا</text>`;
   s+=`<text x="${X(0)-8}" y="${Z(RL/2)}" text-anchor="middle" fill="#2d5f7a" transform="rotate(-90 ${X(0)-8} ${Z(RL/2)})">الشمال • ${Math.round(RL*100)} سم</text><text x="${X(RW)+10}" y="${Z(RL/2)}" text-anchor="middle" fill="#2d5f7a" transform="rotate(90 ${X(RW)+10} ${Z(RL/2)})">اليمين</text>`;
+  if(edit){ if(PLAN_WALL){ const [ax,az]=aoToXZ(PLAN_WALL,0,0), [bx,bz]=aoToXZ(PLAN_WALL,wlen(PLAN_WALL),0); s+=`<line class="pwall" x1="${X(ax)}" y1="${Z(az)}" x2="${X(bx)}" y2="${Z(bz)}"/>`; }
+    const d=PLAN_DRAG&&PLAN_DRAG.moved&&FEATS.find(f=>f.id===PLAN_DRAG.f.id);
+    if(d){ const o=-16/S, [ax,az]=aoToXZ(d.wall,0,o), [bx,bz]=aoToXZ(d.wall,d.a0,o), r=rectAO(d.wall,d.a0,d.a1,-0.08,d.type==="column"||d.type==="shaft"||d.type==="stack"?d.dep:0.08);
+      s+=`<rect class="pdrag" x="${X(r.x0)-2}" y="${Z(r.z0)-2}" width="${(r.x1-r.x0)*S+4}" height="${(r.z1-r.z0)*S+4}" rx="3"/><line class="pdim" x1="${X(ax)}" y1="${Z(az)}" x2="${X(bx)}" y2="${Z(bz)}"/><circle class="pdimd" cx="${X(ax)}" cy="${Z(az)}" r="3"/><circle class="pdimd" cx="${X(bx)}" cy="${Z(bz)}" r="3"/>`; } }
   return s+"</svg>";
 }
 function roomBox(){
@@ -343,10 +368,58 @@ function roomBox(){
   const h=document.createElement("div"); h.className="head"; h.textContent="🧱 الشبابيك والأبواب والبروزات"; ctlEl.appendChild(h);
   const n=document.createElement("div"); n.className="note"; n.textContent="أول الحيطة: الحيطة القدامية واللي ورا بتتقاس من ناحية الشمال، والحيطة الشمال واليمين بتتقاس من ناحية القدامية."; ctlEl.appendChild(n);
   featuresEditor(ctlEl,Object.keys(FT));
-  updRoomPreview();
+  bindPlan(document.getElementById("roomPlan")); updRoomPreview();
 }
 function updRoomPreview(){ const d=document.getElementById("roomSum"); if(d){ d.innerHTML=`المقاس الصافي بعد التشطيب: <b>عرض ${Math.round(RW*100)} × طول ${Math.round(RL*100)} سم</b>`+(cfg.dimsOn==="brick"?`<br><small>المحارة والسيراميك بياخدوا ${(cfg.plaster+cfg.tileT)} سم من كل حيطة.</small>`:"")+`<br><small>أضيق ممر ${STATS.walk} سم • ${tplName(cfg.template)}</small>`; }
-  const p=document.getElementById("roomPlan"); if(p) p.innerHTML=planSVG(); }
+  drawPlan(document.getElementById("roomPlan")); }
+// ---- live plan: drag windows / doors / openings / columns along their wall, tap a wall to change its length ----
+var PLAN_DRAG=null, PLAN_WALL=null;
+const PLAN_MOVE=["window","door","opening","column","shaft","stack"];
+function drawPlan(box){ if(!box) return; const t=document.createElement("div"); t.innerHTML=planSVG(true); const old=box.querySelector("svg"); if(old) old.replaceWith(t.firstChild); else box.prepend(t.firstChild); }
+const alongOf=(w,x,z)=>w==="L"||w==="RT"?z:x;
+/* pointer -> room meters; px = meters per screen pixel, so hit areas stay finger-sized at any zoom */
+function planPt(box,e){ const svg=box.querySelector("svg.pedit"), ctm=svg&&svg.getScreenCTM(); if(!ctm||!ctm.a) return null; const S=+svg.dataset.s, m=+svg.dataset.m, p=svgPt(svg,e); return {x:(p.x-m)/S,z:(p.y-m)/S,px:1/(ctm.a*S)}; }
+function planHit(p){ let best=null, bd=22*p.px;
+  for(const f of FEATS){ if(!PLAN_MOVE.includes(f.type)||!W4.includes(f.wall)||!(cfg.feats||[]).some(x=>x.id===f.id)) continue;
+    const r=rectAO(f.wall,f.a0,f.a1,-0.08,f.type==="column"||f.type==="shaft"||f.type==="stack"?f.dep:0.08), d=Math.hypot(Math.max(r.x0-p.x,0,p.x-r.x1),Math.max(r.z0-p.z,0,p.z-r.z1));
+    if(d<=bd){ bd=d; best=f.id; } }
+  if(best) return {feat:best};
+  let wall=null; bd=Infinity; /* a wall: from 34px outside it (its label) to 14px inside */
+  for(const w of W4){ const o=w==="L"?p.x:w==="RT"?RW-p.x:w==="W"?p.z:RL-p.z, a=alongOf(w,p.x,p.z);
+    if(o>-34*p.px&&o<14*p.px&&a>-20*p.px&&a<wlen(w)+20*p.px&&Math.abs(o)<bd){ bd=Math.abs(o); wall=w; } }
+  return wall?{wall}:null; }
+/* the distance tip floats just above the finger (below it near the top edge) */
+function planTip(box,f,e){ const t=box.querySelector(".plantip"); if(!t) return; t.textContent=`${f.pos} سم من أول ${WNAME[f.wall]}`+(cfg.dimsOn==="brick"?" (على الطوب)":""); t.classList.add("on");
+  const r=box.getBoundingClientRect(), hw=t.offsetWidth/2+4, y=e.clientY-r.top;
+  t.style.left=Math.max(hw,Math.min(r.width-hw,e.clientX-r.left))+"px"; t.style.top=(y>64?y-60:y+36)+"px"; }
+function wallPop(box){ const pop=box.querySelector(".planpop"); if(!pop) return; pop.innerHTML=""; pop.hidden=!PLAN_WALL; if(!PLAN_WALL) return;
+  const w=PLAN_WALL, k=w==="W"||w==="D"?"roomW":"roomL", sc=SCHEMA["الأوضة"].find(c=>c.k===k)||{min:120,max:700,step:1}, brick=cfg.dimsOn==="brick";
+  const hd=document.createElement("div"); hd.className="ch"; hd.innerHTML=`<b>${WNAME[w]}</b><small>${WNAME[{W:"D",D:"W",L:"RT",RT:"L"}[w]]} بتتغير معاها</small>`;
+  const x=document.createElement("button"); x.type="button"; x.className="stb"; x.innerHTML=ico("x",16); x.setAttribute("aria-label","اقفل");
+  x.onclick=()=>{ PLAN_WALL=null; wallPop(box); drawPlan(box); }; hd.appendChild(x); pop.appendChild(hd);
+  const note=document.createElement("div"); note.className="note";
+  const upd=()=>{ const v=+cfg[k], t=2*((+cfg.plaster||0)+(+cfg.tileT||0)); note.innerHTML=brick?`ده المقاس على الطوب. الصافي بعد المحارة والسيراميك: <b>${Math.max(k==="roomW"?120:150,Math.round(v-t))} سم</b>`:`ده المقاس الصافي بعد التشطيب. على الطوب هيبقى حوالي <b>${Math.round(v+t)} سم</b>`; };
+  const row=rangeField(pop,brick?"الطول على الطوب":"الطول الصافي",()=>cfg[k],v=>{ cfg[k]=v; upd(); },sc.min,sc.max,sc.step||1,"سم",()=>UI_REFRESH());
+  row.querySelector("input[type=range]").addEventListener("change",()=>UI_REFRESH()); upd(); pop.appendChild(note); }
+function bindPlan(box){ if(!box) return; box.classList.add("edit");
+  box.insertAdjacentHTML("beforeend",`<div class="plantip" aria-live="polite"></div><div class="plancap">اسحب الشباك أو الباب أو العمود على حيطته، ودوس على أي حيطة عشان تغيّر طولها.</div><div class="planpop" hidden></div>`);
+  wallPop(box);
+  box.addEventListener("pointerdown",e=>{ if(e.button||PLAN_DRAG||!e.target.closest("svg")) return; const p=planPt(box,e); if(!p) return; const h=planHit(p);
+    if(!h){ if(PLAN_WALL){ PLAN_WALL=null; wallPop(box); drawPlan(box); } return; }
+    e.preventDefault();
+    if(h.wall){ PLAN_WALL=PLAN_WALL===h.wall?null:h.wall; wallPop(box); drawPlan(box); return; }
+    const f=cfg.feats.find(x=>x.id===h.feat); PLAN_DRAG={f,a:alongOf(f.wall,p.x,p.z),pos:+f.pos||0,moved:false,id:e.pointerId}; try{ box.setPointerCapture(e.pointerId); }catch(_){} });
+  box.addEventListener("pointermove",e=>{ const d=PLAN_DRAG, p=planPt(box,e); if(!p) return;
+    if(!d){ if(e.pointerType==="mouse"){ const h=planHit(p); box.querySelector("svg").style.cursor=h?(h.feat?"grab":"pointer"):""; } return; }
+    if(e.pointerId!==d.id) return; const da=alongOf(d.f.wall,p.x,p.z)-d.a;
+    if(!d.moved){ if(Math.abs(da)<6*p.px) return; d.moved=true; pushHist(); }
+    const v=Math.max(0,Math.min(Math.max(0,measLen(d.f.wall)-(+d.f.w||0)),Math.round(d.pos+da*100)));
+    if(v!==d.f.pos){ d.f.pos=v; SLIDING=true; build(); SLIDING=false; } planTip(box,d.f,e); });
+  const end=e=>{ const d=PLAN_DRAG; if(!d||e.pointerId!==d.id) return; PLAN_DRAG=null; const t=box.querySelector(".plantip"); if(t) t.classList.remove("on");
+    const sc=box.closest("#controls,#wizBody"); if(!d.moved) OPENC.add(d.f.id); UI_REFRESH();
+    /* a tap (no drag) opens that element's card below */
+    const c=!d.moved&&sc&&sc.querySelector(`.card[data-key="${d.f.id}"]`); if(c) sc.scrollTop+=c.getBoundingClientRect().top-sc.getBoundingClientRect().top-8; };
+  box.addEventListener("pointerup",end); box.addEventListener("pointercancel",end); }
 function placeBox(){
   const h=document.createElement("div"); h.className="head"; h.textContent="📍 مكان الأجهزة"; ctlEl.appendChild(h);
   const cw=W4.filter(w=>(cfg.wallCfg[w]||{}).type==="counter").map(w=>[w,WNAME[w]]);
@@ -392,14 +465,19 @@ function locOpts(cls){
 // ======== projects ========
 let PROJ={id:"p"+Date.now().toString(36),name:"مطبخي"}, projIndex=[], saveT=null, loadingP=true, storageOK=null;
 const MEMS={}, PENDING=new Set(), DELETED=new Set(); let retryT=null, lastSaved={};
+// backend: window.storage (Claude artifacts) if it exists, else localStorage behind the same async get/set/delete, else null (MEMS only)
+let LSTORE;
+function store(){ if(window.storage) return window.storage; if(LSTORE===undefined) LSTORE=localStore(); return LSTORE; }
+function localStore(){ try{ const ls=window.localStorage, P="kitchen3d/"; ls.getItem(P+"kproj:index"); /* throws when localStorage is blocked */
+  return {async get(k){ const v=ls.getItem(P+k); return v===null?null:{key:k,value:v}; }, async set(k,v){ ls.setItem(P+k,v); return {key:k,value:v}; }, async delete(k){ ls.removeItem(P+k); return {key:k,deleted:true}; }}; }catch(e){ return null; } }
 // {v} = value (null when the key doesn't exist); {v:null,err:true} = the read itself failed, so never overwrite that key with defaults
 async function stRead(k){ if(k in MEMS) return {v:clone(MEMS[k])};
-  try{ const r=await window.storage.get(k,false); storageOK=storageOK===false?false:true; if(r){ const v=JSON.parse(r.value); MEMS[k]=v; return {v:clone(v)}; } return {v:null}; }catch(e){ if(!window.storage) storageOK=false; return {v:null,err:true}; } }
+  try{ const r=await store().get(k,false); storageOK=storageOK===false?false:true; if(r){ const v=JSON.parse(r.value); MEMS[k]=v; return {v:clone(v)}; } return {v:null}; }catch(e){ if(!store()) storageOK=false; return {v:null,err:true}; } }
 async function stGet(k){ return (await stRead(k)).v; }
-async function rawSet(k){ try{ const txt=JSON.stringify(MEMS[k]); if(lastSaved[k]===txt){ PENDING.delete(k); return true; } const r=await window.storage.set(k,txt,false); if(r){ lastSaved[k]=txt; PENDING.delete(k); storageOK=true; return true; } }catch(e){} PENDING.add(k); storageOK=false; clearTimeout(retryT); retryT=setTimeout(retryPending,6000); return false; }
+async function rawSet(k){ try{ const txt=JSON.stringify(MEMS[k]); if(lastSaved[k]===txt){ PENDING.delete(k); return true; } const r=await store().set(k,txt,false); if(r){ lastSaved[k]=txt; PENDING.delete(k); storageOK=true; return true; } }catch(e){} PENDING.add(k); storageOK=false; clearTimeout(retryT); retryT=setTimeout(retryPending,6000); return false; }
 async function retryPending(){ for(const k of [...PENDING]) if(k in MEMS) await rawSet(k); else PENDING.delete(k); if(PENDING.size){ clearTimeout(retryT); retryT=setTimeout(retryPending,15000); } }
 async function stSet(k,v){ MEMS[k]=clone(v); return rawSet(k); }
-async function stDel(k){ delete MEMS[k]; delete lastSaved[k]; PENDING.delete(k); try{ await window.storage.delete(k,false); }catch(e){} }
+async function stDel(k){ delete MEMS[k]; delete lastSaved[k]; PENDING.delete(k); try{ await store().delete(k,false); }catch(e){} }
 // the timer waits while another room's cfg is swapped in (apartment snapshots / 3D / compare)
 function autosave(){ if(loadingP||WIZ) return; clearTimeout(saveT); saveT=setTimeout(function tick(){ if(loadingP||APT_BUILD||APT3D){ saveT=setTimeout(tick,1000); return; } saveNow(); },2500); }
 async function saveNow(){ clearTimeout(saveT); if(loadingP||APT_BUILD||APT3D||DELETED.has(PROJ.id)) return;
@@ -407,11 +485,12 @@ async function saveNow(){ clearTimeout(saveT); if(loadingP||APT_BUILD||APT3D||DE
   await stSet("kproj:"+PROJ.id,{name:PROJ.name,cfg}); await stSet("kproj:index",projIndex); }
 function updProjName(){ document.getElementById("projName").textContent=PROJ.name; }
 async function initProjects(){
-  projIndex=((await stGet("kproj:index"))||[]).filter(p=>p&&p.id).map(p=>({...p,name:cleanName(p.name)})); await loadApt();
+  projIndex=((await stGet("kproj:index"))||[]).filter(p=>p&&p.id).map(p=>({...p,name:cleanName(p.name)})); await loadApt(); PRICE_DEF=cleanPrices(await stGet("kprices"));
+  if(!projIndex.length) Object.assign(cfg,PRICE_DEF); /* the first design was made before the saved prices were read */
   if(projIndex.length){ const last=[...projIndex].sort((a,b)=>b.t-a.t)[0]; const d=await stGet("kproj:"+last.id); if(d&&d.cfg){ PROJ={id:last.id,name:cleanName(d.name)||last.name}; cfg=migrate(d.cfg); } }
   loadingP=false; updProjName(); build(); renderControls(); autosave();
 }
-async function openProject(id){ const rd=await stRead("kproj:"+id); let d=rd.v; if(rd.err){ hint("مقدرتش أقرا المشروع ده من الحفظ دلوقتي، جرّب تاني كمان شوية",4000); return; } if(!d){ const nm=projName(id); d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":"L")}; await stSet("kproj:"+id,d); hint("المشروع ده ماكانش اتحفظ، فتحته من جديد بالشكل الافتراضي",4000); } await saveNow(); PROJ={id,name:cleanName(d.name)||projName(id)}; cfg=migrate(d.cfg); hist.length=0; SEL=null; updProjName(); build(); renderControls(); closeSheet(); setView("out"); hint(`اتفتح "${PROJ.name}"`); }
+async function openProject(id){ const rd=await stRead("kproj:"+id); let d=rd.v; if(rd.err){ hint("مقدرتش أقرا المشروع ده من الحفظ دلوقتي، جرّب تاني كمان شوية",4000); return; } if(!d){ const nm=projName(id); d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":"L")}; await stSet("kproj:"+id,d); hint("المشروع ده ماكانش اتحفظ، فتحته من جديد بالشكل الافتراضي",4000); } await saveNow(); PROJ={id,name:cleanName(d.name)||projName(id)}; cfg=migrate(d.cfg); clearHist(); SEL=null; updProjName(); build(); renderControls(); closeSheet(); setView("out"); hint(`اتفتح "${PROJ.name}"`); }
 function projectsBox(){ renderProjects(ctlEl); }
 function renderProjects(el){
   const n=document.createElement("div"); n.className="note"; n.textContent=storageOK===false?"⚠ الحفظ الدايم متعطل دلوقتي، وبحاول تاني لوحدي كل شوية. شغلك محفوظ طول ما الصفحة مفتوحة، ولو هتقفلها انسخ الإعدادات من تحت.":"كل مطبخ بيتحفظ لوحده تلقائي. تقدر تعمل أكتر من مطبخ وتقارن بينهم."; el.appendChild(n);
@@ -428,7 +507,7 @@ function renderProjects(el){
     mk("📄 نسخة",async()=>{ const d=p.id===PROJ.id?{name:PROJ.name,cfg}:await stGet("kproj:"+p.id); if(!d) return; const id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:d.name+" (نسخة)",cfg:d.cfg}); projIndex.push({id,name:d.name+" (نسخة)",t:Date.now()}); await stSet("kproj:index",projIndex); refreshSheet(); });
     if(list.length>1) mk("🗑",async()=>{ act.innerHTML=""; const q=document.createElement("span"); q.textContent="متأكد؟"; q.style.alignSelf="center"; const y=document.createElement("button"); y.className="btn main"; y.style.background="var(--clay)"; y.style.borderColor="var(--clay)"; y.textContent="امسح"; const c=document.createElement("button"); c.className="btn"; c.textContent="لأ";
       act.append(q,y,c); c.onclick=refreshSheet; y.onclick=async()=>{ DELETED.add(p.id); if(p.id===PROJ.id) clearTimeout(saveT); await stDel("kproj:"+p.id); projIndex=projIndex.filter(x=>x.id!==p.id); await stSet("kproj:index",projIndex);
-        if(p.id===PROJ.id){ const nx=projIndex[0]; if(nx) await openProject(nx.id); if(PROJ.id===p.id){ PROJ={id:"p"+Date.now().toString(36),name:PROJ.name}; hist.length=0; updProjName(); await saveNow(); } } refreshSheet(); }; });
+        if(p.id===PROJ.id){ const nx=projIndex[0]; if(nx) await openProject(nx.id); if(PROJ.id===p.id){ PROJ={id:"p"+Date.now().toString(36),name:PROJ.name}; clearHist(); updProjName(); await saveNow(); } } refreshSheet(); }; });
     card.appendChild(act); el.appendChild(card); });
   backupUI(el);
   compareUI(el);
@@ -437,7 +516,7 @@ function renderProjects(el){
   const st=document.createElement("div"); st.className="note";
   const a2=document.createElement("div"); a2.className="act";
   const cp=document.createElement("button"); cp.className="btn"; cp.textContent="نسخ إعدادات المطبخ ده"; cp.onclick=async()=>{ ta.select(); try{ await navigator.clipboard.writeText(ta.value); st.textContent="اتنسخت، ابعتها لأي حد"; }catch(e){ document.execCommand&&document.execCommand("copy"); st.textContent="اتنسخت"; } };
-  const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كمطبخ جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); if(!v||typeof v!=="object"||Array.isArray(v)) throw new Error("bad"); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"مطبخ ملصوق"}; cfg=migrate(v); hist.length=0; SEL=null; build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
+  const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كمطبخ جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); if(!v||typeof v!=="object"||Array.isArray(v)) throw new Error("bad"); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"مطبخ ملصوق"}; cfg=migrate(v); clearHist(); SEL=null; build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
   a2.append(cp,ap); el.append(ta,a2,st);
 }
 function openSheet(){ const s=document.getElementById("sheet"); s.style.display="flex"; refreshSheet(); }
@@ -468,18 +547,18 @@ function tplIcon(k){ const r=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" 
     if(k==="b_laundry") b+=r(6,6,12,12,"#e3e5e7")+r(20,6,12,12,"#e3e5e7")+r(46,30,8,10,"#cfe3ee");
     if(k==="b_master") b+=r(6,6,32,12,"#d4ebf3")+r(40,6,14,16,"#c8e2ec")+o(12,30,6,5)+r(46,28,8,18,"#cfe3ee"); }
   return b+"</svg>"; }
-function openWizard(isNew){ saveNow(); WIZ={step:0,isNew,backup:clone(cfg),backupProj:{...PROJ},backupHist:hist.slice(),name:isNew?"مطبخ جديد":PROJ.name}; tabsEl.dataset.rt=""; if(isNew) cfg=newCfg("L"); UI_REFRESH=renderWiz; document.getElementById("wiz").style.display="flex"; build(); renderWiz(); }
+function openWizard(isNew){ saveNow(); WIZ={step:0,isNew,backup:clone(cfg),backupProj:{...PROJ},backupHist:hist.slice(),backupRedo:redo.slice(),name:isNew?"مطبخ جديد":PROJ.name}; tabsEl.dataset.rt=""; if(isNew) cfg=newCfg("L"); UI_REFRESH=renderWiz; document.getElementById("wiz").style.display="flex"; build(); renderWiz(); }
 function closeWizard(apply){ const w=WIZ; WIZ=null; UI_REFRESH=()=>renderControls(); document.getElementById("wiz").style.display="none";
-  if(!apply){ cfg=w.backup; PROJ=w.backupProj; hist.length=0; hist.push(...w.backupHist); }
-  else if(w.isNew){ PROJ={id:"p"+Date.now().toString(36),name:cleanName(w.name)||"مطبخ جديد"}; hist.length=0; }
+  if(!apply){ cfg=w.backup; PROJ=w.backupProj; hist.length=0; hist.push(...w.backupHist); redo.length=0; redo.push(...w.backupRedo); histBtns(); }
+  else if(w.isNew){ PROJ={id:"p"+Date.now().toString(36),name:cleanName(w.name)||"مطبخ جديد"}; clearHist(); }
   else PROJ.name=cleanName(w.name)||PROJ.name;
   updProjName(); build(); renderControls(); setView("out"); if(apply){ saveNow(); hint("✓ المطبخ جاهز، عدّل أي حاجة من ⚙ التحكم",4000); } }
-function updWizPreview(){ const p=document.getElementById("wizPlan"); if(p) p.innerHTML=planSVG(); const s=document.getElementById("wizWarn"); if(s) s.innerHTML=(STATS.warn||[]).slice(0,3).map(w=>`<div>⚠ ${esc(w)}</div>`).join(""); }
+function updWizPreview(){ drawPlan(document.getElementById("wizPlan")); const s=document.getElementById("wizWarn"); if(s) s.innerHTML=(STATS.warn||[]).slice(0,3).map(w=>`<div>⚠ ${esc(w)}</div>`).join(""); }
 function renderWiz(){
   if(!WIZ) return; const body=document.getElementById("wizBody"); body.innerHTML="";
   document.getElementById("wizTitle").textContent=`${WIZ.step+1}/${WSTEPS.length} • ${WSTEPS[WIZ.step]}`;
   document.getElementById("wizBar").style.width=((WIZ.step+1)/WSTEPS.length*100)+"%";
-  const pv=document.createElement("div"); pv.innerHTML=`<div id="wizPlan" class="planbox"></div><div id="wizWarn" class="note" style="color:var(--clay)"></div>`; body.appendChild(pv);
+  const pv=document.createElement("div"); pv.innerHTML=`<div id="wizPlan" class="planbox"></div><div id="wizWarn" class="note" style="color:var(--clay)"></div>`; body.appendChild(pv); bindPlan(document.getElementById("wizPlan"));
   const hostEl=document.createElement("div"); body.appendChild(hostEl); const saveCtl=ctlEl; ctlEl=hostEl;
   const st=WIZ.step;
   if(st===0){ const inp=document.createElement("input"); inp.value=WIZ.name; inp.placeholder="اسم المطبخ"; inp.className="txt big"; inp.setAttribute("aria-label","الاسم");
@@ -538,6 +617,18 @@ function stepsBox(){
   st.forEach(([a,b],i)=>{ const r=document.createElement("label"); r.className="step"+(cfg.steps[i]?" done":""); const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!cfg.steps[i];
     cb.onchange=()=>{ cfg.steps={...cfg.steps,[i]:cb.checked}; renderControls(); }; const tx=document.createElement("div"); tx.innerHTML=`<b>${i+1}. ${a}</b><br>${b}`; r.append(cb,tx); ctlEl.appendChild(r); });
 }
+// the prices on this tab can be saved once (kprices) and used by every new project, or pulled into an older one
+function priceDefBox(){ const ks=SCHEMA[tab].filter(c=>c.t==="num"&&PRICE_KEYS.includes(c.k)).map(c=>c.k);
+  const saved=ks.length&&ks.every(k=>k in PRICE_DEF&&PRICE_DEF[k]===(+cfg[k]||0)), diff=Object.keys(PRICE_DEF).some(k=>PRICE_DEF[k]!==(+cfg[k]||0));
+  const box=document.createElement("div"); box.className="ctl act1 pricedef"; box.style.flexDirection="column";
+  const n=document.createElement("div"); n.className="note"; n.textContent=saved?"✓ الأسعار دي هي الافتراضية، وأي مشروع جديد هياخدها.":"لو الأسعار دي هتستخدمها في كل حاجة، خليها افتراضية وأي مشروع جديد هياخدها لوحده."; box.appendChild(n);
+  const sv=document.createElement("button"); sv.type="button"; sv.className="btn wide"+(saved?"":" main"); sv.id="priceSave"; sv.textContent="خلي الأسعار دي افتراضية"; sv.disabled=saved;
+  sv.onclick=async()=>{ const rd=await stRead("kprices"); if(rd.err){ hint("مقدرتش أقرا الأسعار المحفوظة دلوقتي، جرّب تاني كمان شوية",4000); return; } /* never write over a key whose read failed */
+    const d=cleanPrices(rd.v); for(const k of ks) d[k]=Math.max(0,+cfg[k]||0); await stSet("kprices",d); PRICE_DEF=d; hint("✓ الأسعار دي بقت افتراضية لأي مشروع جديد"); renderControls(); };
+  box.appendChild(sv);
+  if(diff){ const ap=document.createElement("button"); ap.type="button"; ap.className="btn wide"; ap.id="priceApply"; ap.textContent="طبّق الأسعار الافتراضية على المشروع ده";
+    ap.onclick=()=>{ pushHist(); Object.assign(cfg,PRICE_DEF); build(); renderControls(); hint("✓ اتطبقت الأسعار الافتراضية"); }; box.appendChild(ap); }
+  ctlEl.appendChild(box); }
 function costBox(){
   const a=STATS.acc||{lower:0,upper:0,tall:0,marble:0}, f=v=>v.toFixed(2);
   const t=a.lower*cfg.pLower+a.upper*cfg.pUpper+a.tall*cfg.pTall+a.marble*cfg.pMarble;
@@ -548,7 +639,7 @@ function costBox(){
 }
 renderTabs(); renderControls();
 
-function resize(){ poke(); /* setSize clears the canvas. The stage is sized by CSS: full screen, above the phone sheet, or beside the docked panel */
+function resize(){ poke(); /* setSize clears the canvas */ // the stage is sized by CSS: full screen, above the phone sheet, or beside the docked panel
   const w=stage.clientWidth||innerWidth, h=stage.clientHeight||innerHeight; if(w<2||h<2) return;
   canvas.style.width=w+"px"; canvas.style.height=h+"px";
   renderer.setSize(w,h,false);
@@ -572,6 +663,6 @@ function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canva
   try{ const a=document.createElement("a"); a.href=url; a.download="kitchen.png"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
 document.getElementById("shotClose").onclick=()=>document.getElementById("shot").style.display="none";
 let camKey="";
-(function loop(){ if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
+(function loop(){ flushLive(); if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
   const k=[sph.theta,sph.phi,sph.r,target.x,target.y,target.z,FP.on,FP.x,FP.z,FP.yaw,FP.pitch,camera.aspect].join(); /* catches camera moves from held buttons and code */
-  if(DIRTY>0||k!==camKey||drag){ camKey=k; updateCam(); renderer.render(scene,camera); if(DIRTY>0) DIRTY--; } requestAnimationFrame(loop); })();
+  if(DIRTY>0||k!==camKey||drag){ camKey=k; updateCam(); renderer.render(scene,camera); emptyTrash(); if(DIRTY>0) DIRTY--; } requestAnimationFrame(loop); })();

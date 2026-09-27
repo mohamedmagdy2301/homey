@@ -1,2 +1,3 @@
 kitchen-tool-src/tests/three.min.js
 __pycache__/
+kitchen-tool-src/dist/pwa/

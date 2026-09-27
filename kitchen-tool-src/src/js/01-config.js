@@ -4,6 +4,16 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const cleanName=s=>String(s??"").replace(/[<>]/g,"").trim().slice(0,80); // names typed by the user or read from a backup
 const cleanDeep=o=>typeof o==="string"?o.replace(/[<>]/g,""):Array.isArray(o)?o.map(cleanDeep):o&&typeof o==="object"?Object.fromEntries(Object.entries(o).map(([k,v])=>[k,cleanDeep(v)])):o;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); // user text going into innerHTML / SVG
+// a typed number: Arabic digits, "٫" or "," as the decimal point, and a length unit ("2.5م" -> 250 in a سم field). money=true reads "," as a thousands separator. NaN if it can't be read
+const LEN_U={"م":100,"متر":100,"m":100,"سم":1,"سنتي":1,"cm":1,"مم":.1,"ملي":.1,"mm":.1};
+function parseNum(s,unit,money){ let t=String(s??"").replace(/[٠-٩]/g,d=>d.charCodeAt(0)-0x660).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-0x6F0).replace(/[\s٬]/g,"").replace(/[−–]/g,"-").replace(/٫/g,".").toLowerCase();
+  t=money?t.replace(/,/g,""):t.replace(/,/g,"."); const m=t.match(/^(-?(?:\d+\.?\d*|\.\d+))(\D*)$/); if(!m) return NaN; let v=+m[1]; const suf=m[2];
+  if(suf&&suf!==String(unit||"").toLowerCase()){ const f=LEN_U[suf], to=LEN_U[unit]; if(!f||!to) return NaN; v=v*f/to; }
+  return +v.toFixed(6); }
+// prices that can be saved once and used as the defaults for every new project
+const PRICE_KEYS=["pLower","pUpper","pTall","pMarble","pFloor","pPaint","pSkirt","pTile","pWP","pLabor"];
+let PRICE_DEF={};
+const cleanPrices=o=>{ const r={}; if(o&&typeof o==="object"&&!Array.isArray(o)) for(const k of PRICE_KEYS){ const v=o[k]; if(typeof v==="number"&&isFinite(v)&&v>=0&&v<1e9) r[k]=v; } return r; };
 const W4=["W","RT","D","L"];
 const WNAME={W:"الحيطة القدامية",RT:"الحيطة اليمين",D:"الحيطة اللي ورا",L:"الحيطة الشمال"};
 const TEMPLATES={
@@ -81,7 +91,7 @@ function applyTemplate(c,key,keepDims){
   if(key==="mine"){ c.water={wall:"L",pos:150,y:55}; c.drain={wall:"L",pos:150}; }
   return c;
 }
-function newCfg(key){ const c=clone(DEFAULT); applyTemplate(c,key,false); c.custom=[]; c.apps=[]; c.steps={}; return c; }
+function newCfg(key){ const c=clone(DEFAULT); applyTemplate(c,key,false); c.custom=[]; c.apps=[]; c.steps={}; Object.assign(c,PRICE_DEF); return c; }
 function migrate(o){
   o=cleanDeep(o&&typeof o==="object"&&!Array.isArray(o)?o:{}); const c={...clone(DEFAULT),...o};
   if(!o.feats){ // convert designs saved before the generic room model

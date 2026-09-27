@@ -31,14 +31,27 @@ function updateCam(){
   else { sph.phi=Math.max(0.03,Math.min(1.62,sph.phi)); sph.r=Math.max(0.5,Math.min(20,sph.r));
   camera.position.set(target.x+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta), target.y+sph.r*Math.cos(sph.phi), target.z+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta));
   camera.lookAt(target); }
-  const showL=!FP.on&&sph.r>3.6; root.children.forEach(o=>{ if(o.userData.label) o.visible=showL; });
+  const showL=!FP.on&&sph.r>3.6; root.children.forEach(o=>{ if(o.userData.label) o.visible=showL&&!o.userData.hid; });
   const p=camera.position, over=p.y>H;
   if(APT3D){ root.children.forEach(o=>{ if(o.userData.label) o.visible=false; }); return; }
+  if(showL) lblTick();
   const fade=(g,hide)=>{ if(!g||!g.userData.mat)return; const hd=cfg.walls==="ghost"?true:cfg.walls==="solid"?false:hide; g.userData.mat.opacity=hd?0.1:1; g.userData.mat.depthWrite=!hd; for(const c of g.children) if(c.userData.wf) c.visible=!hd; };
   fade(walls.front,p.z<0); fade(walls.left,p.x<0||over); fade(walls.right,p.x>RW||over); fade(walls.back,p.z>RL||over); fade(walls.top,p.y>H-0.05);
   const sol=cfg.walls==="solid", hs={W:!sol&&p.z<-0.1,RT:!sol&&p.x>RW+0.1,D:!sol&&p.z>RL+0.1,L:!sol&&p.x<-0.1};
   for(const o of root.children){ const sd=o.userData.side; if(sd) o.visible=!hs[sd]; }
 }
+/* 3D labels that overlap on screen: keep the higher userData.prio (then the nearer one) and hide the rest.
+   Runs every LBL_EVERY camera frames while moving, plus once shortly after the camera stops, and right away after a rebuild. */
+const LBL_EVERY=6, lblV=new THREE.Vector3(), lblC=new THREE.Vector3(); let lblN=0, lblKey="", lblT=null, lblRuns=0;
+function lblKeyNow(){ const c=camera.position; return [c.x,c.y,c.z,target.x,target.y,target.z,camera.fov,camera.aspect].map(v=>v.toFixed(3)).join()+","+canvas.clientWidth+"x"+canvas.clientHeight; }
+function lblTick(){ const k=lblKeyNow(), fresh=root.children.some(o=>o.userData.label&&o.userData.hid===undefined); /* fresh = labels from a new build, never checked */
+  if(k===lblKey&&!fresh) return; clearTimeout(lblT);
+  if(fresh||++lblN>=LBL_EVERY) declutterLabels(); else lblT=setTimeout(()=>{ if(APT3D||FP.on) return; declutterLabels(); poke(1); },160); }
+function declutterLabels(){ lblN=0; lblKey=lblKeyNow(); lblRuns++;
+  camera.updateMatrixWorld(); root.updateMatrix(); const cw=canvas.clientWidth, ch=canvas.clientHeight, ppu=ch/(2*Math.tan(camera.fov*Math.PI/360)), keep=[];
+  const R=root.children.filter(o=>o.userData.label).map(o=>{ o.userData.hid=false; lblV.copy(o.position).applyMatrix4(root.matrix); const z=-lblC.copy(lblV).applyMatrix4(camera.matrixWorldInverse).z; if(z<0.05) return null;
+    lblV.project(camera); const s=ppu/z; return {o,x:(lblV.x+1)/2*cw,y:(1-lblV.y)/2*ch,w:o.scale.x*s/2+2,h:o.scale.y*s/2+2,p:o.userData.prio||0,s}; }).filter(Boolean).sort((a,b)=>b.p-a.p||b.s-a.s);
+  for(const r of R){ if(keep.some(k=>Math.abs(k.x-r.x)<k.w+r.w&&Math.abs(k.y-r.y)<k.h+r.h)){ r.o.userData.hid=true; r.o.visible=false; } else { r.o.visible=true; keep.push(r); } } }
 const pts=new Map(); let lastPinch=0, tapStart=null, drag=null;
 const ray=new THREE.Raycaster();
 let hintT=null; function hint(msg,ms){ const h=document.getElementById("hint"); h.textContent=msg; h.style.opacity=1; clearTimeout(hintT); if(ms!==0) hintT=setTimeout(()=>h.style.opacity=0,ms||2600); }

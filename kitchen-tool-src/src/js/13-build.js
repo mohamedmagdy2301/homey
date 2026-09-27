@@ -4,8 +4,12 @@ const OPP={L:"RT",RT:"L",W:"D",D:"W"};
 const spanOf=w=>w==="L"||w==="RT"?RW:RL;
 const distFront=(w,front)=>w==="L"||w==="W"?front:(w==="RT"?RW-front:RL-front);
 function oppDepth(w,a0,a1){ const o=OPP[w]; if(!o) return 0; let m=0; for(const u of UNITS) if(u.wall===o&&u.y0<1.0&&u.kind!=="app"&&Math.min(u.a1,a1)-Math.max(u.a0,a0)>0.01) m=Math.max(m,u.depth); return m; }
+// the old scene is freed only after the new one has been drawn: disposing its materials first dropped every shader program, so each rebuild recompiled them all (~1 s per slider tick on phones)
+const TRASH=[];
+function disposeTree(g){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); }
+function emptyTrash(){ while(TRASH.length) disposeTree(TRASH.shift()); }
 function build(){
-  root.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } });
+  TRASH.push(root); if(TRASH.length>8) disposeTree(TRASH.shift()); /* batch builds (apartment, compare) with no frame in between */
   scene.remove(root); root=new THREE.Group(); scene.add(root);
   H=cfg.ceil/100; geo();
   TRI=null; BATH=null; BATH_DRAIN=null; ACC={lower:0,upper:0,tall:0,marble:0}; UNITS=[]; POINTS=[]; unitCount={}; DOORCHK=[]; KEY=null; OPT=null; curWall=null; curSide=null;
@@ -268,7 +272,7 @@ function finishBuild(warn,walkCm,counterLen,US){
   if(selHelper){ scene.remove(selHelper); selHelper=null; } if(SEL && UNITS.some(u=>u.id===SEL)) highlight(SEL); else SEL=null;
   STATS={walk:walkCm,counter:Math.round(counterLen*100),warn,acc:{...ACC},net:[Math.round(RW*100),Math.round(RL*100)],vol:storageVol(),tri:TRI};
   QTY=genQuant(); if(cfg.roomType==="room"||cfg.roomType==="hall") ROOMQ={...QTY,tvDist:ROOMQ&&cfg.roomType==="room"?ROOMQ.tvDist:null}; /* after STATS: genQuant reads STATS.counter */
-  if(cfg.labels&&(cfg.roomType||"kitchen")==="kitchen"){ label(`أضيق ممر ${walkCm} سم`,RW/2,0.05,RL/2); }
+  if(cfg.labels&&(cfg.roomType||"kitchen")==="kitchen"){ label(`أضيق ممر ${walkCm} سم`,RW/2,0.05,RL/2,null,2); }
   // lights / env
   scene.background=new THREE.Color(cfg.night?0x1b1f26:0xeef0ec);
   sun.intensity=cfg.night?0.05:0.8; hemi.intensity=cfg.night?0.25:0.75; bulb.intensity=(cfg.night?0.9:0.45)*(gbOn()?1.4:1); bulb.position.set(RW/2,H-0.2,RL/2); fitSun(RW/2,RL/2,Math.max(4,Math.hypot(RW,RL)/2+0.8));
@@ -336,7 +340,7 @@ function drawPts(){
     const [x,z]=markerPos(p), y=Math.max(0.03,p.y), exist=p.type==="exist";
     const mk=new THREE.Mesh(new THREE.SphereGeometry(exist?0.045:0.035,14,10),new THREE.MeshBasicMaterial({color:PT[p.type].c,depthTest:false,transparent:true,opacity:exist?0.6:0.95}));
     mk.position.set(x,y,z); mk.renderOrder=12; mk.raycast=()=>{}; const hp=hostPos(p.wall,p.a); mk.userData.side=hp?hp[0]:null; root.add(mk);
-    if(cfg.ptLabels) label(p.note,x,y+0.08,z,PT[p.type].c);
+    if(cfg.ptLabels) label(p.note,x,y+0.08,z,PT[p.type].c,0.5);
   }
 }
 
@@ -438,6 +442,17 @@ function renderDraw(){ if(DRAW_DOC) return; const body=document.getElementById("
 function openDraw(sec){ DRAW_DOC=false; document.getElementById("draw").style.display="flex"; renderDraw(); if(sec) setTimeout(()=>{ const e=document.getElementById("sec-"+sec); if(e) e.scrollIntoView(); },50); }
 function showStats(){
   const s=STATS; let h=cfg.roomType==="room"?`<span>صافي ${s.net?s.net[0]+"×"+s.net[1]:""}</span><span>أرضية ${ROOMQ?ROOMQ.floorA.toFixed(1):0} م²</span><span>دهان ${ROOMQ?ROOMQ.liters:0} لتر</span>`:cfg.roomType==="bath"?`<span>صافي ${s.net?s.net[0]+"×"+s.net[1]:""}</span><span>مساحة الحركة ${s.walk} سم</span><span>سيراميك ${BATH?(BATH.wallA+BATH.floorA).toFixed(1):0} م²</span>`:`<span>صافي ${s.net?s.net[0]+"×"+s.net[1]:""}</span><span>أضيق ممر ${s.walk} سم</span><span>إجمالي الرخامة ${s.counter} سم</span>`;
-  const ws=[...new Set(s.warn)]; ws.slice(0,3).forEach(w=>h+=`<span class="warn">${esc(w)}</span>`); if(ws.length>3) h+=`<span class="warn">+${ws.length-3} تحذيرات تانية (في 📐)</span>`;
-  document.getElementById("stats").innerHTML=h;
+  const ws=[...new Set(s.warn)], n=ws.length; if(!n) warnOpen=false;
+  if(n) h+=`<button type="button" id="warnBtn" aria-haspopup="true" aria-expanded="${warnOpen}">⚠ ${n===1?"ملاحظة واحدة":n===2?"ملاحظتين":n+(n>10?" ملاحظة":" ملاحظات")}</button><div id="warnMenu"${warnOpen?"":" hidden"}>${ws.map((w,i)=>{ const t=warnDest(w); return `<button type="button" data-i="${i}"><span>${esc(w)}</span><small>${t?"افتح تاب "+esc(t):"افتح 📐 الرسومات"}</small></button>`; }).join("")}</div>`;
+  const el=document.getElementById("stats"); el.innerHTML=h; if(!n) return;
+  document.getElementById("warnBtn").onclick=()=>setWarnMenu(!warnOpen);
+  el.querySelectorAll("#warnMenu button").forEach(b=>b.onclick=()=>{ setWarnMenu(false); goWarn(ws[+b.dataset.i]); });
 }
+/* warnings menu: each warning opens the tab that fixes it, using the same warnTab()/WARNTAB rules as the tab dots (15-ui.js);
+   warnTab falls back to the room's first tab, so a warning no rule really matches opens the drawings instead */
+let warnOpen=false;
+function warnDest(w){ if(typeof warnTab!=="function"||typeof WARNTAB==="undefined") return null; const t=warnTab(w); return w.includes("تاب "+t)||WARNTAB.some(([re,x])=>x===t&&re.test(w))?t:null; }
+function setWarnMenu(o){ warnOpen=o; const m=document.getElementById("warnMenu"), b=document.getElementById("warnBtn"); if(m) m.hidden=!o; if(b) b.setAttribute("aria-expanded",o); }
+function goWarn(w){ const t=warnDest(w); if(!t){ openDraw(); return; } tab=t; renderTabs(); if(!panelOpen) setPanel(true); renderControls(); }
+document.addEventListener("pointerdown",e=>{ if(warnOpen&&!e.target.closest("#warnBtn,#warnMenu")) setWarnMenu(false); });
+document.addEventListener("keydown",e=>{ if(warnOpen&&e.key==="Escape") setWarnMenu(false); });

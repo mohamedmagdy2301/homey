@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Room corner (two walls + floor) in the app's :root tokens: --pri, --plaster, --line-2, --brass. Content stays inside the maskable safe circle. -->
+  <rect width="512" height="512" fill="#2F5D50"/>
+  <path d="M152 196 256 136v120l-104 60z" fill="#EEF0EC"/>
+  <path d="M256 136l104 60v120l-104-60z" fill="#C9D0CA"/>
+  <path d="M256 256l104 60-104 60-104-60z" fill="#B08545"/>
+  <path d="M283 186l50 29v46l-50-29z" fill="#2F5D50" opacity=".85"/>
+</svg>

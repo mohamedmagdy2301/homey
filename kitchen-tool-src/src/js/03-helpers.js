@@ -448,7 +448,7 @@ function fridgeDoor(dc,avail){ // draw the opened door after the whole kitchen e
   const deg=Math.round(maxT*180/Math.PI); label(deg>=90?"باب التلاجة بيفتح 90° ✓":`باب التلاجة بيفتح ${deg}° بس`,cx,FH+0.1,cz,deg>=90?"#2e7d4f":"#b3452c");
   return deg;
 }
-function appLabel(t,f,a,d,y){ if(!cfg.appLabels||!cfg.labels) return; t=t.replace(/(\d+)×(\d+)/,"عرض $1 · عمق $2"); const [x,z]=alongZ(f)?[d,a]:[a,d]; label(t,x,y,z,"#555c63"); }
+function appLabel(t,f,a,d,y){ if(!cfg.appLabels||!cfg.labels) return; t=t.replace(/(\d+)×(\d+)/,"عرض $1 · عمق $2"); const [x,z]=alongZ(f)?[d,a]:[a,d]; label(t,x,y,z,"#555c63",0.5); }
 function uppers(f,a0,a1,back,y0,y1,depth){
   if(a1-a0<0.1||y1-y0<0.15){ KEY=null; return; }
   depth=depth||cfg.uDepth/100; const dr=dirOf(f), front=back+depth*dr;
@@ -488,7 +488,7 @@ function tall(f,a0,a1,back,depth,y0,y1){
   else doorPanels(f,a0,a1,front,s0,y1,MAT.base,"bottom",nn);
   curUid=prevUid;
 }
-function label(text,x,y,z,color){
+function label(text,x,y,z,color,prio){ /* prio: which label stays when two overlap on screen (declutterLabels); red warnings 3, default 1 */
   if(!cfg.labels)return;
   const c=document.createElement("canvas"), ctx=c.getContext("2d"); const fs=44;
   ctx.font=`bold ${fs}px Tahoma,Arial`; const w=ctx.measureText(text).width+40; c.width=w; c.height=fs+30;
@@ -496,5 +496,5 @@ function label(text,x,y,z,color){
   if(ctx.roundRect)ctx.roundRect(0,0,w,c.height,18);else ctx.rect(0,0,w,c.height); ctx.fill();
   ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.direction="rtl"; ctx.fillText(text,w/2,c.height/2+2);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));
-  const k=0.0028; sp.scale.set(w*k,c.height*k,1); sp.position.set(x,y,z); sp.renderOrder=10; sp.userData.label=true; root.add(sp);
+  const k=0.0028; sp.scale.set(w*k,c.height*k,1); sp.position.set(x,y,z); sp.renderOrder=10; sp.userData.label=true; sp.userData.prio=prio!=null?prio:/^#(b3452c|a6473a)$/i.test(color||"")?3:1; root.add(sp);
 }
