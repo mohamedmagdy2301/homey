@@ -104,6 +104,23 @@ with sync_playwright() as p:
     check("renders only when something changes (goes idle, wakes on build)", r[0] == 0 and r[1] > 0, r)
     r = ev("()=>{ cfg=newCfg('r_living'); cfg.roomW=600; cfg.roomL=700; build(); const c=sun.shadow.camera; return [c.right, Math.hypot(RW,RL)/2, Math.abs(sun.target.position.x-RW/2)<1e-6]; }")
     check("sun shadow box covers big rooms", r[0] >= r[1] and r[2], r)
+    r = ev("()=>{ const order=['المقاسات','التصميم','التنفيذ','المشاريع'], bad=[]; for(const t of ['L','b_std','h_hall','r_master']){ cfg=newCfg(t); build(); const g=tabGroups(), names=g.map(x=>x.n), all=g.flatMap(x=>x.tabs);"
+           " if(names.join()!==order.filter(n=>names.includes(n)).join()||all.length!==tabsFor().length||!tabsFor().every(x=>all.includes(x))||g.some(x=>!x.tabs.length)) bad.push(t); } return bad; }")
+    check("tab groups follow the work order and hold exactly this room's tabs", r == [], r)
+    r = ev("()=>{ for(const k in tabLast) delete tabLast[k]; cfg=newCfg('L'); build(); setPanel(true); tab='الوحدات'; renderTabs(); const c=JSON.stringify(cfg), vis=()=>[...document.querySelectorAll('#tabs .tsec button')].filter(b=>b.offsetParent).map(b=>b.dataset.t);"
+           " const a=vis(), gOn=document.querySelector('#tabs .tgrp .on').dataset.g; document.querySelector('#tabs .tgrp [data-g=\"do\"]').click(); const t1=tab, b=vis(); document.querySelector('#tabs .tgrp [data-g=\"design\"]').click();"
+           " const r=[gOn, a.includes('الوحدات')&&!a.includes('التكلفة'), t1, b.includes('التكلفة')&&!b.includes('الوحدات'), tab, JSON.stringify(cfg)===c, 'tabLast' in cfg]; setPanel(false); return r; }")
+    check("phone: group row shows only the open group's tabs, remembers the last tab, doesn't touch cfg", r == ["design", True, "المية والكهربا", True, "الوحدات", True, False], r)
+    r = ev("()=>{ cfg=newCfg('L'); build(); return [warnTab('البوتاجاز طالع عن الرخامة 8 سم'), warnTab('الحوض محتاج تمديد صرف حوالي 90 سم'), warnTab('مفيش ولا حيطة عليها رخامة، اختار نوع الحيطان من تاب التخزين'),"
+           " warnTab('المسافة بين الرخامة والدولاب العلوي أقل من 50 سم'), warnTab('مثلث العمل: كلام'), (cfg=newCfg('b_std'),warnTab('حدد مكان الصرف الموجود أو عمود الصرف من تاب المية والكهربا عشان أحسب الميول')), warnTab('الشاور 70×70 صغير'), (cfg=newCfg('r_master'),warnTab('الدولاب قدام الشباك')), warnTab('باب التلاجة هيفتح 90° بس')]; }")
+    check("warnings link to the tab that fixes them", r == ["مقاسات الأجهزة", "المية والكهربا", "التخزين", "الارتفاعات", "الأجهزة", "المية والكهربا", "الحمام", "الأثاث", "الأثاث"], r)
+    r = ev("()=>{ cfg=newCfg('L'); build(); const g=k=>document.querySelector(`#tabs .tgrp [data-g=\"${k}\"]`).classList.contains('warn'); cfg.stoveD=70; build();"
+           " const w=STATS.warn.some(x=>/طالع عن الرخامة/.test(x)), t=document.querySelector('#tabs [data-t=\"مقاسات الأجهزة\"]'); const r=[w, g('design'), t.classList.contains('warn'), /ملاحظ/.test(t.textContent)]; cfg.stoveD=60; build(); return r; }")
+    check("a group with warnings gets a dot (updated after each build)", r == [True, True, True, True], r)
+    pg.set_viewport_size({"width": 1440, "height": 900}); pg.wait_for_timeout(300)
+    r = ev("()=>{ cfg=newCfg('r_master'); build(); tab='الأثاث'; renderTabs(); return [getComputedStyle(document.querySelector('#tabs .tgrp')).display, [...document.querySelectorAll('#tabs .tsh')].filter(h=>h.offsetParent).map(h=>h.textContent), [...document.querySelectorAll('#tabs .tsec button')].filter(b=>b.offsetParent).length===tabsFor().length]; }")
+    check("desktop: one icon rail split by a heading per group", r[0] == "none" and r[1] == ["المقاسات", "التصميم", "التنفيذ", "المشاريع"] and r[2], r)
+    pg.set_viewport_size({"width": 390, "height": 760}); pg.wait_for_timeout(300)
     check("no JS errors during the whole run", not errs, errs[:3])
     b.close()
     b, pg, errs = page(p, FAILING); ev = pg.evaluate

@@ -60,14 +60,41 @@ const viewSel=document.getElementById("view"); fill(viewSel,VIEWS,"out"); viewSe
 let tab=Object.keys(SCHEMA)[0];
 const tabsEl=document.getElementById("tabs"); let ctlEl=document.getElementById("controls");
 function tabsFor(){ if(cfg.roomType==="room") return ["الأثاث","الأوضة","السقف","الدهان والأرضية","المية والكهربا","الشكل","العرض","الوحدات","خطوات التنفيذ","المشاريع"]; if(cfg.roomType==="hall") return ["الأوضة","السقف","الدهان والأرضية","الشكل","العرض","المشاريع"]; return cfg.roomType==="bath"?["الحمام","الأوضة","السقف","التشطيب","المية والكهربا","الشكل","العرض","الوحدات","خطوات التنفيذ","المشاريع"]:Object.keys(SCHEMA).filter(t=>!["الحمام","التشطيب","الأثاث","الدهان والأرضية","السقف"].includes(t)).flatMap(t=>t==="الارتفاعات"?[t,"السقف"]:[t]); }
+// tabs grouped in the order the work happens; each group shows only the tabs this room type has (a tab missing from every group falls into "التصميم")
+const TGROUPS=[{k:"size",n:"المقاسات",ico:"ruler",t:["الأوضة","الارتفاعات","الأبواب والشبابيك"]},
+  {k:"design",n:"التصميم",ico:"palette",t:["الأجهزة","➕ أجهزة","مقاسات الأجهزة","التخزين","الوحدات","الشكل","السقف","العرض","الأثاث","الدهان والأرضية","الحمام","التشطيب"]},
+  {k:"do",n:"التنفيذ",ico:"steps",t:["المية والكهربا","خطوات التنفيذ","التكلفة"]},{k:"proj",n:"المشاريع",ico:"folder",t:["المشاريع"]}];
+function tabGroups(){ const have=tabsFor(), known=TGROUPS.flatMap(g=>g.t);
+  return TGROUPS.map(g=>({k:g.k,n:g.n,ico:g.ico,tabs:have.filter(t=>g.t.includes(t)||(g.k==="design"&&!known.includes(t)))})).filter(g=>g.tabs.length); }
+const tabLast={}; /* last tab opened in each group (this session only, not saved in cfg) */
+// rough link from a warning's text to the tab that fixes it: an explicit "من تاب X" wins, then the first matching rule, else the room type's main tab
+const WARNTAB=[[/محطوط على حيطة|سخان الغاز/,"➕ أجهزة"],[/تمديد|صرف|المية|لوحة الكهربا|خطر/,"المية والكهربا"],[/أعمق من الرخامة|عن الرخامة|بالمقاس ده/,"مقاسات الأجهزة"],
+  [/الدولاب العلوي|أعلى من الرخامة/,"الارتفاعات"],[/تداخل بين الوحدة/,"الوحدات"],[/دولاب الركن|ركن ميت|عليها رخامة/,"التخزين"],[/يتفتح|باب التلاجة|مثلث العمل|اتنقل لـ|مش لاقي مكان|جنب البوتاجاز|في ركن/,"الأجهزة"],
+  [/الجزيرة|ممر|التجويف|الطرقة|من غير شباك|الباب هيخبط/,"الأوضة"],[/راكب على|الشاور|قدام|لازقة|للحركة|لازم 20 سم/,"الحمام"],[/السرير|السفرة|الشاشة|الكرسي|قافل|برة حدود|راكب على|الدولاب|أقسام|قدام/,"الأثاث"]];
+function warnTab(w){ const have=tabsFor(), m=/تاب (المية والكهربا|[^\s،.]+)/.exec(w); if(m&&have.includes(m[1])) return m[1];
+  for(const [re,t] of WARNTAB) if(re.test(w)&&have.includes(t)) return t; return have[0]; }
+function warnTabs(){ const n={}; for(const w of new Set((typeof STATS!=="undefined"&&STATS.warn)||[])){ const t=warnTab(w); n[t]=(n[t]||0)+1; } return n; }
+/* refresh the warning dots only (runs after every build) */
+function tabWarn(){ const n=warnTabs(), mark=(b,c)=>{ b.classList.toggle("warn",c>0); const s=b.querySelector(".sr"); if(s) s.textContent=c>0?`، فيه ${c} ${c>1?"ملاحظات":"ملاحظة"}`:""; };
+  tabsEl.querySelectorAll("button[data-t]").forEach(b=>mark(b,n[b.dataset.t]||0));
+  tabsEl.querySelectorAll("button[data-g]").forEach(b=>mark(b,[...tabsEl.querySelectorAll(`.tsec[data-g="${b.dataset.g}"] button[data-t]`)].reduce((s,x)=>s+(n[x.dataset.t]||0),0))); }
 function renderTabs(){ tabsEl.innerHTML=""; if(!tabsFor().includes(tab)) tab=tabsFor()[0];
-  for(const t of tabsFor()){ const b=document.createElement("button"); b.type="button"; b.innerHTML=ico(TABICO[t],18)+`<span>${tabLabel(t)}</span>`; b.className=t===tab?"on":""; if(t===tab) b.setAttribute("aria-current","page");
-    b.onclick=()=>{tab=t;renderTabs();renderControls();ctlEl.scrollTop=0;}; tabsEl.appendChild(b);}
+  const groups=tabGroups(), cur=groups.find(g=>g.tabs.includes(tab))||groups[0]; tabLast[cur.k]=tab;
+  const go=t=>{tab=t;renderTabs();renderControls();ctlEl.scrollTop=0;};
+  const gr=document.createElement("div"); gr.className="seg tgrp"; gr.setAttribute("aria-label","مراحل الشغل"); tabsEl.appendChild(gr);
+  for(const g of groups){ const b=document.createElement("button"); b.type="button"; b.dataset.g=g.k; b.innerHTML=ico(g.ico,16)+`<span>${g.n}</span><i class="wdot" aria-hidden="true"></i><span class="sr"></span>`; if(g===cur){ b.className="on"; b.setAttribute("aria-current","step"); }
+    b.onclick=()=>{ if(g===cur) return; go(g.tabs.includes(tabLast[g.k])?tabLast[g.k]:g.tabs[0]); }; gr.appendChild(b); }
+  for(const g of groups){ const sec=document.createElement("div"); sec.className="tsec"+(g===cur?" on":"")+(g.tabs.length<2?" one":""); sec.dataset.g=g.k; sec.setAttribute("role","group"); sec.setAttribute("aria-label",g.n);
+    const h=document.createElement("div"); h.className="tsh"; h.textContent=g.n; h.setAttribute("aria-hidden","true"); sec.appendChild(h);
+    for(const t of g.tabs){ const b=document.createElement("button"); b.type="button"; b.dataset.t=t; b.innerHTML=ico(TABICO[t],18)+`<span>${tabLabel(t)}</span><i class="wdot" aria-hidden="true"></i><span class="sr"></span>`; b.className=t===tab?"on":""; if(t===tab) b.setAttribute("aria-current","page");
+      b.onclick=()=>go(t); sec.appendChild(b); }
+    tabsEl.appendChild(sec); }
+  tabWarn();
   document.getElementById("ptitle").textContent=tabLabel(tab);
   // keep the active tab visible without scrollIntoView (that can scroll the whole page while the sheet is hidden)
-  const on=tabsEl.querySelector(".on"); if(on&&panelOpen){ const r=on.getBoundingClientRect(), p=tabsEl.getBoundingClientRect();
-    if(r.left<p.left) tabsEl.scrollBy(r.left-p.left-24,0); else if(r.right>p.right) tabsEl.scrollBy(r.right-p.right+24,0);
-    if(r.top<p.top) tabsEl.scrollBy(0,r.top-p.top-8); else if(r.bottom>p.bottom) tabsEl.scrollBy(0,r.bottom-p.bottom+8); } }
+  const on=tabsEl.querySelector("button[data-t].on"), row=on&&on.parentNode; if(on&&panelOpen){ const r=on.getBoundingClientRect(), p=row.getBoundingClientRect(), q=tabsEl.getBoundingClientRect();
+    if(r.left<p.left) row.scrollBy(r.left-p.left-24,0); else if(r.right>p.right) row.scrollBy(r.right-p.right+24,0);
+    if(r.top<q.top) tabsEl.scrollBy(0,r.top-q.top-30); else if(r.bottom>q.bottom) tabsEl.scrollBy(0,r.bottom-q.bottom+8); } }
 function renderControls(){
   ctlEl.innerHTML="";
   let acts=null;
