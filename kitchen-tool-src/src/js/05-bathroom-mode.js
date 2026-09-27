@@ -131,7 +131,7 @@ function buildBath(warn){
   for(const p of POINTS){ if(p.type!=="socket"||p.note.includes("إضاءة")) continue; const [x,z]=aoToXZ(p.wall,p.a,0.02); for(const bd of bodies){ if(!["shower","tub"].includes(bd.b.type)) continue; const dx=Math.max(bd.r.x0-x,0,x-bd.r.x1), dz=Math.max(bd.r.z0-z,0,z-bd.r.z1); if(Math.hypot(dx,dz)<0.6&&p.y<2.25){ warn.push(`${p.note} قريبة من ${bd.n} أقل من 60 سم، خطر`); break; } } }
   drawPts();
   // ---------- finishing quantities ----------
-  let wallA=0; for(const w of W4){ let A=wlen(w)*top; for(const f of FEATS) if(f.wall===w&&["window","door","opening","niche"].includes(f.type)) A-=(f.a1-f.a0)*Math.max(0,Math.min(top,f.y1)-Math.min(top,f.y0)); wallA+=Math.max(0,A); }
+  let wallA=0; for(const w of W4){ let A=wlen(w)*top; for(const f of FEATS) if(f.wall===w&&["window","door","opening","niche"].includes(f.type)) A-=(f.a1-f.a0)*Math.max(0,Math.min(top,f.y1)-Math.min(top,f.y0)); wallA+=Math.max(0,A); } wallA=Math.max(0,wallA+cutPerimDelta()*top); /* angled cut walls are shorter than the two sides they replace */
   const floorA=RW*RL-cutArea(), ws=(1+cfg.waste/100); const tA=k=>{ const s=TSZ[k]||[0.6,0.6]; return s[0]*s[1]; };
   let wp=floorA+2*(RW+RL)*cfg.wpUp/100;
   for(const bd of bodies){ if(!["shower","tub"].includes(bd.b.type)) continue; const b=bd.b, L=wlen(b.wall); let len=b.w/100; const a0=Math.min(L-b.w/100,Math.max(0,b.pos/100)); if(a0<0.03) len+=b.d/100; if(a0+b.w/100>L-0.03) len+=b.d/100; wp+=len*Math.max(0,cfg.wpShower-cfg.wpUp)/100; }

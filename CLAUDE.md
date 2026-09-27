@@ -28,6 +28,7 @@ There is no test runner and no way to run a single test. `smoke_test.py` is one 
 - A new JS file must be added to `ORDER.txt`, or it will not be included.
 - The file list in `README.md` is out of date (for example, build is now `13-build.js` and UI is `15-ui.js`). Trust `ORDER.txt`.
 - Lines are very long and dense. Use Grep to find a function instead of reading whole files.
+- Code often continues after a statement on the same line, so a `//` comment added mid-line comments out the rest of that line. Use `/* */` for inline notes. If the page stops loading (smoke test: `TEMPLATES is not defined`), extract the bundled `<script>` and run `node --check` on it.
 
 **State model.** One global `cfg` is the current room's configuration. `newCfg(templateKey)` creates it from a template. There are four template maps: `TEMPLATES` (kitchens, in 01), `BTEMPLATES` (baths, in 05), and `HTEMPLATES`/`RTEMPLATES` (halls and furnished rooms, in 06/07). `cfg.roomType` is one of `kitchen | bath | hall | room`, and a lot of code branches on it. Walls are keyed `W`, `RT`, `D`, `L` (see `W4`/`WNAME`). Features such as windows, doors, columns, corridors, and cut corners live in `cfg.feats`. The settings panel is generated from `SCHEMA` in `01-config.js`.
 

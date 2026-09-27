@@ -660,7 +660,7 @@ function storageVol(){ let v=0; const ch=CH();
     if(u.kind==="upper") v+=w*(u.y1-u.y0)*(u.depth-0.02);
     if(u.kind==="tall") v+=w*(u.y1-u.y0-0.1)*(u.depth-0.04); }
   return Math.round(v*1000); }
-const WATT={fridge:250,washer:2200,dish:2000,oven:3000,micro:1200,hood:250,led:60,spots:60,freezer:200,freezerU:150,minibar:100,dryer:2500,washerSemi:450,cooler:500,ovenCol:3000,heaterE:2500,heaterG:40,tv:150,coffee:1500,airfryer:1800,blender:800};
+const WATT={fridge:250,washer:2200,dish:2000,oven:3000,micro:1200,hood:250,led:60,spots:60,freezer:200,freezerU:150,minibar:100,dryer:2500,washer2:450,cooler:500,ovenCol:3000,heaterE:2500,heaterG:40,tv:150,coffee:1500,airfryer:1800,blender:800};
 function elecLoadsBath(){
   const rows=[], has=t=>(cfg.bfix||[]).some(b=>b.type===t&&(t!=="heater"||b.var!=="gas"));
   if(has("heater")) rows.push({n:"سخان كهربا",w:2500}); if(has("washer")) rows.push({n:"الغسالة",w:2200}); if(has("dryer")) rows.push({n:"المجفف",w:2500});
@@ -1081,7 +1081,7 @@ function buildBath(warn){
   for(const p of POINTS){ if(p.type!=="socket"||p.note.includes("إضاءة")) continue; const [x,z]=aoToXZ(p.wall,p.a,0.02); for(const bd of bodies){ if(!["shower","tub"].includes(bd.b.type)) continue; const dx=Math.max(bd.r.x0-x,0,x-bd.r.x1), dz=Math.max(bd.r.z0-z,0,z-bd.r.z1); if(Math.hypot(dx,dz)<0.6&&p.y<2.25){ warn.push(`${p.note} قريبة من ${bd.n} أقل من 60 سم، خطر`); break; } } }
   drawPts();
   // ---------- finishing quantities ----------
-  let wallA=0; for(const w of W4){ let A=wlen(w)*top; for(const f of FEATS) if(f.wall===w&&["window","door","opening","niche"].includes(f.type)) A-=(f.a1-f.a0)*Math.max(0,Math.min(top,f.y1)-Math.min(top,f.y0)); wallA+=Math.max(0,A); }
+  let wallA=0; for(const w of W4){ let A=wlen(w)*top; for(const f of FEATS) if(f.wall===w&&["window","door","opening","niche"].includes(f.type)) A-=(f.a1-f.a0)*Math.max(0,Math.min(top,f.y1)-Math.min(top,f.y0)); wallA+=Math.max(0,A); } wallA=Math.max(0,wallA+cutPerimDelta()*top); /* angled cut walls are shorter than the two sides they replace */
   const floorA=RW*RL-cutArea(), ws=(1+cfg.waste/100); const tA=k=>{ const s=TSZ[k]||[0.6,0.6]; return s[0]*s[1]; };
   let wp=floorA+2*(RW+RL)*cfg.wpUp/100;
   for(const bd of bodies){ if(!["shower","tub"].includes(bd.b.type)) continue; const b=bd.b, L=wlen(b.wall); let len=b.w/100; const a0=Math.min(L-b.w/100,Math.max(0,b.pos/100)); if(a0<0.03) len+=b.d/100; if(a0+b.w/100>L-0.03) len+=b.d/100; wp+=len*Math.max(0,cfg.wpShower-cfg.wpUp)/100; }
@@ -1142,12 +1142,13 @@ function snapQ(c){ const q={...(QTY||{})}; q.pts={}; for(const p of POINTS) q.pt
 function snapCurrent(c,name){ // build a room silently and capture what the apartment needs
   cfg=c; build();
   const pts=POINTS.map(p=>{ const [x,z]=markerPos(p); return {x,z,y:p.y,type:p.type,note:p.note}; });
-  const a=STATS.acc||{}; let cost=0;
-  if(c.roomType==="bath"&&BATH) cost=(BATH.wallA+BATH.floorA)*(1+c.waste/100)*c.pTile+BATH.wp*c.pWP+(BATH.wallA+BATH.floorA)*c.pLabor;
-  else if(c.roomType==="room"&&ROOMQ) cost=ROOMQ.floorA*1.1*(c.pFloor||0)+ROOMQ.paintA*(c.pPaint||0)+ROOMQ.skirt*(c.pSkirt||0);
-  else if(c.roomType!=="hall") cost=(a.lower||0)*c.pLower+(a.upper||0)*c.pUpper+(a.tall||0)*c.pTall+(a.marble||0)*c.pMarble;
+  const a=STATS.acc||{}; const costs={kitchen:0,tile:0,wp:0,paint:0}; // per budget line (BUDGET_DEF)
+  if(c.roomType==="bath"&&BATH){ costs.tile=(BATH.wallA+BATH.floorA)*(1+c.waste/100)*c.pTile+(BATH.wallA+BATH.floorA)*c.pLabor; costs.wp=BATH.wp*c.pWP; }
+  else if((c.roomType==="room"||c.roomType==="hall")&&ROOMQ){ costs.tile=ROOMQ.floorA*1.1*(c.pFloor||0)+ROOMQ.skirt*(c.pSkirt||0); costs.paint=ROOMQ.paintA*(c.pPaint||0); }
+  else if(c.roomType!=="hall"&&c.roomType!=="room") costs.kitchen=(a.lower||0)*c.pLower+(a.upper||0)*c.pUpper+(a.tall||0)*c.pTall+(a.marble||0)*c.pMarble;
+  const cost=costs.kitchen+costs.tile+costs.wp+costs.paint;
   return {name,roomType:c.roomType||"kitchen",RW,RL,H,feats:FEATS.map(f=>({...f})),units:UNITS.filter(u=>u.y0<1&&(W4.includes(u.wall)||u.wall==="IS"||u.wall==="FR")).map(u=>({...unitRect(u),kind:u.kind,label:u.label,ft:u.ft})),
-    pts,warn:[...new Set(STATS.warn)],elec:elecLoads(),cost,bath:BATH?{...BATH}:null,acc:{...a},hasToilet:UNITS.some(u=>u.kind==="toilet"),cfg:c,cuts:CUTS.map(k=>({...k})),q:snapQ(c),gb:GBQ?{...GBQ,outer:null,inner:null,spotPts:null}:null};
+    pts,warn:[...new Set(STATS.warn)],elec:elecLoads(),cost,costs,bath:BATH?{...BATH}:null,acc:{...a},hasToilet:UNITS.some(u=>u.kind==="toilet"),cfg:c,cuts:CUTS.map(k=>({...k})),q:snapQ(c),gb:GBQ?{...GBQ,outer:null,inner:null,spotPts:null}:null};
 }
 async function refreshSnaps(){
   const saved=cfg, sl=loadingP; loadingP=true; SLIDING=true; SNAP={};
@@ -1428,8 +1429,8 @@ function aptShopUI(box){
   const h=document.createElement("div"); h.className="head"; h.textContent="💰 الميزانية والدفعات"; box.appendChild(h);
   APT.budget=APT.budget&&APT.budget.length?APT.budget:BUDGET_DEF.map(n=>({n,est:0,paid:0}));
   const fill=document.createElement("button"); fill.className="btn"; fill.textContent="✨ املى التقديرات من التصميم (من الأسعار اللي كتبتها)";
-  fill.onclick=async()=>{ const sum=t=>APT.rooms.filter(r=>SNAP[r.id]&&t(SNAP[r.id])).reduce((x,r)=>x+SNAP[r.id].cost,0); const set=(n,v)=>{ const l=APT.budget.find(x=>x.n===n); if(l&&v>0) l.est=Math.round(v); };
-    set("نجارة المطبخ",sum(s=>s.roomType==="kitchen")); set("سيراميك وبورسلين",sum(s=>s.roomType==="bath")); set("دهانات",sum(s=>s.roomType==="room"||s.roomType==="hall")); { const g=APT.rooms.reduce((x,r)=>x+((SNAP[r.id]&&SNAP[r.id].gb&&SNAP[r.id].gb.cost)||0),0); set("جبس",g); } await saveApt(); renderApt(); hint("✓ اتملت البنود اللي ليها أسعار في التصميم"); };
+  fill.onclick=async()=>{ const sum=k=>APT.rooms.reduce((x,r)=>x+((SNAP[r.id]&&SNAP[r.id].costs&&SNAP[r.id].costs[k])||0),0); const set=(n,v)=>{ const l=APT.budget.find(x=>x.n===n); if(l&&v>0) l.est=Math.round(v); };
+    set("نجارة المطبخ",sum("kitchen")); set("سيراميك وبورسلين",sum("tile")); set("عزل",sum("wp")); set("دهانات",sum("paint")); { const g=APT.rooms.reduce((x,r)=>x+((SNAP[r.id]&&SNAP[r.id].gb&&SNAP[r.id].gb.cost)||0),0); set("جبس",g); } await saveApt(); renderApt(); hint("✓ اتملت البنود اللي ليها أسعار في التصميم"); };
   box.appendChild(fill);
   const tb=document.createElement("div"); tb.className="tbl"; let te=0,tp=0;
   const tbl=document.createElement("table"); tbl.style.minWidth="0"; tbl.innerHTML="<tr><th>البند</th><th>التقدير</th><th>المدفوع</th><th>الباقي</th><th></th></tr>";
@@ -1753,7 +1754,7 @@ function roomFinishBox(){ if(!ROOMQ) return; const Q=ROOMQ, f=v=>v.toFixed(1);
 let CUTS=[];
 function netCuts(){ CUTS=(cfg.feats||[]).filter(f=>f.type==="cut").map(f=>{ const a=Math.max(0.2,Math.min(RW-0.4,(f.a||100)/100)), b=Math.max(0.2,Math.min(RL-0.4,(f.b||100)/100)), c=f.corner||"WL";
   const x0=c[1]==="L"?0:RW-a, z0=c[0]==="W"?0:RL-b; return {...f,a,b,c,diag:f.shape==="diag",x0,x1:x0+a,z0,z1:z0+b}; }); }
-function inCut(x,z,m){ m=m||0; for(const k of CUTS){ if(x>k.x0-m&&x<k.x1+m&&z>k.z0-m&&z<k.z1+m){ if(!k.diag) return true; const cx=k.c[1]==="L"?0:RW, cz=k.c[0]==="W"?0:RL; if(Math.abs(x-cx)/k.a+Math.abs(z-cz)/k.b<1+m) return true; } } return false; }
+function inCut(x,z,m){ m=m||0; for(const k of CUTS){ if(x>k.x0-m&&x<k.x1+m&&z>k.z0-m&&z<k.z1+m){ if(!k.diag) return true; const cx=k.c[1]==="L"?0:RW, cz=k.c[0]==="W"?0:RL; if(Math.abs(x-cx)/k.a+Math.abs(z-cz)/k.b<1+m*Math.hypot(k.a,k.b)/(k.a*k.b)) return true; /* m = distance in meters past the angled wall */ } } return false; }
 function cutHoles(w){ const out=[]; for(const k of CUTS){ if(w==="W"&&k.c[0]==="W") out.push([k.x0,k.x1]); if(w==="D"&&k.c[0]==="D") out.push([k.x0,k.x1]); if(w==="L"&&k.c[1]==="L") out.push([k.z0,k.z1]); if(w==="RT"&&k.c[1]==="R") out.push([k.z0,k.z1]); } return out; }
 function cutArea(){ return CUTS.reduce((s,k)=>s+(k.diag?k.a*k.b/2:k.a*k.b),0); }
 function cutPerimDelta(){ return CUTS.reduce((s,k)=>s+(k.diag?Math.hypot(k.a,k.b)-k.a-k.b:0),0); }
@@ -2214,8 +2215,8 @@ function finishBuild(warn,walkCm,counterLen,US){
     const ox=Math.min(p.a1,q.a1)-Math.max(p.a0,q.a0), oy=Math.min(p.y1,q.y1)-Math.max(p.y0,q.y0);
     if(ox>0.015&&oy>0.015){ warn.push(`في تداخل بين الوحدة ${p.n} (${p.label||KN[p.kind]}) والوحدة ${q.n} (${q.label||KN[q.kind]})`); ovc++; } }
   if(selHelper){ scene.remove(selHelper); selHelper=null; } if(SEL && UNITS.some(u=>u.id===SEL)) highlight(SEL); else SEL=null;
-  QTY=genQuant(); if(cfg.roomType==="room"||cfg.roomType==="hall") ROOMQ={...QTY,tvDist:ROOMQ&&cfg.roomType==="room"?ROOMQ.tvDist:null};
   STATS={walk:walkCm,counter:Math.round(counterLen*100),warn,acc:{...ACC},net:[Math.round(RW*100),Math.round(RL*100)],vol:storageVol(),tri:TRI};
+  QTY=genQuant(); if(cfg.roomType==="room"||cfg.roomType==="hall") ROOMQ={...QTY,tvDist:ROOMQ&&cfg.roomType==="room"?ROOMQ.tvDist:null}; /* after STATS: genQuant reads STATS.counter */
   if(cfg.labels&&(cfg.roomType||"kitchen")==="kitchen"){ label(`أضيق ممر ${walkCm} سم`,RW/2,0.05,RL/2); }
   // lights / env
   scene.background=new THREE.Color(cfg.night?0x1b1f26:0xe9ecef);

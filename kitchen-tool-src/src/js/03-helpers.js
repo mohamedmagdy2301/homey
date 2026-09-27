@@ -248,7 +248,7 @@ function storageVol(){ let v=0; const ch=CH();
     if(u.kind==="upper") v+=w*(u.y1-u.y0)*(u.depth-0.02);
     if(u.kind==="tall") v+=w*(u.y1-u.y0-0.1)*(u.depth-0.04); }
   return Math.round(v*1000); }
-const WATT={fridge:250,washer:2200,dish:2000,oven:3000,micro:1200,hood:250,led:60,spots:60,freezer:200,freezerU:150,minibar:100,dryer:2500,washerSemi:450,cooler:500,ovenCol:3000,heaterE:2500,heaterG:40,tv:150,coffee:1500,airfryer:1800,blender:800};
+const WATT={fridge:250,washer:2200,dish:2000,oven:3000,micro:1200,hood:250,led:60,spots:60,freezer:200,freezerU:150,minibar:100,dryer:2500,washer2:450,cooler:500,ovenCol:3000,heaterE:2500,heaterG:40,tv:150,coffee:1500,airfryer:1800,blender:800};
 function elecLoadsBath(){
   const rows=[], has=t=>(cfg.bfix||[]).some(b=>b.type===t&&(t!=="heater"||b.var!=="gas"));
   if(has("heater")) rows.push({n:"سخان كهربا",w:2500}); if(has("washer")) rows.push({n:"الغسالة",w:2200}); if(has("dryer")) rows.push({n:"المجفف",w:2500});

@@ -266,8 +266,8 @@ function finishBuild(warn,walkCm,counterLen,US){
     const ox=Math.min(p.a1,q.a1)-Math.max(p.a0,q.a0), oy=Math.min(p.y1,q.y1)-Math.max(p.y0,q.y0);
     if(ox>0.015&&oy>0.015){ warn.push(`في تداخل بين الوحدة ${p.n} (${p.label||KN[p.kind]}) والوحدة ${q.n} (${q.label||KN[q.kind]})`); ovc++; } }
   if(selHelper){ scene.remove(selHelper); selHelper=null; } if(SEL && UNITS.some(u=>u.id===SEL)) highlight(SEL); else SEL=null;
-  QTY=genQuant(); if(cfg.roomType==="room"||cfg.roomType==="hall") ROOMQ={...QTY,tvDist:ROOMQ&&cfg.roomType==="room"?ROOMQ.tvDist:null};
   STATS={walk:walkCm,counter:Math.round(counterLen*100),warn,acc:{...ACC},net:[Math.round(RW*100),Math.round(RL*100)],vol:storageVol(),tri:TRI};
+  QTY=genQuant(); if(cfg.roomType==="room"||cfg.roomType==="hall") ROOMQ={...QTY,tvDist:ROOMQ&&cfg.roomType==="room"?ROOMQ.tvDist:null}; /* after STATS: genQuant reads STATS.counter */
   if(cfg.labels&&(cfg.roomType||"kitchen")==="kitchen"){ label(`أضيق ممر ${walkCm} سم`,RW/2,0.05,RL/2); }
   // lights / env
   scene.background=new THREE.Color(cfg.night?0x1b1f26:0xe9ecef);

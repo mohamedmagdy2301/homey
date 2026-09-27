@@ -2,7 +2,7 @@
 let CUTS=[];
 function netCuts(){ CUTS=(cfg.feats||[]).filter(f=>f.type==="cut").map(f=>{ const a=Math.max(0.2,Math.min(RW-0.4,(f.a||100)/100)), b=Math.max(0.2,Math.min(RL-0.4,(f.b||100)/100)), c=f.corner||"WL";
   const x0=c[1]==="L"?0:RW-a, z0=c[0]==="W"?0:RL-b; return {...f,a,b,c,diag:f.shape==="diag",x0,x1:x0+a,z0,z1:z0+b}; }); }
-function inCut(x,z,m){ m=m||0; for(const k of CUTS){ if(x>k.x0-m&&x<k.x1+m&&z>k.z0-m&&z<k.z1+m){ if(!k.diag) return true; const cx=k.c[1]==="L"?0:RW, cz=k.c[0]==="W"?0:RL; if(Math.abs(x-cx)/k.a+Math.abs(z-cz)/k.b<1+m) return true; } } return false; }
+function inCut(x,z,m){ m=m||0; for(const k of CUTS){ if(x>k.x0-m&&x<k.x1+m&&z>k.z0-m&&z<k.z1+m){ if(!k.diag) return true; const cx=k.c[1]==="L"?0:RW, cz=k.c[0]==="W"?0:RL; if(Math.abs(x-cx)/k.a+Math.abs(z-cz)/k.b<1+m*Math.hypot(k.a,k.b)/(k.a*k.b)) return true; /* m = distance in meters past the angled wall */ } } return false; }
 function cutHoles(w){ const out=[]; for(const k of CUTS){ if(w==="W"&&k.c[0]==="W") out.push([k.x0,k.x1]); if(w==="D"&&k.c[0]==="D") out.push([k.x0,k.x1]); if(w==="L"&&k.c[1]==="L") out.push([k.z0,k.z1]); if(w==="RT"&&k.c[1]==="R") out.push([k.z0,k.z1]); } return out; }
 function cutArea(){ return CUTS.reduce((s,k)=>s+(k.diag?k.a*k.b/2:k.a*k.b),0); }
 function cutPerimDelta(){ return CUTS.reduce((s,k)=>s+(k.diag?Math.hypot(k.a,k.b)-k.a-k.b:0),0); }
