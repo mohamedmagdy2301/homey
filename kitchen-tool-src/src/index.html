@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>المطبخ 3D</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#e9ecef;font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#23272d}
+  #c{position:fixed;top:0;left:0;width:100%;height:100%;display:block;touch-action:none}
+  .top{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:6px;z-index:3}
+  select,.btn{font:inherit;font-size:13px;padding:7px 8px;border:1px solid #b9c0c7;border-radius:10px;background:#fff;color:#23272d}
+  .top select{flex:1;min-width:0}
+  .btn{cursor:pointer;white-space:nowrap}
+  .btn.main{background:#2d5f7a;color:#fff;border-color:#2d5f7a}
+  #stats{position:fixed;top:50px;right:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
+  #stats span{background:#ffffffe6;border:1px solid #d3d8dd;border-radius:8px;padding:3px 8px;font-size:12px}
+  #stats span.warn{background:#fdecea;border-color:#e3a39a;color:#8a2a1c}
+  #panel{position:fixed;left:0;right:0;bottom:0;height:52vh;background:#fff;border-top:1px solid #cfd4d9;border-radius:16px 16px 0 0;z-index:4;transform:translateY(100%);transition:transform .3s;display:flex;flex-direction:column;box-shadow:0 -6px 20px #0002}
+  #panel.open{transform:none}
+  #panel header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e3e6e9}
+  #panel header h2{flex:1;margin:0;font-size:15px}
+  #tabs{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;border-bottom:1px solid #eef0f2}
+  #tabs button{border:1px solid #c9ced3;background:#f5f6f7;border-radius:16px;padding:5px 12px;font:inherit;font-size:13px;white-space:nowrap}
+  #tabs button.on{background:#2d5f7a;color:#fff;border-color:#2d5f7a}
+  #controls{overflow-y:auto;padding:4px 14px 30px;flex:1}
+  .ctl{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f0f1f3;font-size:14px}
+  .ctl label{flex:1}
+  .ctl select{max-width:58%}
+  .ctl input[type=range]{width:45%}
+  .ctl output{min-width:48px;text-align:left;font-size:12px;color:#5b636c}
+  .numw{display:flex;align-items:center;gap:3px;flex:none}
+  .numw small{font-size:11px;color:#6b737c}
+  input.num{width:58px;font:inherit;font-size:13px;padding:4px 3px;border:1px solid #c9ced3;border-radius:7px;text-align:center;background:#fff}
+  .addrow input.num{flex:none}
+  .ctl input[type=color]{width:44px;height:30px;border:1px solid #c9ced3;border-radius:6px;padding:0;background:none}
+  .sw{position:relative;width:44px;height:26px}
+  .sw input{opacity:0;width:0;height:0}
+  .sw i{position:absolute;inset:0;background:#c9ced3;border-radius:13px;transition:.2s}
+  .sw i:before{content:"";position:absolute;width:20px;height:20px;top:3px;right:3px;background:#fff;border-radius:50%;transition:.2s}
+  .sw input:checked+i{background:#2d5f7a}
+  .sw input:checked+i:before{transform:translateX(-18px)}
+  .head{font-weight:bold;font-size:14px;color:#2d5f7a;padding:14px 0 2px;border-bottom:2px solid #e3eaef}
+  .note{font-size:12px;color:#6b737c;padding:8px 0}
+  .ctl input[type=number]{width:40%;font:inherit;font-size:14px;padding:6px 8px;border:1px solid #c9ced3;border-radius:8px}
+  .ctl textarea{width:100%;height:70px;font-size:11px;direction:ltr;border:1px solid #c9ced3;border-radius:8px}
+  .act{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0}
+  .act .btn{flex:1;min-width:30%}
+  .sum{background:#f3f6f8;border:1px solid #dce3e8;border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px;line-height:1.9}
+  .sum b{color:#2d5f7a}
+  #pad{position:fixed;bottom:56px;left:12px;z-index:3;display:none;grid-template-columns:repeat(3,48px);gap:6px}
+  #pad button{width:48px;height:48px;border-radius:12px;border:1px solid #b9c0c7;background:#fffffff0;font-size:20px}
+  #shot{position:fixed;inset:0;background:#000d;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+  #shot img{max-width:100%;max-height:78vh;border-radius:8px}
+  #shot p{color:#fff;font-size:13px;margin:0;text-align:center}
+  #draw{position:fixed;inset:0;background:#fff;z-index:10;display:none;flex-direction:column}
+  #draw .dhead{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #dde2e6;flex-wrap:wrap}
+  #draw .dhead b{font-size:15px;margin-left:auto}
+  .dtabs{display:flex;gap:6px;overflow-x:auto;width:100%;padding-top:4px}
+  .dtabs button{border:1px solid #c9ced3;background:#f5f6f7;border-radius:14px;padding:4px 10px;font:inherit;font-size:12px;white-space:nowrap}
+  #dbody{overflow:auto;padding:10px 12px 40px;-webkit-overflow-scrolling:touch}
+  #dbody section{margin-bottom:22px}
+  #dbody h3{font-size:15px;margin:6px 0 2px;color:#2d5f7a}
+  #dbody .sub{font-size:12px;color:#6b737c;margin-bottom:6px}
+  .elev{overflow-x:auto;border:1px solid #e3e6e9;border-radius:8px}
+  .elev svg{display:block;min-width:620px;width:100%;height:auto}
+  .tbl{overflow-x:auto}
+  .tbl table{border-collapse:collapse;font-size:12px;min-width:560px;width:100%}
+  .tbl th,.tbl td{border:1px solid #dfe3e6;padding:5px 6px;text-align:center}
+  .tbl th{background:#f1f4f6}
+  .urow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f2f4}
+  .urow .n{min-width:26px;height:26px;border-radius:50%;background:#2d5f7a;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .urow .t{flex:1;font-size:13px}
+  .urow .t small{display:block;color:#6b737c}
+  .urow.sel{background:#fff4e5}
+  .urow select{max-width:44%}
+  @media print{ body>*:not(#draw){display:none!important} #draw{position:static;display:block!important} #draw .dhead{display:none} #dbody{overflow:visible} .elev svg{min-width:0} section{page-break-inside:avoid} }
+  .btn.on{background:#e07b00;border-color:#e07b00;color:#fff}
+  .card{border:1px solid #dfe4e8;border-radius:12px;padding:6px 10px 8px;margin:10px 0;background:#fbfcfd}
+  .card .ch{display:flex;align-items:center;gap:8px;padding:4px 0}
+  .card .ch b{flex:1;font-size:14px}
+  .addrow{display:flex;gap:6px;padding:8px 0}
+  .addrow select{flex:1}
+  .step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #eef0f2}
+  .step input{width:20px;height:20px;margin-top:2px;flex:none}
+  .step div{font-size:13px;line-height:1.6}
+  .step.done div{color:#8a9097;text-decoration:line-through}
+  .urow .det{flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 2px 34px}
+  .urow{flex-wrap:wrap}
+  #projBtn{max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ovl{position:fixed;inset:0;background:#fff;z-index:11;display:none;flex-direction:column}
+  .ovh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #dde2e6}
+  .ovh b{flex:1;font-size:15px}
+  .ovb{flex:1;overflow:auto;padding:10px 12px 30px;-webkit-overflow-scrolling:touch}
+  .ovf{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-top:1px solid #dde2e6}
+  .ovf .btn{flex:1;padding:10px}
+  .card.sel{border-color:#e07b00;background:#fff8ef}
+  #aptBar{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:5;background:#ffffffe6;padding:6px;border-radius:12px;box-shadow:0 2px 8px #0002}
+  .planbox{border:1px solid #e3e6e9;border-radius:8px;padding:6px;margin-bottom:6px;direction:ltr}
+  .planbox svg{width:100%;height:auto;max-height:44vh;display:block}
+  #hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#23272dcc;color:#fff;font-size:12px;padding:5px 12px;border-radius:14px;z-index:2;transition:opacity .6s;white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="top">
+  <button class="btn" id="projBtn" aria-label="المشاريع">🏠 <span id="projName">مطبخي</span></button>
+  <select id="view" aria-label="المنظر"></select>
+  <button class="btn" id="measBtn" aria-label="شريط قياس">📏</button>
+  <button class="btn" id="drawBtn" aria-label="رسومات النجار">📐</button>
+  <button class="btn main" id="open">⚙ التحكم</button>
+</div>
+<div id="stats"></div>
+<div id="pad"><span></span><button data-m="f" aria-label="قدام">▲</button><span></span><button data-m="l" aria-label="لف شمال">⟲</button><button data-m="b" aria-label="ورا">▼</button><button data-m="r" aria-label="لف يمين">⟳</button></div>
+<div id="shot"><img alt="صورة المطبخ"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
+<div id="draw"><div class="dhead"><b>📐 رسومات ومقاسات للتنفيذ</b><button class="btn" id="dprint">🖨 طباعة / PDF</button><button class="btn" id="dclose">✕</button><div class="dtabs" id="dtabs"></div></div><div id="dbody"></div></div>
+<div id="sheet" class="ovl"><div class="ovh"><b>🏠 المطابخ بتاعتي</b><button class="btn" onclick="closeSheet()">✕</button></div><div id="sheetBody" class="ovb"></div></div>
+<div id="apt" class="ovl"><div class="ovh"><b>🏢 الشقة</b><button class="btn" onclick="closeApt()">✕</button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div>
+<div id="aptBar"><button class="btn" id="aptWalk" onclick="aptView(!FP.on)">🚶 امشي</button><button class="btn" onclick="exitApt3D(); openApt();">🏢 المسقط</button><button class="btn main" onclick="exitApt3D()">✕ رجوع</button></div>
+<div id="wiz" class="ovl"><div class="ovh"><b id="wizTitle"></b><button class="btn" id="wizClose">✕</button></div><div style="height:4px;background:#e3e8ec"><div id="wizBar" style="height:4px;background:#2d5f7a;width:0"></div></div><div id="wizBody" class="ovb"></div><div class="ovf"><button class="btn" id="wizBack">→ رجوع</button><button class="btn main" id="wizNext">التالي ←</button></div></div>
+<div id="hint">اسحب عشان تلف، وصباعين للتقريب</div>
+<div id="panel">
+  <header><h2>التحكم في التصميم</h2><button class="btn" id="undo">↶ تراجع</button><button class="btn" id="reset">رجّع الافتراضي</button><button class="btn" id="close">✕</button></header>
+  <div id="tabs"></div>
+  <div id="controls"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*__APP_JS__*/</script>
+</body>
+</html>
