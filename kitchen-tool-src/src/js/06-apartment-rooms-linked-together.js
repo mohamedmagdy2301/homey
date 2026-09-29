@@ -1,18 +1,31 @@
 // =================== APARTMENT (rooms linked together) ===================
 const HTEMPLATES={  h_hall:{name:"طرقة",dims:[120,400],make:(W,L)=>({feats:[{id:"d1",type:"door",wall:"L",pos:60,w:80,y:0,h:210,d:0},{id:"d2",type:"door",wall:"RT",pos:220,w:80,y:0,h:210,d:0},{id:"en",type:"door",wall:"D",pos:Math.max(0,Math.round((W-90)/2)),w:90,y:0,h:210,d:0}]})} };
-let APT={rooms:[],wallT:12,baseFill:7,riser:null,water:null,panel:null,heaterMode:"shared",heaterAt:null}, SNAP={}, APT3D=false, APT_BUILD=false, aptRoots=[], aptSel=null, aptTab="المسقط", aptPlace=null, APTLINKS=[];
+// several apartments per device: each one is saved under kapt:<id> and listed in kapt:index as {id,name,rooms:[room ids],t}.
+// "main" is the id of the apartment saved before there was a list, so older data opens as it is.
+function aptDef(){ return {rooms:[],wallT:12,baseFill:7,riser:null,water:null,panel:null,heaterMode:"shared",heaterAt:null}; }
+let APT_ID="main", APTS=[], APTS_BAD=false, APT_LOADED=null;
+let APT=aptDef(), SNAP={}, APT3D=false, APT_BUILD=false, aptRoots=[], aptSel=null, aptTab="المسقط", aptPlace=null, APTLINKS=[];
 const aoLocal=(w,a,o,RW_,RL_)=>w==="L"?[o,a]:w==="RT"?[RW_-o,a]:w==="W"?[a,o]:[a,RL_-o];
 const aptSize=(sn,rot)=>rot%180===0?[sn.RW,sn.RL]:[sn.RL,sn.RW];
 function toWorld(r,sn,x,z){ let p; switch(r.rot){ case 90:p=[sn.RL-z,x];break; case 180:p=[sn.RW-x,sn.RL-z];break; case 270:p=[z,sn.RW-x];break; default:p=[x,z]; } return [r.x/100+p[0],r.z/100+p[1]]; }
 function toLocal(r,sn,X,Z){ const x=X-r.x/100, z=Z-r.z/100; switch(r.rot){ case 90:return [z,sn.RL-x]; case 180:return [sn.RW-x,sn.RL-z]; case 270:return [sn.RW-z,x]; default:return [x,z]; } }
 const manh=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1]);
 let APT_UNDO=[], APT_LAST=null, APT_ROOMS_PREV=null;
-async function saveApt(){ const now=JSON.stringify(APT); if(APT_LAST!=null&&(now!==APT_LAST||APT_ROOMS_PREV)){ APT_UNDO.push({apt:APT_LAST,rooms:APT_ROOMS_PREV}); if(APT_UNDO.length>40) APT_UNDO.shift(); } APT_ROOMS_PREV=null; APT_LAST=now; await stSet("kapt:main",APT); }
+async function saveApt(){ const now=JSON.stringify(APT); if(APT_LAST!=null&&(now!==APT_LAST||APT_ROOMS_PREV)){ APT_UNDO.push({apt:APT_LAST,rooms:APT_ROOMS_PREV}); if(APT_UNDO.length>40) APT_UNDO.shift(); } APT_ROOMS_PREV=null; APT_LAST=now; await stSet("kapt:"+APT_ID,APT); await aptIndexSync(); }
+const aptOtherRooms=()=>new Set(APTS.filter(a=>a.id!==APT_ID).flatMap(a=>a.rooms||[])); /* rooms that belong to the other apartments */
+const aptNameOf=a=>cleanName(a&&a.name)||"شقتي";
+async function aptIndexSync(touch){ const ids=APT.rooms.map(r=>r.id), nm=aptNameOf(APT); let e=APTS.find(a=>a.id===APT_ID);
+  if(e&&!touch&&e.name===nm&&JSON.stringify(e.rooms||[])===JSON.stringify(ids)) return; if(!e){ e={id:APT_ID}; APTS.push(e); }
+  Object.assign(e,{name:nm,rooms:ids,t:Date.now()}); if(!APTS_BAD) await stSet("kapt:index",APTS); } /* never write the list over one whose read failed */
+async function loadAptIndex(){ const rd=await stRead("kapt:index"); APTS_BAD=!!rd.err;
+  APTS=Array.isArray(rd.v)?rd.v.filter(a=>a&&typeof a.id==="string"&&/^[\w-]{1,40}$/.test(a.id)).map(a=>({id:a.id,name:aptNameOf(a),rooms:Array.isArray(a.rooms)?a.rooms.filter(x=>typeof x==="string"):[],t:+a.t||0})):[];
+  if(!rd.err&&!rd.v){ const m=await stRead("kapt:main"); if(m.v&&Array.isArray(m.v.rooms)&&m.v.rooms.length) APTS=[{id:"main",name:aptNameOf(m.v),rooms:m.v.rooms.map(r=>r&&r.id).filter(Boolean),t:1}]; } /* saved before the list existed */
+  const last=[...APTS].sort((a,b)=>b.t-a.t)[0]; APT_ID=last?last.id:"main"; }
 async function aptUndo(){ const e=APT_UNDO.pop(); if(!e) return;
   APT=JSON.parse(e.apt); for(const [id,d] of Object.entries(e.rooms||{})){ if(id===PROJ.id){ cfg=migrate(clone(d.cfg)); PROJ.name=d.name; updProjName(); build(); await saveNow(); } else await stSet("kproj:"+id,d); const p=projIndex.find(x=>x.id===id); if(p) p.name=d.name; }
-  if(e.rooms) await stSet("kproj:index",projIndex); APT_LAST=JSON.stringify(APT); await stSet("kapt:main",APT);
+  if(e.rooms) await stSet("kproj:index",projIndex); APT_LAST=JSON.stringify(APT); await stSet("kapt:"+APT_ID,APT); await aptIndexSync();
   try{ await refreshSnaps(); }catch(err){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); } APT_SVC=aptServices(); renderApt(); hint("↶ رجعت خطوة"); }
-const roomIco=sn=>sn.cfg&&sn.cfg.template==="r_balcony"?"🌿":({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"");
+const roomIco=sn=>sn.cfg&&sn.cfg.template==="r_balcony"?"🌿":isShop(sn.cfg)?"🏪":({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"");
 const aptArea=sn=>(sn.q&&+sn.q.floorA)||sn.RW*sn.RL; /* clear floor */
 const aptBrick=()=>APT.dimMode==="brick", aptFin=sn=>aptBrick()?2*((+sn.cfg.plaster||0)+(+sn.cfg.tileT||0)):0; /* cm added to each size when shown on the brick */
 const aptDims=sn=>{ const e=aptFin(sn); return [Math.round(sn.RW*100)+e,Math.round(sn.RL*100)+e]; };
@@ -37,7 +50,7 @@ async function aptResize(r,axis,net,fromStart){ // net = new clear size in cm ac
   if(fromStart){ if(along) r.rel.off=off0-dl; else if(!r.rel){ if(axis==="x") r.x-=dl; else r.z-=dl; } }
   if(along&&dl) for(const o of APT.rooms) if(o!==r&&o.rel&&o.rel.to===r.rel.to&&o.rel.side===r.rel.side){ const oo=o.rel.off||0; if(!fromStart&&oo>off0) o.rel.off=oo+dl; if(fromStart&&oo<off0) o.rel.off=oo-dl; }
   aptRecalc(); await saveApt(); renderApt(); }
-async function loadApt(){ const a=await stGet("kapt:main"); if(a) APT={...APT,...a}; }
+async function loadApt(){ const rd=await stRead("kapt:"+APT_ID); if(rd.v) APT={...aptDef(),...rd.v}; else if(APT_LOADED!==APT_ID) APT=aptDef(); APT_LOADED=APT_ID; }
 function projName(id){ const p=projIndex.find(x=>x.id===id); return id===PROJ.id?PROJ.name:(p?p.name:"؟"); }
 function snapQ(c){ const q={...(QTY||{})}; q.pts={}; for(const p of POINTS) q.pts[p.type]=(q.pts[p.type]||0)+1; q.fix={}; q.app={}; q.furn={}; q.wardrobes=[];
   for(const u of UNITS){ if(u.bt){ const n=u.label||KN[u.bt]; q.fix[n]=(q.fix[n]||0)+1; } if(["sink","stove","fridge","washer","dish","hood"].includes(u.kind)&&c.roomType!=="bath"){ const n={sink:"حوض مطبخ",stove:c.stoveType==="built"?"مسطح وفرن بلت إن":"بوتاجاز",fridge:"تلاجة",washer:"غسالة",dish:"غسالة أطباق",hood:"شفاط"}[u.kind]; q.app[n]=(q.app[n]||0)+1; }
@@ -159,10 +172,50 @@ function aptPlanSVG(){
 }
 let APT_SVC=null, aptDrag=null, aptRsz=null;
 async function openApt(){ await saveNow(); await loadApt(); document.getElementById("apt").style.display="flex"; document.getElementById("aptBody").innerHTML="<div class='note'>بحضّر الشقة…</div>";
-  if(!APT.rooms.length){ APT.rooms=[{id:PROJ.id,x:0,z:0,rot:0}]; } APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; try{ await refreshSnaps(); APT_LAST=JSON.stringify(APT); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); renderApt(); }
+  if(!APT.rooms.length){ let id=PROJ.id; if(aptOtherRooms().has(id)){ id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:"طرقة",cfg:newCfg("h_hall")}); projIndex.push({id,name:"طرقة",t:Date.now()}); await stSet("kproj:index",projIndex); } APT.rooms=[{id,x:0,z:0,rot:0}]; } APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; try{ await refreshSnaps(); APT_LAST=JSON.stringify(APT); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); await aptIndexSync(true); renderApt(); }
 function closeApt(){ document.getElementById("apt").style.display="none"; saveApt(); }
+function aptTitle(){ const t=document.getElementById("aptTitle"); if(t) t.textContent="🏢 "+aptNameOf(APT); }
+const newAptId=()=>"a"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+async function openAptId(id){ APT_ID=id; APT_LOADED=null; aptSel=null; aptPlace=null; aptTab="المسقط"; await openApt(); }
+// a new apartment from the start screen: its own rooms (never the room open now), then the kitchen or first room opens behind it
+async function createApt(name,T){ await saveNow(); APT_ID=newAptId(); APT=aptDef(); APT.name=cleanName(name)||"شقة جديدة"; APT_LOADED=APT_ID; APT_SVC=null;
+  APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; aptSel=null; aptPlace=null; aptTab="المسقط"; document.getElementById("apt").style.display="flex"; aptTitle();
+  await applyAptTpl({...T,fresh:true}); APT_UNDO=[]; APT_SVC=aptServices();
+  const kind=k=>APT.rooms.find(r=>SNAP[r.id]&&SNAP[r.id].roomType===k), first=kind("kitchen")||kind("room")||APT.rooms[0];
+  if(first&&first.id!==PROJ.id) await openProject(first.id); renderApt(); hint(`✓ «${APT.name}» جاهزة. دوس على أي أوضة في المسقط عشان تعدّل مقاسها أو تصممها`,5000); }
+async function renameApt(id,name){ const nm=cleanName(name); if(!nm) return; const e=APTS.find(a=>a.id===id);
+  if(id===APT_ID&&APT_LOADED===id){ APT.name=nm; await saveApt(); aptTitle(); return; }
+  const rd=await stRead("kapt:"+id); if(rd.err||!rd.v){ hint("مقدرتش أقرا الشقة دي من الحفظ، جرّب تاني",4000); return; } rd.v.name=nm; await stSet("kapt:"+id,rd.v); if(e){ e.name=nm; if(!APTS_BAD) await stSet("kapt:index",APTS); } }
+async function copyApt(id){ await saveNow(); const src=id===APT_ID&&APT_LOADED===id?clone(APT):await stGet("kapt:"+id); if(!src){ hint("مقدرتش أقرا الشقة دي من الحفظ، جرّب تاني",4000); return; }
+  let txt=JSON.stringify(src); for(const r of src.rooms||[]){ const d=await stGet("kproj:"+r.id); if(!d) continue; const rid="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await stSet("kproj:"+rid,{name:d.name,cfg:d.cfg}); projIndex.push({id:rid,name:d.name,t:Date.now()}); txt=txt.split(JSON.stringify(r.id)).join(JSON.stringify(rid)); } /* room ids are unique, so swapping them in the text moves every link and door too */
+  await stSet("kproj:index",projIndex); const a=JSON.parse(txt), nid=newAptId(); a.name=aptNameOf(src)+" (نسخة)"; await stSet("kapt:"+nid,a);
+  APTS.push({id:nid,name:a.name,rooms:(a.rooms||[]).map(r=>r.id),t:Date.now()}); if(!APTS_BAD) await stSet("kapt:index",APTS); }
+// withRooms: its rooms go too (they were made for it); otherwise they stay in "my projects"
+async function deleteApt(id,withRooms){ const e=APTS.find(a=>a.id===id); const rooms=id===APT_ID&&APT_LOADED===id?APT.rooms.map(r=>r.id):(e&&e.rooms)||[];
+  if(withRooms){ const oth=new Set(APTS.filter(a=>a.id!==id).flatMap(a=>a.rooms||[])), gone=rooms.filter(r=>!oth.has(r));
+    for(const rid of gone){ DELETED.add(rid); if(rid===PROJ.id) clearTimeout(saveT); await stDel("kproj:"+rid); } projIndex=projIndex.filter(p=>!gone.includes(p.id)); await stSet("kproj:index",projIndex);
+    if(gone.includes(PROJ.id)){ const nx=[...projIndex].sort((a,b)=>b.t-a.t)[0]; if(nx) await openProject(nx.id); if(gone.includes(PROJ.id)){ PROJ={id:"p"+Date.now().toString(36),name:"مطبخي"}; cfg=newCfg("L"); clearHist(); SEL=null; updProjName(); build(); renderControls(); } } }
+  await stDel("kapt:"+id); APTS=APTS.filter(a=>a.id!==id); if(!APTS_BAD) await stSet("kapt:index",APTS);
+  if(id===APT_ID){ const nx=[...APTS].sort((a,b)=>b.t-a.t)[0]; APT_ID=nx?nx.id:newAptId(); APT_LOADED=null; await loadApt(); } }
+const aptOfRoom=id=>APTS.find(a=>(a.id===APT_ID&&APT_LOADED===a.id?APT.rooms.map(r=>r.id):a.rooms||[]).includes(id));
+// the list of apartments (start screen and "my projects"): open, rename, copy, delete
+function aptListUI(el,after){ const list=[...APTS].sort((a,b)=>b.t-a.t); const redo=()=>{ if(after) after(); };
+  for(const a of list){ const n=(a.id===APT_ID&&APT_LOADED===a.id?APT.rooms:a.rooms||[]).length, card=document.createElement("div"); card.className="card acard"+(a.id===APT_ID?" cur":""); /* not .sel: that marks the open design */
+    card.innerHTML=`<div class="ch"><b>🏢 ${esc(a.name)}</b><small>${n} ${n>=3&&n<=10?"أماكن":"مكان"}${a.t>1?" • "+new Date(a.t).toLocaleDateString("ar-EG"):""}</small></div>`;
+    const act=document.createElement("div"); act.className="act"; const mk=(t,fn,main)=>{ const b=document.createElement("button"); b.className="btn"+(main?" main":""); b.textContent=t; b.onclick=fn; act.appendChild(b); return b; };
+    mk("افتح",()=>{ closeSheet(); if(typeof closeHome==="function") closeHome(); openAptId(a.id); },true);
+    mk("✏️ اسم",()=>{ const inp=document.createElement("input"); inp.value=a.name; inp.className="txt"; inp.setAttribute("aria-label","اسم الشقة"); const ok=document.createElement("button"); ok.className="btn main"; ok.textContent="حفظ";
+      act.innerHTML=""; act.append(inp,ok); inp.focus(); ok.onclick=async()=>{ await renameApt(a.id,inp.value); redo(); }; });
+    mk("📄 نسخة",async()=>{ await copyApt(a.id); hint("✓ اتعملت نسخة من الشقة بأوضها"); redo(); });
+    mk("🗑",()=>{ act.innerHTML=""; const q=document.createElement("div"); q.className="note"; q.style.flex="1 1 100%"; q.textContent=`تمسح «${a.name}»؟ لو مسحت الأوض كمان مش هترجع.`;
+      const b1=document.createElement("button"); b1.className="btn main"; b1.style.cssText="background:var(--clay);border-color:var(--clay)"; b1.textContent="امسح الشقة وأوضها";
+      const b2=document.createElement("button"); b2.className="btn"; b2.textContent="امسح الشقة بس"; const c=document.createElement("button"); c.className="btn"; c.textContent="لأ";
+      b1.onclick=async()=>{ await deleteApt(a.id,true); redo(); }; b2.onclick=async()=>{ await deleteApt(a.id,false); redo(); }; c.onclick=redo; act.append(q,b1,b2,c); });
+    card.appendChild(act); el.appendChild(card); }
+  return list.length; }
 let aptBig=false;
-function renderApt(){
+function renderApt(){ aptTitle();
   const body=document.getElementById("aptBody"), old=body.querySelector(".aptctl"), keep=old?old.scrollTop:0; body.innerHTML="";
   const withPlan=["المسقط","السباكة والكهربا","المناسيب","الإجمالي"].includes(aptTab), ov=document.getElementById("apt"); if(!withPlan) aptBig=false; ov.classList.toggle("split",withPlan); ov.classList.toggle("big",aptBig);
   const tabs=document.createElement("div"); tabs.className="tabs apttabs"; tabs.style.cssText="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none";
@@ -287,19 +340,29 @@ const APT_TPLS=[
   {n:"أوضة وصالة",sub:"نوم وصالة ومطبخ وحمام وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"]],bot:[["r_living","صالة"],["r_master","أوضة نوم"]]},
   {n:"أوضتين وصالة",sub:"نوم رئيسية وأطفال وصالة ومطبخ وحمام وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"]]},
   {n:"3 أوض وصالة",sub:"3 نوم وصالة ومطبخ وحمامين وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"],["b_std","حمام ضيوف"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"],["r_kids","أوضة نوم 3"]]}];
+// a window that becomes the balcony door: slide the door off big furniture, then move loose pieces (armchairs, side tables) out of its way
+function clearDoorway(c,dr){ const W=c.roomW-6, big=[], loose=["arm","side","plant","lamp","coffee"], zone=p=>[p,p+dr.w,0,62]; /* the apartment check looks 55 cm in front of a door */
+  const rect=it=>{ const w=it.w,d=it.d,o=it.off||0,p=it.pos||0; if(it.snap==="W") return [p,p+w,o,o+d]; if(it.snap==="D") return [p,p+w,c.roomL-6-o-d,c.roomL-6-o]; if(it.snap==="L") return [o,o+d,p,p+w]; if(it.snap==="RT") return [W-o-d,W-o,p,p+w];
+    const r=((it.rot||0)%180)?[d,w]:[w,d]; return [it.x-r[0]/2,it.x+r[0]/2,it.z-r[1]/2,it.z+r[1]/2]; };
+  const hit=(r,q)=>Math.min(r[1],q[1])-Math.max(r[0],q[0])>1&&Math.min(r[3],q[3])-Math.max(r[2],q[2])>1, solid=it=>FURN[it.type]&&!FURN[it.type].wall&&it.type!=="rug";
+  for(const it of c.furn||[]) if(it.type==="rug"||(solid(it)&&(it.snap||!loose.includes(it.type)))) big.push(rect(it));
+  const c0=dr.pos, ps=[c0]; for(let k=10;k<W;k+=10) ps.push(c0+k,c0-k); dr.pos=ps.find(p=>p>=10&&p+dr.w<=W-4&&!big.some(r=>hit(r,zone(p))))??c0;
+  const z=zone(dr.pos); for(const it of [...(c.furn||[])]){ if(!solid(it)||it.snap||!loose.includes(it.type)) continue; const r=rect(it); if(!hit(r,z)) continue;
+    const hw=(r[1]-r[0])/2, oth=c.furn.filter(o=>o!==it&&solid(o)).map(rect), xs=[]; for(let x=hw+5;x<=W-hw-5;x+=5) xs.push(x); xs.sort((a,b)=>Math.abs(a-it.x)-Math.abs(b-it.x));
+    const nx=xs.find(x=>{ const q=[x-hw,x+hw,r[2],r[3]]; return !hit(q,z)&&!oth.some(o=>hit(o,q)); }); if(nx!=null) it.x=nx; else c.furn=c.furn.filter(o=>o!==it); } }
 async function applyAptTpl(T){
   if(APT.rooms.length>1&&!confirm("ترتيب الشقة الحالي هيتشال ويتعمل ترتيب جديد من القالب. الأوض القديمة هتفضل محفوظة في مشاريعك. نكمّل؟")) return;
   await saveNow(); document.getElementById("aptBody").innerHTML="<div class='note'>بجهّز الشقة…</div>";
-  let reuse=true; const kindOf=key=>key==="k"?"kitchen":BTEMPLATES[key]?"bath":"room";
+  let reuse=!T.fresh&&!aptOtherRooms().has(PROJ.id); const kindOf=key=>key==="k"?"kitchen":BTEMPLATES[key]?"bath":"room";
   const mk=async(key,nm,c)=>{ // the room open now takes the first slot of its kind
     if(reuse&&!c&&cfg.template!=="r_balcony"&&cfg.roomType===kindOf(key)&&(key==="k"||cfg.roomType==="bath"||(RTEMPLATES[key]&&RTEMPLATES[key].rtype===cfg.rtype))){ reuse=false; return PROJ.id; }
     const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); await stSet("kproj:"+id,{name:nm,cfg:c||newCfg(key==="k"?"L":key)}); projIndex.push({id,name:nm,t:Date.now()}); return id; };
   const hc=newCfg("h_hall"); hc.roomW=600; hc.roomL=140; hc.feats=[{id:"en",type:"door",wall:"RT",pos:25,w:90,y:0,h:210,d:0}];
   const hall=await mk("h_hall","طرقة",hc), tops=[], bots=[];
   for(const [k,nm] of T.top) tops.push({id:await mk(k,nm),x:0,z:0,rot:0,rel:{to:hall,side:"top",off:0}});
-  const lc=newCfg("r_living"), ww=lc.feats.find(f=>f.id==="win"); if(T.balc&&ww) Object.assign(ww,{type:"door",w:120,pos:Math.round((lc.roomW-120)/2),y:0,h:220,d:0});
-  for(const [k,nm] of T.bot) bots.push({id:await mk(k,nm,T.balc&&k==="r_living"?lc:null),x:0,z:0,rot:180,rel:{to:hall,side:"bottom",off:0}});
-  const extra=[]; if(T.balc){ const bc=newCfg("r_balcony"); bc.roomW=lc.roomW; applyTemplate(bc,"r_balcony",true); bc.feats=bc.feats.filter(f=>f.type!=="door"); /* its door is the living room's */
+  const lk=(T.bot[0]||["r_living"])[0], lc=newCfg(lk), ww=lc.feats.find(f=>f.id==="win"); if(T.balc&&ww){ Object.assign(ww,{type:"door",wall:"W",w:120,pos:Math.round((lc.roomW-120)/2),y:0,h:220,d:0}); clearDoorway(lc,ww); }
+  for(const [i,[k,nm]] of T.bot.entries()) bots.push({id:await mk(k,nm,T.balc&&i===0?lc:null),x:0,z:0,rot:180,rel:{to:hall,side:"bottom",off:0}});
+  const extra=[]; if(T.balc){ const bc=newCfg("r_balcony"); bc.roomW=lc.roomW; applyTemplate(bc,"r_balcony",true); bc.feats=bc.feats.filter(f=>f.type!=="door"); /* its door is the living room's */ for(const f of bc.furn) if(!f.snap&&["arm","side"].includes(f.type)) f.z=Math.round(f.d/2)+8; /* seats by the railing, clear of the door */
     extra.push({id:await mk("r_balcony","بلكونة",bc),x:0,z:0,rot:180,rel:{to:bots[0].id,side:"bottom",off:0}}); }
   await stSet("kproj:index",projIndex);
   APT.rooms=[{id:hall,x:0,z:0,rot:0,rel:null},...tops,...bots,...extra]; APT.doors=[]; for(const k of ["riser","riser2","water","panel","heaterAt"]) APT[k]=null;
@@ -314,13 +377,15 @@ let aptTplOpen=false;
 function arrangeUI(box){
   const rs=APT.rooms.filter(r=>SNAP[r.id]); if(aptSel&&!rs.some(r=>r.id===aptSel)) aptSel=null;
   const head=t=>{ const h=document.createElement("div"); h.className="head"; h.textContent=t; box.appendChild(h); }, note=t=>{ const n=document.createElement("div"); n.className="note"; n.textContent=t; box.appendChild(n); return n; };
+  const nm=document.createElement("input"); nm.className="txt"; nm.value=aptNameOf(APT); nm.setAttribute("aria-label","اسم الشقة"); nm.placeholder="اسم الشقة";
+  nm.onchange=async()=>{ const v=cleanName(nm.value); if(!v){ nm.value=aptNameOf(APT); return; } APT.name=v; aptTitle(); await saveApt(); }; fieldRow(box,"اسم الشقة",nm);
   const tplGrid=()=>{ const g=document.createElement("div"); g.className="tplgrid"; for(const T of APT_TPLS){ const b=document.createElement("button"); b.className="btn tpl"; b.innerHTML=`<b>${T.n}</b><small style="color:var(--muted)">${T.sub}</small>`; b.onclick=()=>applyAptTpl(T); g.appendChild(b); } box.appendChild(g); };
   fieldRow(box,"المقاسات",choice([["net","صافي بعد التشطيب"],["brick","على الطوب"]],APT.dimMode==="brick"?"brick":"net",async v=>{ APT.dimMode=v; await saveApt(); renderApt(); },"المقاسات"));
   if(rs.length<=1){ head("🏢 ابدأ بقالب شقة"); note("اختار شكل قريب من شقتك: طرقة في النص والأوض حواليها بأبوابها. بعد كده عدّل مقاس كل أوضة ومكانها."); tplGrid(); head("أو ابني الشقة أوضة أوضة"); }
   else { note("دوس على أوضة في المسقط عشان تعدّلها، أو اسحبها بصباعك. الخط الأخضر المتقطع = حيطة مشتركة ممكن تحط فيها باب، والبرتقاني = باب لبرة.");
     const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=roomIco(sn)+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
   const ar=document.createElement("div"); ar.className="addrow"; const ps=document.createElement("select");
-  const free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
+  const oth=aptOtherRooms(), free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)&&!oth.has(p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
   ps.innerHTML=free.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option><option value="__balc">🌿 بلكونة جديدة</option>`;
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
   ab.onclick=async()=>{ let id=ps.value; if(id.startsWith("__")){ const MAPK={__hall:["h_hall","طرقة"],__bath:["b_std","حمام"],__living:["r_living","صالة"],__master:["r_master","أوضة نوم"],__kids:["r_kids","أوضة أطفال"],__balc:["r_balcony","بلكونة"]}[id]; const key=MAPK[0], nm=MAPK[1]+(APT.rooms.length?" "+(APT.rooms.length+1):""); id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:nm,cfg:newCfg(key)}); projIndex.push({id,name:nm,t:Date.now()}); await stSet("kproj:index",projIndex); }

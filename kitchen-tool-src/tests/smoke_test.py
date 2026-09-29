@@ -21,6 +21,7 @@ if not os.path.exists(THREE):  # fetched once from npm and cached as tests/three
 MOCK = """window.storage={_d:{},async get(k){return k in this._d?{key:k,value:this._d[k]}:null},async set(k,v){this._d[k]=v;return {key:k,value:v}},async delete(k){delete this._d[k];return {key:k,deleted:true}},async list(){return {keys:Object.keys(this._d)}}};"""
 FAILING = """window.storage={async get(k){throw new Error('x')},async set(k,v){return null},async delete(k){return null},async list(){return null}};"""
 results = []
+LOAD = {}
 def check(name, cond, info=""):
     results.append((name, bool(cond))); print(("PASS " if cond else "FAIL ") + name + (f"  {info}" if info and not cond else ""))
 
@@ -31,11 +32,14 @@ def page(p, storage=MOCK, size=(390, 760)):
     pg.route("**/three.min.js", lambda r: r.fulfill(path=THREE, content_type="application/javascript"))
     errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto(HTML); pg.wait_for_timeout(2500)
+    LOAD["home"] = pg.evaluate("()=>[document.getElementById('home').style.display, document.querySelectorAll('#homeBody .hcard').length, !!document.getElementById('homeCont')]")
+    pg.evaluate("()=>closeHome()")  # the start screen opens on every visit; the tests below drive the app directly
     return b, pg, errs
 
 with sync_playwright() as p:
     b, pg, errs = page(p); ev = pg.evaluate
     check("loads without JS errors", not errs, errs[:2])
+    check("start screen opens on the first visit: 5 kinds, nothing to continue yet", LOAD["home"] == ["flex", 5, False], LOAD["home"])
     tpls = ev("()=>[...Object.keys(TEMPLATES),...Object.keys(BTEMPLATES),...Object.keys(HTEMPLATES),...Object.keys(RTEMPLATES)]")
     for t in tpls:
         r = ev(f"()=>{{try{{ cfg=newCfg('{t}'); build(); return [UNITS.length, STATS.net]; }}catch(e){{ return 'ERR '+e.message; }}}}")
@@ -308,6 +312,46 @@ with sync_playwright() as p:
     check("rebuilds reuse the compiled shaders and free the old scene after drawing", r[0] > 0 and r[1] == 0 and r[2] == 0, r)
     check("no JS errors during the whole run", not errs, errs[:3])
     b.close()
+    # --- start screen, several apartments, shops ---
+    b, pg, errs = page(p); ev = pg.evaluate
+    ev("()=>openHome()"); pg.click(".hcard[data-k=apt]"); pg.fill("#aptNewName", "شقة المعادي")
+    pg.click("#homeBody .chipbtn:has-text('3 أوض وصالة')"); pg.click("#aptCreate"); pg.wait_for_timeout(5000)
+    r = ev("()=>[APT.name, APT.rooms.length, APTS.length, projIndex.length, APT_SVC.warn.filter(w=>!w.startsWith('حدد مكان')), JSON.parse(window.storage._d['kapt:index']).length, 'kapt:'+APT_ID in window.storage._d, PROJ.name]")
+    check("new apartment from the start screen: named, 9 rooms, saved in the list", r[:4] == ["شقة المعادي", 9, 1, 9] and r[5] == 1 and r[6], r)
+    check("new apartment: no layout warnings (balcony door kept clear)", r[4] == [], r[4])
+    check("the untouched starter kitchen isn't saved as a stray project; the kitchen opens", r[7] == "مطبخ", r)
+    a1 = ev("()=>APT_ID")
+    ev("async()=>{ closeApt(); await createApt('شقة زايد', specToT({beds:0,baths:1,living:'living',kitchen:true,balc:false})); }"); pg.wait_for_timeout(1500)
+    r = ev("()=>{ const [x,y]=APTS; return [APTS.length, APT.name, APT.rooms.length, x.rooms.filter(id=>y.rooms.includes(id)).length, JSON.parse(window.storage._d['kapt:index']).map(a=>a.name)]; }")
+    check("a second apartment on the same device keeps its own rooms", r[:4] == [2, "شقة زايد", 4, 0] and len(r[4]) == 2, r)
+    ev("async()=>{ closeApt(); }")
+    r = ev("async(id)=>{ await openAptId(id); return [APT.name, APT.rooms.length, document.getElementById('aptTitle').textContent]; }", a1)
+    check("switching apartments opens the right one", r == ["شقة المعادي", 9, "🏢 شقة المعادي"], r)
+    r = ev("()=>{ const f=[...document.querySelectorAll('#aptBody .addrow option')].map(o=>o.value); return APTS.find(a=>a.id!==APT_ID).rooms.some(id=>f.includes(id)); }")
+    check("the add-room list leaves out the other apartment's rooms", r is False, r)
+    r = ev("async()=>{ closeApt(); const n=projIndex.length; await copyApt(APT_ID); const c=APTS[APTS.length-1], d=await stGet('kapt:'+c.id); return [APTS.length, c.name, projIndex.length-n, c.rooms.some(id=>APTS[0].rooms.includes(id)), d.rooms.every(r=>c.rooms.includes(r.id))]; }")
+    check("copying an apartment copies its rooms under new ids", r == [3, "شقة المعادي (نسخة)", 9, False, True], r)
+    r = ev("async()=>{ const c=APTS[APTS.length-1], n=projIndex.length; await deleteApt(c.id,true); return [APTS.length, n-projIndex.length, ('kapt:'+c.id) in window.storage._d, c.rooms.some(id=>('kproj:'+id) in window.storage._d)]; }")
+    check("deleting an apartment with its rooms removes both", r == [2, 9, False, False], r)
+    r = ev("async()=>{ const bk=JSON.parse(JSON.stringify(await backupData())); const z=APTS.find(a=>a.name==='شقة زايد'); await deleteApt(z.id,false); const gone=APTS.length; await restoreData(bk); return [bk.apts.length, gone, APTS.length, APTS.map(a=>a.name).sort()]; }")
+    check("backup keeps every apartment and restore brings them back", r[0] == 2 and r[1] == 1 and r[2] == 2 and "شقة زايد" in r[3], r)
+    r = ev("async()=>{ const m=clone(APT); await stDel('kapt:index'); await stSet('kapt:main',m); delete MEMS['kapt:index']; await loadAptIndex(); return [APTS.length, APTS[0].id, APT_ID]; }")
+    check("an apartment saved before the list existed (kapt:main) still opens", r == [1, "main", "main"], r)
+    ev("()=>openHome()"); pg.click(".hcard[data-k=shop]"); pg.wait_for_timeout(500)
+    r = ev("()=>[WIZ.name, isShop(cfg), [...document.querySelectorAll('#wizBody .tpl')].length, document.querySelector('#wizBody .rtypes .on').textContent]")
+    check("start screen -> shop opens the wizard with the shop templates", r == ["محل جديد", True, 5, "🏪 محل / مكتب"], r)
+    pg.click("#wizBody .tpl:has-text('كافيه')")
+    for _ in range(6): pg.click("#wizNext"); pg.wait_for_timeout(250)
+    r = ev("()=>[WIZ, PROJ.name, cfg.template, projIndex.some(p=>p.id===PROJ.id), STATS.warn]")
+    check("finishing the shop wizard saves a new shop", r[:4] == [None, "محل جديد", "s_cafe", True] and r[4] == [], r)
+    r = ev("()=>Object.keys(RTEMPLATES).filter(k=>k.startsWith('s_')).map(k=>{ cfg=newCfg(k); build(); return [k, STATS.warn.length, POINTS.length>3, UNITS.length>5]; }).filter(x=>x[1]||!x[2]||!x[3])")
+    check("shop templates: furnished, wired, no warnings", r == [], r)
+    ev("()=>{ openWizard(true,'kitchen',true); }"); pg.click("#wizClose"); pg.wait_for_timeout(200)
+    check("cancelling a wizard opened from the start screen goes back to it", ev("()=>document.getElementById('home').style.display") == "flex")
+    pg.keyboard.press("Escape")
+    check("Esc closes the start screen", ev("()=>document.getElementById('home').style.display") == "none")
+    check("start screen / apartments: no JS errors", not errs, errs[:3])
+    b.close()
     b, pg, errs = page(p, FAILING); ev = pg.evaluate
     ev("async()=>{ await openApt(); }"); pg.wait_for_timeout(1500)
     pg.select_option("#aptBody .addrow select", "__hall"); pg.click("#aptBody .addrow button"); pg.wait_for_timeout(1800)
@@ -379,6 +423,8 @@ with sync_playwright() as p:
     pg.reload(); pg.wait_for_timeout(2500)
     r = ev("()=>[PROJ.id, cfg.roomType, storageOK, 'kitchen3d/kproj:pls1' in localStorage, JSON.parse(localStorage['kitchen3d/kproj:index']).some(p=>p.id==='pls1')]")
     check("no window.storage: projects persist in localStorage across reloads", r == ["pls1", "bath", True, True, True] and not errs, [r, errs[:2]])
+    r = ev("()=>[document.getElementById('home').style.display, !!document.getElementById('homeCont')]")
+    check("after a reload the start screen offers to continue the last design", r == ["flex", True], r)
     b.close()
     b, pg, errs = page(p, "delete window.storage; Object.defineProperty(window,'localStorage',{get(){ throw new DOMException('blocked','SecurityError'); }});"); ev = pg.evaluate
     r = ev("async()=>{ cfg=newCfg('L'); build(); await saveNow(); return [storageOK, !!(await stGet('kproj:'+PROJ.id)), UNITS.length>0]; }")

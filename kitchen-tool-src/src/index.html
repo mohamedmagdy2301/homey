@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#EEF0EC">
-<title>المطبخ 3D</title>
+<title>مساحتي 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
@@ -200,7 +200,7 @@
   .card .ch b{flex:1;font-size:14px;font-weight:600;min-width:0}
   .card .ch small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
   .card .ch .btn{min-height:34px;padding:0 10px;font-size:13px}
-  .card.sel{border-color:var(--brass);background:#FDFAF4;box-shadow:0 0 0 3px var(--brass-soft)}
+  .card.sel,.card.acard.cur{border-color:var(--brass);background:#FDFAF4;box-shadow:0 0 0 3px var(--brass-soft)}
   .card.closed{padding-bottom:4px}
   .card.closed>:not(.ch){display:none!important}
   .card .ctl:last-child{border-bottom:0}
@@ -260,6 +260,26 @@
   .btn.tpl.on{box-shadow:0 0 0 3px var(--brass-soft)}
   .rtypes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
   .rtypes .btn{min-height:46px;font-size:15px}
+  .rtypes .btn:last-child:nth-child(odd){grid-column:1/-1}
+  /* start screen */
+  .hhero{padding:4px 2px 2px}
+  .hhero h1{font-size:22px;line-height:1.4;margin:2px 0 4px;font-weight:700;color:var(--ink)}
+  .hhero p{margin:0;color:var(--muted);font-size:14px}
+  .hcont{display:flex;align-items:center;gap:12px;width:100%;margin:14px 0 2px;padding:12px 14px;border:1px solid var(--brass);background:var(--brass-soft);border-radius:var(--r-l);cursor:pointer;text-align:right;font:inherit;color:var(--ink)}
+  .hcont .hico{font-size:22px;color:var(--brass-ink)}
+  .hcont small{display:block;color:var(--brass-ink);font-size:12px}
+  .hcont b{font-size:16px;font-weight:600}
+  .hgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+  .hcard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--paper);box-shadow:var(--lift);cursor:pointer;text-align:right;font:inherit;color:var(--ink);min-height:132px;transition:border-color .15s,background .15s}
+  .hcard:hover{border-color:var(--pri);background:var(--pri-soft)}
+  .hcard:focus-visible,.hcont:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+  .hcard .hico{font-size:28px;line-height:1.1}
+  .hcard b{font-size:16px;font-weight:600}
+  .hcard small{color:var(--muted);font-size:12.5px;line-height:1.6}
+  .hcard.wide{grid-column:1/-1;min-height:0;background:var(--pri);border-color:var(--pri);color:#fff}
+  .hcard.wide:hover{background:var(--pri-2)}
+  .hcard.wide small{color:#dce9e3}
+  #homeBody .numw .stb:disabled{opacity:.35;cursor:default}
   .tabs .btn{min-height:34px;border-radius:999px;font-size:13px}
 
   /* ---------- overlays ---------- */
@@ -329,7 +349,10 @@
     #apt.split .aptplan{margin:0 12px 12px}
     #wiz .dlg{width:min(760px,100%);height:100%}
     .tplgrid{grid-template-columns:repeat(4,1fr)}
-    .rtypes{grid-template-columns:repeat(4,1fr)}
+    .rtypes{grid-template-columns:repeat(5,1fr)}
+    .rtypes .btn:last-child:nth-child(odd){grid-column:auto}
+    .hgrid{grid-template-columns:repeat(4,1fr)}
+    #home .dlg{width:min(860px,100%)}
     #draw .dhead{padding:12px 20px}
     #dbody{padding:20px 24px 60px}
   }
@@ -387,11 +410,12 @@
   <nav id="tabs" aria-label="الأقسام"></nav>
   <div id="controls"></div>
 </aside>
-<div id="shot"><img alt="صورة المطبخ"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
+<div id="shot"><img alt="صورة التصميم"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
 <div id="draw"><div class="dhead"><b>📐 رسومات ومقاسات للتنفيذ</b><button class="btn" id="dprint"><span data-ico="print" data-s="18"></span><span>طباعة / PDF</span></button><button class="btn icon" id="dclose" aria-label="قفل"><span data-ico="x"></span></button></div><div class="dwrap"><nav class="dtabs" id="dtabs" aria-label="أجزاء المستند"></nav><div id="dbody"></div></div></div>
 <div id="sheet" class="ovl"><div class="dlg" role="dialog" aria-label="مشاريعي"><div class="ovh"><b>🏠 مشاريعي</b><button class="btn icon quiet" onclick="closeSheet()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="sheetBody" class="ovb"></div></div></div>
-<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-label="الشقة"><div class="ovh"><b>🏢 الشقة</b><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
+<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-labelledby="aptTitle"><div class="ovh"><b id="aptTitle">🏢 الشقة</b><button class="btn quiet" id="aptSwitch" onclick="closeApt(); openHome();" title="شقة تانية أو حاجة جديدة">🔀 الشقق</button><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
 <div id="wiz" class="ovl"><div class="dlg" role="dialog" aria-labelledby="wizTitle"><div class="ovh"><b id="wizTitle"></b><button class="btn icon quiet" id="wizClose" aria-label="إلغاء"><span data-ico="x"></span></button></div><div class="progress"><div id="wizBar"></div></div><div id="wizBody" class="ovb"></div><div class="ovf"><button class="btn" id="wizBack">→ رجوع</button><button class="btn main" id="wizNext">التالي ←</button></div></div></div>
+<div id="home" class="ovl"><div class="dlg" role="dialog" aria-labelledby="homeTitle"><div class="ovh"><b id="homeTitle">ابدأ من هنا</b><button class="btn icon quiet" onclick="closeHome()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="homeBody" class="ovb"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>

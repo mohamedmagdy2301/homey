@@ -71,7 +71,7 @@ const VARIANTS = {
 function applyTemplate(c,key,keepDims){
   if(typeof RTEMPLATES!=="undefined"&&RTEMPLATES[key]){ const T=RTEMPLATES[key]; const W=keepDims?c.roomW:T.dims[0], L=keepDims?c.roomL:T.dims[1]; const m=T.make(W,L);
     Object.assign(c,{roomType:"room",rtype:T.rtype,template:key,feats:m.feats,furn:m.furn,bfix:[],units:{},seq:{},island:{on:false,w:120,d:70,pos:100},water:{wall:"none",pos:0,y:55},drain:{wall:"none",pos:0},
-      wallCfg:{W:{type:"none",depth:60,up:false},RT:{type:"none",depth:35,up:false},D:{type:"none",depth:60,up:false},L:{type:"none",depth:60,up:false}},place:{s:"none",t:"none",w:"none",f:"none",d:"none"},floorType:"tiles",curtains:true,chand:T.rtype==="living",gbType:T.ceil==="flat"?"slab":"tray",gbDrop:15,gbBand:T.rtype==="living"?60:45,gbPerSide:"",gbCenter:0,gbLed:"1",gbLedCol:"warm",gbSpots:0,gbSpotsAt:"band"});
+      wallCfg:{W:{type:"none",depth:60,up:false},RT:{type:"none",depth:35,up:false},D:{type:"none",depth:60,up:false},L:{type:"none",depth:60,up:false}},place:{s:"none",t:"none",w:"none",f:"none",d:"none"},floorType:"tiles",curtains:T.rtype!=="shop",chand:T.rtype==="living",gbType:T.ceil==="flat"?"slab":T.rtype==="shop"?"flat":"tray",gbDrop:15,gbBand:T.rtype==="living"?60:45,gbPerSide:"",gbCenter:0,gbLed:"1",gbLedCol:"warm",gbSpots:0,gbSpotsAt:"band"});
     if(!keepDims){ c.roomW=W; c.roomL=L; } return c; }
   if(HTEMPLATES[key]){ const T=HTEMPLATES[key]; const W=keepDims?c.roomW:T.dims[0], L=keepDims?c.roomL:T.dims[1]; const m=T.make(W,L);
     Object.assign(c,{gbType:"flat",gbDrop:15,gbLed:"",gbSpots:0});

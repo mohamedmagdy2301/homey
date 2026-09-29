@@ -1,7 +1,7 @@
 // =================== LIGHTING, CEILINGS, ACCENT WALLS, CURTAINS ===================
-const LUX={kitchen:300,bath:200,hall:100,room:150,bed:120,living:150};
+const LUX={kitchen:300,bath:200,hall:100,room:150,bed:120,living:150,shop:500};
 let LIGHTQ={n:0,lux:0};
-function lightPlan(){ const area=RW*RL-cutArea(), lux=cfg.roomType==="room"?(cfg.rtype==="bed"?LUX.bed:LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let n=Math.max(1,Math.ceil(area*lux/450)); if(cfg.chand&&cfg.roomType==="room") n=Math.max(1,Math.round(n*0.6));
+function lightPlan(){ const area=RW*RL-cutArea(), lux=cfg.roomType==="room"?(LUX[cfg.rtype]||LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let n=Math.max(1,Math.ceil(area*lux/450)); if(cfg.chand&&cfg.roomType==="room") n=Math.max(1,Math.round(n*0.6));
   const nx=Math.max(1,Math.round(Math.sqrt(n*RW/RL))), nz=Math.max(1,Math.ceil(n/nx)), pts=[]; for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const x=RW*(i+0.5)/nx, z=RL*(j+0.5)/nz; if(!inCut(x,z,0.15)) pts.push([x,z]); }
   LIGHTQ={n:pts.length,lux,pts,area}; return pts; }
 function finishesRender(){

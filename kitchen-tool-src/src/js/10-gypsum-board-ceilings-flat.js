@@ -19,7 +19,7 @@ function spotsGrid(poly,n,bb){ if(n<1) return []; const w=bb.x1-bb.x0, h=bb.z1-b
   for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const x=bb.x0+w*(i+0.5)/nx, z=bb.z0+h*(j+0.5)/nz; if(inPoly(poly,x,z)&&out.length<n) out.push([x,z]); } return out; }
 function gypsumRender(){
   const top=walls.top, cm=top.userData.mat; cm.color=col(cfg.cCeil||"#fbfbfa"); cm.side=THREE.DoubleSide; const outer=roomPoly(RW,RL,CUTS), floorA=polyArea(outer)>0?polyArea(outer):-polyArea(outer), outerPer=polyPerim(outer);
-  const lux=cfg.roomType==="room"?(cfg.rtype==="bed"?LUX.bed:LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let autoN=Math.max(1,Math.ceil(floorA*lux/450)); if(cfg.chand&&cfg.roomType==="room") autoN=Math.max(1,Math.round(autoN*0.6));
+  const lux=cfg.roomType==="room"?(LUX[cfg.rtype]||LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let autoN=Math.max(1,Math.ceil(floorA*lux/450)); if(cfg.chand&&cfg.roomType==="room") autoN=Math.max(1,Math.round(autoN*0.6));
   const type=cfg.gbType||"tray", drop=Math.max(0.03,(cfg.gbDrop||12)/100), ledC={warm:0xffd9a0,white:0xfff4e0,cool:0xe6f2ff}[cfg.gbLedCol||"warm"];
   let spots=[], spotY=H-0.004, inner=null, q={type,floorA,outerPer,drop};
   if(type!=="hide") top.add(polyMesh(outer,H+0.001,cm));

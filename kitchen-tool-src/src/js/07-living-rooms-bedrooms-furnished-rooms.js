@@ -30,7 +30,15 @@ const FURN={
   clothes:{n:"منشر غسيل",cat:"تكييف وديكور",w:120,d:50,h:110,lim:[60,200,30,80]},
   rug:{n:"سجادة",cat:"تكييف وديكور",w:200,d:300,h:1,lim:[80,400,60,500]},
   lamp:{n:"لمبادير",cat:"تكييف وديكور",w:40,d:40,h:165,lim:[30,50,30,50]},
-  plant:{n:"زرعة",cat:"تكييف وديكور",w:45,d:45,h:120,lim:[25,70,25,70]}
+  plant:{n:"زرعة",cat:"تكييف وديكور",w:45,d:45,h:120,lim:[25,70,25,70]},
+  counter:{n:"كاونتر (كاشير / بار)",cat:"محلات ومكاتب",w:160,d:60,h:105,lim:[80,500,40,90],col:"wood",var:[["cash","كاشير"],["bar","بار بكراسي عالية"]]},
+  wallshelf:{n:"أرفف عرض على الحيطة",cat:"محلات ومكاتب",w:200,d:45,h:220,lim:[60,800,25,60],col:"white",tall:true},
+  gondola:{n:"استاند أرفف في النص (بوشين)",cat:"محلات ومكاتب",w:240,d:80,h:160,lim:[60,600,40,120],col:"white"},
+  vitrine:{n:"فاترينة إزاز",cat:"محلات ومكاتب",w:120,d:55,h:100,lim:[60,300,40,80],col:"wood"},
+  rack:{n:"استاند هدوم (شماعة)",cat:"محلات ومكاتب",w:120,d:50,h:160,lim:[60,240,35,70]},
+  fitting:{n:"كابينة قياس",cat:"محلات ومكاتب",w:110,d:110,h:220,lim:[80,200,80,200],col:"white",tall:true},
+  fridge:{n:"تلاجة عرض (مشروبات)",cat:"محلات ومكاتب",w:70,d:70,h:200,lim:[55,200,55,85],tall:true,var:[["1","باب واحد"],["2","بابين"]]},
+  cafe:{n:"ترابيزة كافيه وكراسي",cat:"محلات ومكاتب",w:70,d:70,h:75,lim:[50,120,50,120],col:"wood",var:[["2","كرسيين"],["4","4 كراسي"]]}
 };
 const RTEMPLATES={
   r_living:{name:"صالة",dims:[400,500],rtype:"living",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"win",type:"window",wall:"W",pos:Math.round((W-150)/2),w:150,y:90,h:140},{id:"door",type:"opening",wall:"D",pos:30,w:100,y:0,h:220,d:0}],
@@ -48,8 +56,32 @@ const RTEMPLATES={
   r_balcony:{name:"بلكونة",dims:[350,160],rtype:"living",ceil:"flat",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"rail",type:"railing",wall:"W",pos:0,w:W,h:110},{id:"door",type:"door",wall:"D",pos:Math.round((W-90)/2),w:90,y:0,h:220,d:0}],
     furn:[{id:"f1",type:"arm",x:55,z:80,rot:180,w:85,d:85},{id:"f2",type:"side",x:125,z:80,rot:0,w:50,d:50},{id:"f3",type:"arm",x:195,z:80,rot:180,w:85,d:85},{id:"f4",type:"plant",x:w-25,z:30,rot:0,w:45,d:45},{id:"f5",type:"acout",snap:"RT",pos:60,w:80,d:30}]}; }},
   r_guest:{name:"أوضة ضيوف / مكتب",dims:[300,350],rtype:"bed",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"win",type:"window",wall:"W",pos:Math.round((W-100)/2),w:100,y:100,h:130},{id:"door",type:"door",wall:"D",pos:W-100,w:80,y:0,h:210,d:80}],
-    furn:[{id:"f1",type:"bed1",x:w-60,z:160,rot:0,w:120,d:205},{id:"f2",type:"desk",snap:"W",pos:50,w:120,d:55},{id:"f3",type:"shelf",snap:"L",pos:125,w:80,d:35},{id:"f4",type:"wardrobe",var:"hinged",snap:"D",pos:20,w:120,d:60},{id:"f5",type:"ac",var:"1.5",snap:"L",pos:40,w:90,d:25,y:220}]}; }}
+    furn:[{id:"f1",type:"bed1",x:w-60,z:160,rot:0,w:120,d:205},{id:"f2",type:"desk",snap:"W",pos:50,w:120,d:55},{id:"f3",type:"shelf",snap:"L",pos:125,w:80,d:35},{id:"f4",type:"wardrobe",var:"hinged",snap:"D",pos:20,w:120,d:60},{id:"f5",type:"ac",var:"1.5",snap:"L",pos:40,w:90,d:25,y:220}]}; }},
+  // shops and offices: roomType "room" with rtype "shop"; the shop front is a wide opening in the front wall (D)
+  s_market:{name:"سوبر ماركت / بقالة",dims:[600,800],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-280)/2),w:280,y:0,h:240,d:0}],
+    furn:[{id:"f1",type:"wallshelf",snap:"W",pos:0,w:Math.min(800,w),d:45},{id:"f2",type:"wallshelf",snap:"L",pos:45,w:Math.max(60,l-345),d:45},{id:"f3",type:"wallshelf",snap:"RT",pos:45,w:Math.max(60,l-395),d:45},
+      {id:"f4",type:"fridge",var:"2",snap:"RT",pos:Math.max(0,l-335),w:140,d:70},{id:"f5",type:"counter",var:"cash",x:140,z:l-185,rot:90,w:160,d:60},
+      {id:"f6",type:"gondola",x:Math.round(w/3),z:Math.round((l-150)/2),rot:90,w:300,d:80},{id:"f7",type:"gondola",x:Math.round(w*2/3),z:Math.round((l-150)/2),rot:90,w:300,d:80},{id:"f8",type:"ac",var:"3",snap:"L",pos:Math.max(0,l-240),w:100,d:25,y:230}]}; }},
+  s_clothes:{name:"محل هدوم",dims:[500,700],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-200)/2),w:200,y:0,h:240,d:0},{id:"win1",type:"window",wall:"D",pos:20,w:Math.max(60,Math.round((W-200)/2)-40),y:30,h:190},{id:"win2",type:"window",wall:"D",pos:Math.round((W+200)/2)+20,w:Math.max(60,Math.round((W-200)/2)-40),y:30,h:190}],
+    furn:[{id:"f1",type:"wallshelf",snap:"W",pos:0,w:Math.min(800,w),d:45},{id:"f2",type:"rack",snap:"L",pos:110,w:150,d:50,off:10},{id:"f3",type:"rack",snap:"L",pos:280,w:150,d:50,off:10},
+      {id:"f4",type:"fitting",snap:"RT",pos:110,w:110,d:110},{id:"f5",type:"fitting",snap:"RT",pos:225,w:110,d:110},{id:"f6",type:"console",snap:"RT",pos:345,w:100,d:40},
+      {id:"f7",type:"counter",var:"cash",x:w-100,z:l-180,rot:270,w:160,d:60},{id:"f8",type:"rack",x:Math.round(w/2)-30,z:Math.round(l/2)-20,rot:0,w:120,d:50},{id:"f9",type:"rack",x:Math.round(w/2)-30,z:Math.round(l/2)+130,rot:0,w:120,d:50},
+      {id:"f10",type:"ac",var:"2.25",snap:"L",pos:Math.max(0,l-200),w:90,d:25,y:230}]}; }},
+  s_cafe:{name:"كافيه",dims:[500,700],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-180)/2),w:180,y:0,h:240,d:0},{id:"win1",type:"window",wall:"D",pos:20,w:Math.max(60,Math.round((W-180)/2)-40),y:60,h:160},{id:"win2",type:"window",wall:"D",pos:Math.round((W+180)/2)+20,w:Math.max(60,Math.round((W-180)/2)-40),y:60,h:160}],
+    furn:[{id:"f1",type:"counter",var:"bar",x:60+Math.round(Math.min(280,w-160)/2),z:120,rot:0,w:Math.min(280,w-160),d:60},{id:"f2",type:"wallshelf",snap:"W",pos:60,w:Math.min(280,w-160),d:30},{id:"f3",type:"fridge",var:"1",snap:"W",pos:Math.min(w-70,Math.min(280,w-160)+80),w:70,d:70},
+      {id:"f4",type:"cafe",var:"4",x:110,z:Math.round(l*0.48),rot:0,w:70,d:70},{id:"f5",type:"cafe",var:"4",x:w-160,z:Math.round(l*0.48),rot:0,w:70,d:70},
+      {id:"f6",type:"cafe",var:"2",x:110,z:Math.round(l*0.75),rot:0,w:70,d:70},{id:"f7",type:"cafe",var:"2",x:w-160,z:Math.round(l*0.75),rot:0,w:70,d:70},
+      {id:"f8",type:"plant",x:w-30,z:l-60,rot:0,w:45,d:45},{id:"f9",type:"ac",var:"3",snap:"L",pos:Math.round(l/2)-50,w:100,d:25,y:230}]}; }},
+  s_pharm:{name:"صيدلية",dims:[400,550],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-200)/2),w:200,y:0,h:240,d:0}],
+    furn:[{id:"f1",type:"wallshelf",snap:"W",pos:0,w:Math.min(800,w),d:40},{id:"f2",type:"wallshelf",snap:"L",pos:40,w:200,d:40},{id:"f3",type:"wallshelf",snap:"RT",pos:40,w:200,d:40},
+      {id:"f4",type:"counter",var:"cash",x:Math.round(w/2),z:350,rot:0,w:Math.min(300,w-80),d:60},{id:"f5",type:"fridge",var:"1",snap:"RT",pos:250,w:60,d:60},
+      {id:"f6",type:"vitrine",snap:"L",pos:Math.min(l-150,400),w:120,d:50},{id:"f7",type:"ac",var:"2.25",snap:"L",pos:260,w:90,d:25,y:230}]}; }},
+  s_office:{name:"مكتب / عيادة",dims:[400,450],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"win",type:"window",wall:"W",pos:Math.round((W-140)/2),w:140,y:100,h:130},{id:"door",type:"door",wall:"D",pos:W-110,w:90,y:0,h:210,d:90}],
+    furn:[{id:"f1",type:"desk",x:Math.round(w/2),z:140,rot:180,w:140,d:70},{id:"f2",type:"arm",x:Math.round(w/2)-47,z:255,rot:180,w:85,d:85},{id:"f3",type:"arm",x:Math.round(w/2)+47,z:255,rot:180,w:85,d:85},
+      {id:"f4",type:"shelf",snap:"L",pos:40,w:90,d:35},{id:"f5",type:"shelf",snap:"L",pos:140,w:90,d:35},{id:"f6",type:"sofa2",snap:"RT",pos:90,w:160,d:90},
+      {id:"f7",type:"ac",var:"2.25",snap:"W",pos:20,w:90,d:25,y:220},{id:"f8",type:"plant",x:30,z:l-40,rot:0,w:45,d:45}]}; }}
 };
+const isShop=c=>!!c&&c.roomType==="room"&&c.rtype==="shop";
 let ROOMQ=null;
 const SECK=[["doors","ضلف"],["drawers","أدراج تحت + ضلف"],["hanging","علّاقة مفتوحة"],["open","أرفف مفتوحة"],["mirror","ضلفة مراية"],["gap","فراغ فاضي"],["desk","مكتب في الفراغ"],["tv","مكان تليفزيون"],["dresser","تسريحة في الفراغ"]];
 function effDims(it,T){ T=T||FURN[it.type]||{h:100}; let w=it.w; if(it.fillW==="1"&&it.snap&&W4.includes(it.snap)) w=Math.max(20,Math.round(wlen(it.snap)*100)-(it.pos||0)-(it.endGap||0));
@@ -65,13 +97,14 @@ function furnRect(it){ // world rect (m) of a furniture item using the current r
 }
 function buildRoom(warn){
   const q={}; const fab=M(cfg.cSofa||"#8a9aa8",{roughness:0.9}), wood=M(cfg.cWood,{roughness:0.55}), white=M("#f4f4f2",{roughness:0.4}), dark=MAT.dark, metal=MAT.steel;
-  const items=cfg.furn||[], recs=[];
+  const items=cfg.furn||[], recs=[], PM=["#c0392b","#2d5f7a","#e0b400","#557a45","#e67e22","#7d4e9e","#e8e4da"].map(c=>M(c,{roughness:0.8}));
   const order=[...items].sort((a,b)=>(a.type==="rug"?-1:0)-(b.type==="rug"?-1:0));
   for(const it of order){ const T=FURN[it.type]; if(!T) continue; const E=effDims(it,T), R=furnRect(it), rot=R.rot, w=(rot%180===0?R.x1-R.x0:R.z1-R.z0), d=it.d/100, cx=(R.x0+R.x1)/2, cz=(R.z0+R.z1)/2;
     const yo=T.wall?0:(it.y||0)/100, y0=T.wall?(it.y||T.y)/100:yo, H0=E.h/100, mcol=T.col==="fab"?fab:T.col==="white"?white:wood;
     const XZ=(lx,lz)=>rot===0?[cx+lx,cz+lz]:rot===90?[cx+lz,cz-lx]:rot===180?[cx-lx,cz-lz]:[cx-lz,cz+lx];
     const B=(lx0,lx1,lz0,lz1,ya,yb,mt)=>{ const [ax,az]=XZ(lx0,lz0), [bx,bz]=XZ(lx1,lz1); return box(Math.min(ax,bx),ya+yo,Math.min(az,bz),Math.max(ax,bx),yb+yo,Math.max(az,bz),mt); };
     const C=(lx,lz,y,r,h,mt)=>{ const [x,z]=XZ(lx,lz); return cyl(r,h,x,y+yo,z,mt); };
+    const prods=(x0,x1,z0,z1,y,hmax)=>{ let i=0; for(let x=x0;x<x1-0.06;x+=0.13,i++){ const hh=hmax*(0.55+((i*37)%5)/10); B(x,Math.min(x1,x+0.11),z0,z1,y,y+hh,PM[(i*3+Math.round(y*10))%PM.length]); } }; /* goods on a shelf */
     let modParts=null;
     const hw=w/2, hd=d/2; // local: x from -hw..hw along width, z from -hd (back) .. +hd (front)
     let near=null, nd=1e9; for(const wl of W4){ const dd=wl==="L"?R.x0:wl==="RT"?RW-R.x1:wl==="W"?R.z0:RL-R.z1; if(dd<nd){ nd=dd; near=wl; } }
@@ -143,6 +176,27 @@ function buildRoom(warn){
       case "rug": { B(-hw,hw,-hd,hd,0.001,0.012,M(cfg.cRug||"#b98d6a",{roughness:1})); B(-hw+0.12,hw-0.12,-hd+0.12,hd-0.12,0.012,0.014,M(shade(cfg.cRug||"#b98d6a",1.2),{roughness:1})); u.y1=0.012; break; }
       case "lamp": { C(0,0,0.02,0.16,0.03,dark); C(0,0,0.82,0.015,1.6,dark); C(0,0,1.55,0.2,0.28,M("#f3e7c9")); break; }
       case "plant": { C(0,0,0.18,0.16,0.36,M("#b5623f")); const lf=new THREE.Mesh(new THREE.SphereGeometry(Math.min(hw,hd)+0.05,14,10),M("#4f7a45",{roughness:0.9})); lf.position.set(cx,0.36+Math.min(hw,hd)+0.2,cz); lf.userData.uid=u.id; root.add(lf); break; }
+      // ---- shops and offices ----
+      case "counter": { B(-hw,hw,-hd,hd-0.03,0.08,H0-0.04,mcol); B(-hw+0.03,hw-0.03,-hd,hd-0.06,0,0.08,dark); B(-hw-0.01,hw+0.01,-hd,hd+0.02,H0-0.04,H0,MAT.counter);
+        if(it.var==="bar"){ const n=Math.max(1,Math.floor(w/0.55)); for(let i=0;i<n;i++){ const lx=-hw+(i+0.5)*w/n; C(lx,hd+0.35,0.02,0.18,0.04,dark); C(lx,hd+0.35,0.39,0.025,0.72,metal); C(lx,hd+0.35,0.77,0.18,0.05,fab); } }
+        else { B(-0.3,0.0,-hd+0.08,-hd+0.33,H0,H0+0.07,dark); B(-0.26,-0.04,-hd+0.1,-hd+0.12,H0+0.07,H0+0.3,M("#15171a",{roughness:0.2})); } break; }
+      case "wallshelf": { B(-hw,-hw+0.02,-hd,hd,0,H0,mcol); B(hw-0.02,hw,-hd,hd,0,H0,mcol); B(-hw,hw,-hd,-hd+0.015,0,H0,mcol); B(-hw,hw,-hd,hd,0,0.1,dark);
+        for(let y=0.1;y<H0-0.1;y+=0.4){ B(-hw,hw,-hd,hd,y,y+0.02,mcol); if(y+0.42<H0) prods(-hw+0.02,hw-0.02,-hd+0.03,hd-0.04,y+0.02,0.3); } B(-hw,hw,-hd,hd,H0-0.02,H0,mcol); break; }
+      case "gondola": { B(-hw,hw,-hd+0.05,hd-0.05,0,0.1,dark); B(-hw,hw,-0.015,0.015,0.1,H0,mcol); B(-hw,-hw+0.02,-hd,hd,0.1,H0-0.02,mcol); B(hw-0.02,hw,-hd,hd,0.1,H0-0.02,mcol);
+        for(let y=0.1;y<H0-0.1;y+=0.38){ B(-hw,hw,-hd,hd,y,y+0.02,mcol); prods(-hw+0.02,hw-0.02,-hd+0.02,-0.03,y+0.02,0.28); prods(-hw+0.02,hw-0.02,0.03,hd-0.02,y+0.02,0.28); } B(-hw,hw,-0.03,0.03,H0-0.02,H0,mcol); break; }
+      case "vitrine": { B(-hw,hw,-hd,hd,0,0.35,mcol); B(-hw+0.01,hw-0.01,-hd+0.01,hd-0.01,0.35,H0-0.02,MAT.glass); B(-hw,hw,-hd,hd,H0-0.02,H0,metal); B(-hw+0.02,hw-0.02,-hd+0.02,hd-0.02,0.35+(H0-0.37)/2,0.36+(H0-0.37)/2,MAT.glass);
+        prods(-hw+0.05,hw-0.05,-0.1,0.1,0.35,0.12); prods(-hw+0.05,hw-0.05,-0.1,0.1,0.36+(H0-0.37)/2,0.1); break; }
+      case "rack": { for(const lx of [-hw,hw-0.03]){ B(lx,lx+0.03,-0.015,0.015,0,H0,metal); B(lx-0.02,lx+0.05,-hd,hd,0,0.03,metal); } B(-hw,hw,-0.012,0.012,H0-0.03,H0,metal);
+        let i=0; for(let x=-hw+0.06;x<hw-0.07;x+=0.07,i++) B(x,x+0.035,-hd*0.8,hd*0.8,Math.max(0.15,H0-0.95),H0-0.06,PM[(i*3)%PM.length]); break; }
+      case "fitting": { B(-hw,hw,-hd,-hd+0.03,0,H0,mcol); B(-hw,-hw+0.03,-hd,hd,0,H0,mcol); B(hw-0.03,hw,-hd,hd,0,H0,mcol); B(-hw,hw,hd-0.03,hd,H0-0.04,H0,metal);
+        B(-hw+0.03,-hw+0.03+Math.max(0.2,w*0.35),hd-0.05,hd-0.02,0.15,H0-0.05,M("#8a5a44",{roughness:1})); B(-0.25,0.25,-hd+0.03,-hd+0.04,0.4,1.9,M("#dde6eb",{metalness:0.15,roughness:0.05})); B(hw-0.25,hw-0.03,-hd+0.03,-hd+0.3,0.45,0.49,mcol); break; }
+      case "fridge": { const sh=M("#e9ecef",{roughness:0.4}); B(-hw,hw,-hd,-hd+0.04,0,H0,sh); B(-hw,-hw+0.04,-hd,hd,0,H0,sh); B(hw-0.04,hw,-hd,hd,0,H0,sh); B(-hw,hw,-hd,hd,0,0.15,dark); B(-hw,hw,-hd,hd,H0-0.2,H0,M("#b23a2e",{roughness:0.5}));
+        B(-hw+0.04,hw-0.04,-hd+0.04,-hd+0.05,0.15,H0-0.2,MAT.led); for(let y=0.15;y<H0-0.35;y+=0.34){ B(-hw+0.04,hw-0.04,-hd+0.05,hd-0.04,y,y+0.01,MAT.glass); prods(-hw+0.06,hw-0.06,-hd+0.08,hd-0.1,y+0.01,0.24); }
+        B(-hw+0.04,hw-0.04,hd-0.02,hd,0.15,H0-0.2,MAT.glass); if(it.var==="2") B(-0.01,0.01,hd-0.02,hd+0.005,0.15,H0-0.2,dark); B(hw-0.1,hw-0.08,hd,hd+0.03,0.8,1.3,metal); if(it.var==="2") B(-0.1,-0.08,hd,hd+0.03,0.8,1.3,metal); break; }
+      case "cafe": { const r=Math.min(hw,hd); C(0,0,H0-0.02,r,0.04,mcol); C(0,0,(H0-0.04)/2,0.035,H0-0.04,dark); C(0,0,0.015,Math.min(0.25,r*0.7),0.03,dark);
+        const chair=(lx,lz,dx,dz)=>{ B(lx-0.2,lx+0.2,lz-0.2,lz+0.2,0.44,0.48,fab); if(dz) B(lx-0.2,lx+0.2,lz+dz*0.18-0.02,lz+dz*0.18+0.02,0.48,0.9,mcol); else B(lx+dx*0.18-0.02,lx+dx*0.18+0.02,lz-0.2,lz+0.2,0.48,0.9,mcol);
+          for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1]]) B(lx+a*0.17-0.015,lx+a*0.17+0.015,lz+b*0.17-0.015,lz+b*0.17+0.015,0,0.44,dark); };
+        chair(0,-hd-0.22,0,-1); chair(0,hd+0.22,0,1); if(it.var==="4"){ chair(-hw-0.22,0,-1,0); chair(hw+0.22,0,1,0); } break; }
     }
     curUid=null; curSide=null; curWall=null;
     let parts=modParts?modParts.filter(p=>p.y1>0.3||true):[R]; if(it.type==="corner"){ const rr=(lx0,lx1,lz0,lz1)=>{ const [ax,az]=XZ(lx0,lz0),[bx,bz]=XZ(lx1,lz1); return {x0:Math.min(ax,bx),x1:Math.max(ax,bx),z0:Math.min(az,bz),z1:Math.max(az,bz)}; }; parts=[rr(-hw,hw,-hd,-hd+0.9),rr(-hw,-hw+0.9,-hd+0.9,hd)]; }
@@ -167,6 +221,11 @@ function buildRoom(warn){
     if(t==="bed1"&&!sides(0.5).some(freeAt)) warn.push("السرير الفردي محتاج جنب واحد فاضي 50 سم على الأقل");
     if(t==="dining"){ const zz={x0:R.x0-0.75,x1:R.x1+0.75,z0:R.z0-0.75,z1:R.z1+0.75}; if(zz.x0<0||zz.z0<0||zz.x1>RW||zz.z1>RL||blockers(r).some(b=>inter({parts:[zz]},b))) warn.push("السفرة محتاجة 75 سم حواليها عشان الكراسي تتسحب"); }
     if((t==="dresser"||t==="desk")&&!freeAt(front(0.6))) warn.push(`مفيش مكان للكرسي قدام ${r.T.n}`);
+    if(t==="fitting"&&!freeAt(front(0.8))) warn.push("كابينة القياس محتاجة 80 سم فاضية قدامها");
+    if((t==="wallshelf"||t==="fridge")&&!freeAt((()=>{ const z=front(0.6), sw=R.rot%180===0?R.x1-R.x0:R.z1-R.z0, s=t==="fridge"?0:Math.min(0.5,sw*0.3); if(R.rot%180===0){ z.x0+=s; z.x1-=s; } else { z.z0+=s; z.z1-=s; } return z; })())) /* shelves meeting in a corner are fine */ warn.push(`مفيش 60 سم فاضية قدام ${r.T.n} عشان حد يقف ويختار`);
+    if(t==="gondola"){ const rot=R.rot, bk=rot===0?{x0:R.x0,x1:R.x1,z0:R.z0-0.8,z1:R.z0}:rot===180?{x0:R.x0,x1:R.x1,z0:R.z1,z1:R.z1+0.8}:rot===90?{x0:R.x0-0.8,x1:R.x0,z0:R.z0,z1:R.z1}:{x0:R.x1,x1:R.x1+0.8,z0:R.z0,z1:R.z1};
+      if(!freeAt(front(0.8))||!freeAt(bk)) warn.push("الاستاند اللي في النص محتاج ممر 80 سم على الناحيتين"); }
+    if(t==="cafe"){ const m=0.6, zz=r.it.var==="4"?{x0:R.x0-m,x1:R.x1+m,z0:R.z0-m,z1:R.z1+m}:(R.rot%180===0?{x0:R.x0,x1:R.x1,z0:R.z0-m,z1:R.z1+m}:{x0:R.x0-m,x1:R.x1+m,z0:R.z0,z1:R.z1}); if(zz.x0<0||zz.z0<0||zz.x1>RW||zz.z1>RL||blockers(r).some(b=>inter({parts:[zz]},b))) warn.push("ترابيزة الكافيه محتاجة 60 سم حواليها للكراسي"); }
   }
   const tv=recs.find(r=>r.it.type==="tv"), seat=recs.find(r=>["sofa3","sofa2","corner"].includes(r.it.type));
   if(tv&&seat){ const a=[(tv.R.x0+tv.R.x1)/2,(tv.R.z0+tv.R.z1)/2], b=[(seat.R.x0+seat.R.x1)/2,(seat.R.z0+seat.R.z1)/2], dist=Math.hypot(a[0]-b[0],a[1]-b[1]), diag=(+(tv.it.var||55))*0.0254;
@@ -183,6 +242,9 @@ function buildRoom(warn){
     if(t==="desk"){ addPt("socket",wl,a,0.9,"برايز المكتب + إنترنت"); addPt("data",wl,a+0.2,0.9,"نقطة إنترنت"); }
     if(t==="dresser"||t==="console") addPt("socket",wl,a+(R.x1-R.x0+R.z1-R.z0)/4,1.0,"بريزة التسريحة (سشوار)");
     if(t==="lamp") addPt("socket",wl,a,0.3,"بريزة اللمبادير");
+    if(t==="counter"){ if(r.it.var==="bar") addPt("socket",wl,a,1.15,"برايز البار (ماكينة القهوة على خط لوحده)"); else { addPt("socket",wl,a,0.5,"برايز الكاشير"); addPt("data",wl,a+0.2,0.5,"نقطة إنترنت لماكينة الكاشير والفيزا"); } }
+    if(t==="fridge") addPt("socket",wl,a,Math.min(H-0.1,(r.it.toCeil==="1"?H:effDims(r.it,r.T).h/100)+0.1),"بريزة تلاجة العرض على خط لوحده");
+    if(t==="vitrine") addPt("socket",wl,a,0.3,"بريزة إضاءة الفاترينة");
   }
   // general sockets every ~3 m where nothing tall blocks the wall
   for(const wl of W4){ const L=wlen(wl), n=Math.max(1,Math.round(L/3)); for(let i=0;i<n;i++){ const a=(i+0.5)*L/n; const [x,z]=aoToXZ(wl,a,0.05);
@@ -197,7 +259,10 @@ function buildRoom(warn){
   return {walk,counter:0};
 }
 function elecLoadsRoom(){
-  const rows=[], circuits=[]; for(const it of cfg.furn||[]){ if(it.type==="ac"||it.type==="acfloor"){ const hp=+(it.var||1.5), wt=Math.round(hp*800); rows.push({n:`تكييف ${hp} حصان`,w:wt}); circuits.push({n:`تكييف ${hp} حصان`,a:hp>=3?25:20,mm:hp>=3?"6":"4",why:"خط لوحده"}); } if(it.type==="tv") rows.push({n:"الشاشة",w:150}); }
+  const rows=[], circuits=[]; for(const it of cfg.furn||[]){ if(it.type==="ac"||it.type==="acfloor"){ const hp=+(it.var||1.5), wt=Math.round(hp*800); rows.push({n:`تكييف ${hp} حصان`,w:wt}); circuits.push({n:`تكييف ${hp} حصان`,a:hp>=3?25:20,mm:hp>=3?"6":"4",why:"خط لوحده"}); } if(it.type==="tv") rows.push({n:"الشاشة",w:150});
+    if(it.type==="fridge"){ rows.push({n:"تلاجة عرض",w:it.var==="2"?600:350}); circuits.push({n:"تلاجة العرض",a:16,mm:"2.5",why:"خط لوحده"}); }
+    if(it.type==="counter"){ if(it.var==="bar"){ rows.push({n:"ماكينة قهوة",w:2000}); circuits.push({n:"ماكينة القهوة",a:20,mm:"4",why:"خط لوحده"}); } else rows.push({n:"كاشير وماكينة فيزا",w:150}); }
+    if(it.type==="vitrine") rows.push({n:"إضاءة فاترينة",w:40}); }
   rows.push({n:"برايز عامة",w:1500},{n:"الإضاءة",w:120}); circuits.push({n:"برايز الأوضة",a:16,mm:"2.5",why:""},{n:"الإضاءة",a:10,mm:"1.5",why:""});
   const total=rows.reduce((x,r)=>x+r.w,0), demand=Math.round(total*0.7); return {rows,circuits,total,demand,amps:Math.round(demand/220)};
 }
@@ -206,7 +271,8 @@ function furnBox(el){
   const box=document.createElement("div"); box.className="adder"; box.innerHTML=`<div class="adder-l">اختار القطعة وضيفها، وبعدين اسحبها لمكانها في الـ3D:</div>`;
   const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select"); ts.setAttribute("aria-label","القطعة"); const cats={};
   for(const [k,v] of Object.entries(FURN)) (cats[v.cat]=cats[v.cat]||[]).push([k,v.n]);
-  ts.innerHTML=Object.entries(cats).map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("");
+  const SC="محلات ومكاتب", ce=Object.entries(cats).sort((a,b)=>isShop(cfg)?(b[0]===SC)-(a[0]===SC):(a[0]===SC)-(b[0]===SC)); /* shop pieces first in a shop, last at home */
+  ts.innerHTML=ce.map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("");
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
   ab.onclick=()=>{ pushHist(); const T=FURN[ts.value]; const it={id:"i"+Math.random().toString(36).slice(2,7),type:ts.value,w:T.w,d:T.d};
     if(T.var) it.var=T.var[0][0]; if(T.wall){ it.snap="W"; it.pos=Math.max(0,Math.round((RW*100-T.w)/2)); it.y=T.y; } else { it.x=Math.round(RW*50); it.z=Math.round(RL*50); it.rot=0; }

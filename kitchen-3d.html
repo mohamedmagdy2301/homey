@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#EEF0EC">
-<title>المطبخ 3D</title>
+<title>مساحتي 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
@@ -200,7 +200,7 @@
   .card .ch b{flex:1;font-size:14px;font-weight:600;min-width:0}
   .card .ch small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
   .card .ch .btn{min-height:34px;padding:0 10px;font-size:13px}
-  .card.sel{border-color:var(--brass);background:#FDFAF4;box-shadow:0 0 0 3px var(--brass-soft)}
+  .card.sel,.card.acard.cur{border-color:var(--brass);background:#FDFAF4;box-shadow:0 0 0 3px var(--brass-soft)}
   .card.closed{padding-bottom:4px}
   .card.closed>:not(.ch){display:none!important}
   .card .ctl:last-child{border-bottom:0}
@@ -260,6 +260,26 @@
   .btn.tpl.on{box-shadow:0 0 0 3px var(--brass-soft)}
   .rtypes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
   .rtypes .btn{min-height:46px;font-size:15px}
+  .rtypes .btn:last-child:nth-child(odd){grid-column:1/-1}
+  /* start screen */
+  .hhero{padding:4px 2px 2px}
+  .hhero h1{font-size:22px;line-height:1.4;margin:2px 0 4px;font-weight:700;color:var(--ink)}
+  .hhero p{margin:0;color:var(--muted);font-size:14px}
+  .hcont{display:flex;align-items:center;gap:12px;width:100%;margin:14px 0 2px;padding:12px 14px;border:1px solid var(--brass);background:var(--brass-soft);border-radius:var(--r-l);cursor:pointer;text-align:right;font:inherit;color:var(--ink)}
+  .hcont .hico{font-size:22px;color:var(--brass-ink)}
+  .hcont small{display:block;color:var(--brass-ink);font-size:12px}
+  .hcont b{font-size:16px;font-weight:600}
+  .hgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+  .hcard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--paper);box-shadow:var(--lift);cursor:pointer;text-align:right;font:inherit;color:var(--ink);min-height:132px;transition:border-color .15s,background .15s}
+  .hcard:hover{border-color:var(--pri);background:var(--pri-soft)}
+  .hcard:focus-visible,.hcont:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+  .hcard .hico{font-size:28px;line-height:1.1}
+  .hcard b{font-size:16px;font-weight:600}
+  .hcard small{color:var(--muted);font-size:12.5px;line-height:1.6}
+  .hcard.wide{grid-column:1/-1;min-height:0;background:var(--pri);border-color:var(--pri);color:#fff}
+  .hcard.wide:hover{background:var(--pri-2)}
+  .hcard.wide small{color:#dce9e3}
+  #homeBody .numw .stb:disabled{opacity:.35;cursor:default}
   .tabs .btn{min-height:34px;border-radius:999px;font-size:13px}
 
   /* ---------- overlays ---------- */
@@ -329,7 +349,10 @@
     #apt.split .aptplan{margin:0 12px 12px}
     #wiz .dlg{width:min(760px,100%);height:100%}
     .tplgrid{grid-template-columns:repeat(4,1fr)}
-    .rtypes{grid-template-columns:repeat(4,1fr)}
+    .rtypes{grid-template-columns:repeat(5,1fr)}
+    .rtypes .btn:last-child:nth-child(odd){grid-column:auto}
+    .hgrid{grid-template-columns:repeat(4,1fr)}
+    #home .dlg{width:min(860px,100%)}
     #draw .dhead{padding:12px 20px}
     #dbody{padding:20px 24px 60px}
   }
@@ -387,11 +410,12 @@
   <nav id="tabs" aria-label="الأقسام"></nav>
   <div id="controls"></div>
 </aside>
-<div id="shot"><img alt="صورة المطبخ"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
+<div id="shot"><img alt="صورة التصميم"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
 <div id="draw"><div class="dhead"><b>📐 رسومات ومقاسات للتنفيذ</b><button class="btn" id="dprint"><span data-ico="print" data-s="18"></span><span>طباعة / PDF</span></button><button class="btn icon" id="dclose" aria-label="قفل"><span data-ico="x"></span></button></div><div class="dwrap"><nav class="dtabs" id="dtabs" aria-label="أجزاء المستند"></nav><div id="dbody"></div></div></div>
 <div id="sheet" class="ovl"><div class="dlg" role="dialog" aria-label="مشاريعي"><div class="ovh"><b>🏠 مشاريعي</b><button class="btn icon quiet" onclick="closeSheet()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="sheetBody" class="ovb"></div></div></div>
-<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-label="الشقة"><div class="ovh"><b>🏢 الشقة</b><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
+<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-labelledby="aptTitle"><div class="ovh"><b id="aptTitle">🏢 الشقة</b><button class="btn quiet" id="aptSwitch" onclick="closeApt(); openHome();" title="شقة تانية أو حاجة جديدة">🔀 الشقق</button><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
 <div id="wiz" class="ovl"><div class="dlg" role="dialog" aria-labelledby="wizTitle"><div class="ovh"><b id="wizTitle"></b><button class="btn icon quiet" id="wizClose" aria-label="إلغاء"><span data-ico="x"></span></button></div><div class="progress"><div id="wizBar"></div></div><div id="wizBody" class="ovb"></div><div class="ovf"><button class="btn" id="wizBack">→ رجوع</button><button class="btn main" id="wizNext">التالي ←</button></div></div></div>
+<div id="home" class="ovl"><div class="dlg" role="dialog" aria-labelledby="homeTitle"><div class="ovh"><b id="homeTitle">ابدأ من هنا</b><button class="btn icon quiet" onclick="closeHome()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="homeBody" class="ovb"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -468,7 +492,7 @@ const VARIANTS = {
 function applyTemplate(c,key,keepDims){
   if(typeof RTEMPLATES!=="undefined"&&RTEMPLATES[key]){ const T=RTEMPLATES[key]; const W=keepDims?c.roomW:T.dims[0], L=keepDims?c.roomL:T.dims[1]; const m=T.make(W,L);
     Object.assign(c,{roomType:"room",rtype:T.rtype,template:key,feats:m.feats,furn:m.furn,bfix:[],units:{},seq:{},island:{on:false,w:120,d:70,pos:100},water:{wall:"none",pos:0,y:55},drain:{wall:"none",pos:0},
-      wallCfg:{W:{type:"none",depth:60,up:false},RT:{type:"none",depth:35,up:false},D:{type:"none",depth:60,up:false},L:{type:"none",depth:60,up:false}},place:{s:"none",t:"none",w:"none",f:"none",d:"none"},floorType:"tiles",curtains:true,chand:T.rtype==="living",gbType:T.ceil==="flat"?"slab":"tray",gbDrop:15,gbBand:T.rtype==="living"?60:45,gbPerSide:"",gbCenter:0,gbLed:"1",gbLedCol:"warm",gbSpots:0,gbSpotsAt:"band"});
+      wallCfg:{W:{type:"none",depth:60,up:false},RT:{type:"none",depth:35,up:false},D:{type:"none",depth:60,up:false},L:{type:"none",depth:60,up:false}},place:{s:"none",t:"none",w:"none",f:"none",d:"none"},floorType:"tiles",curtains:T.rtype!=="shop",chand:T.rtype==="living",gbType:T.ceil==="flat"?"slab":T.rtype==="shop"?"flat":"tray",gbDrop:15,gbBand:T.rtype==="living"?60:45,gbPerSide:"",gbCenter:0,gbLed:"1",gbLedCol:"warm",gbSpots:0,gbSpotsAt:"band"});
     if(!keepDims){ c.roomW=W; c.roomL=L; } return c; }
   if(HTEMPLATES[key]){ const T=HTEMPLATES[key]; const W=keepDims?c.roomW:T.dims[0], L=keepDims?c.roomL:T.dims[1]; const m=T.make(W,L);
     Object.assign(c,{gbType:"flat",gbDrop:15,gbLed:"",gbSpots:0});
@@ -1479,19 +1503,32 @@ function finishBox(){
 
 // =================== APARTMENT (rooms linked together) ===================
 const HTEMPLATES={  h_hall:{name:"طرقة",dims:[120,400],make:(W,L)=>({feats:[{id:"d1",type:"door",wall:"L",pos:60,w:80,y:0,h:210,d:0},{id:"d2",type:"door",wall:"RT",pos:220,w:80,y:0,h:210,d:0},{id:"en",type:"door",wall:"D",pos:Math.max(0,Math.round((W-90)/2)),w:90,y:0,h:210,d:0}]})} };
-let APT={rooms:[],wallT:12,baseFill:7,riser:null,water:null,panel:null,heaterMode:"shared",heaterAt:null}, SNAP={}, APT3D=false, APT_BUILD=false, aptRoots=[], aptSel=null, aptTab="المسقط", aptPlace=null, APTLINKS=[];
+// several apartments per device: each one is saved under kapt:<id> and listed in kapt:index as {id,name,rooms:[room ids],t}.
+// "main" is the id of the apartment saved before there was a list, so older data opens as it is.
+function aptDef(){ return {rooms:[],wallT:12,baseFill:7,riser:null,water:null,panel:null,heaterMode:"shared",heaterAt:null}; }
+let APT_ID="main", APTS=[], APTS_BAD=false, APT_LOADED=null;
+let APT=aptDef(), SNAP={}, APT3D=false, APT_BUILD=false, aptRoots=[], aptSel=null, aptTab="المسقط", aptPlace=null, APTLINKS=[];
 const aoLocal=(w,a,o,RW_,RL_)=>w==="L"?[o,a]:w==="RT"?[RW_-o,a]:w==="W"?[a,o]:[a,RL_-o];
 const aptSize=(sn,rot)=>rot%180===0?[sn.RW,sn.RL]:[sn.RL,sn.RW];
 function toWorld(r,sn,x,z){ let p; switch(r.rot){ case 90:p=[sn.RL-z,x];break; case 180:p=[sn.RW-x,sn.RL-z];break; case 270:p=[z,sn.RW-x];break; default:p=[x,z]; } return [r.x/100+p[0],r.z/100+p[1]]; }
 function toLocal(r,sn,X,Z){ const x=X-r.x/100, z=Z-r.z/100; switch(r.rot){ case 90:return [z,sn.RL-x]; case 180:return [sn.RW-x,sn.RL-z]; case 270:return [sn.RW-z,x]; default:return [x,z]; } }
 const manh=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1]);
 let APT_UNDO=[], APT_LAST=null, APT_ROOMS_PREV=null;
-async function saveApt(){ const now=JSON.stringify(APT); if(APT_LAST!=null&&(now!==APT_LAST||APT_ROOMS_PREV)){ APT_UNDO.push({apt:APT_LAST,rooms:APT_ROOMS_PREV}); if(APT_UNDO.length>40) APT_UNDO.shift(); } APT_ROOMS_PREV=null; APT_LAST=now; await stSet("kapt:main",APT); }
+async function saveApt(){ const now=JSON.stringify(APT); if(APT_LAST!=null&&(now!==APT_LAST||APT_ROOMS_PREV)){ APT_UNDO.push({apt:APT_LAST,rooms:APT_ROOMS_PREV}); if(APT_UNDO.length>40) APT_UNDO.shift(); } APT_ROOMS_PREV=null; APT_LAST=now; await stSet("kapt:"+APT_ID,APT); await aptIndexSync(); }
+const aptOtherRooms=()=>new Set(APTS.filter(a=>a.id!==APT_ID).flatMap(a=>a.rooms||[])); /* rooms that belong to the other apartments */
+const aptNameOf=a=>cleanName(a&&a.name)||"شقتي";
+async function aptIndexSync(touch){ const ids=APT.rooms.map(r=>r.id), nm=aptNameOf(APT); let e=APTS.find(a=>a.id===APT_ID);
+  if(e&&!touch&&e.name===nm&&JSON.stringify(e.rooms||[])===JSON.stringify(ids)) return; if(!e){ e={id:APT_ID}; APTS.push(e); }
+  Object.assign(e,{name:nm,rooms:ids,t:Date.now()}); if(!APTS_BAD) await stSet("kapt:index",APTS); } /* never write the list over one whose read failed */
+async function loadAptIndex(){ const rd=await stRead("kapt:index"); APTS_BAD=!!rd.err;
+  APTS=Array.isArray(rd.v)?rd.v.filter(a=>a&&typeof a.id==="string"&&/^[\w-]{1,40}$/.test(a.id)).map(a=>({id:a.id,name:aptNameOf(a),rooms:Array.isArray(a.rooms)?a.rooms.filter(x=>typeof x==="string"):[],t:+a.t||0})):[];
+  if(!rd.err&&!rd.v){ const m=await stRead("kapt:main"); if(m.v&&Array.isArray(m.v.rooms)&&m.v.rooms.length) APTS=[{id:"main",name:aptNameOf(m.v),rooms:m.v.rooms.map(r=>r&&r.id).filter(Boolean),t:1}]; } /* saved before the list existed */
+  const last=[...APTS].sort((a,b)=>b.t-a.t)[0]; APT_ID=last?last.id:"main"; }
 async function aptUndo(){ const e=APT_UNDO.pop(); if(!e) return;
   APT=JSON.parse(e.apt); for(const [id,d] of Object.entries(e.rooms||{})){ if(id===PROJ.id){ cfg=migrate(clone(d.cfg)); PROJ.name=d.name; updProjName(); build(); await saveNow(); } else await stSet("kproj:"+id,d); const p=projIndex.find(x=>x.id===id); if(p) p.name=d.name; }
-  if(e.rooms) await stSet("kproj:index",projIndex); APT_LAST=JSON.stringify(APT); await stSet("kapt:main",APT);
+  if(e.rooms) await stSet("kproj:index",projIndex); APT_LAST=JSON.stringify(APT); await stSet("kapt:"+APT_ID,APT); await aptIndexSync();
   try{ await refreshSnaps(); }catch(err){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); } APT_SVC=aptServices(); renderApt(); hint("↶ رجعت خطوة"); }
-const roomIco=sn=>sn.cfg&&sn.cfg.template==="r_balcony"?"🌿":({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"");
+const roomIco=sn=>sn.cfg&&sn.cfg.template==="r_balcony"?"🌿":isShop(sn.cfg)?"🏪":({kitchen:"🍳",bath:"🚿",hall:"🚪",room:"🛋"}[sn.roomType]||"");
 const aptArea=sn=>(sn.q&&+sn.q.floorA)||sn.RW*sn.RL; /* clear floor */
 const aptBrick=()=>APT.dimMode==="brick", aptFin=sn=>aptBrick()?2*((+sn.cfg.plaster||0)+(+sn.cfg.tileT||0)):0; /* cm added to each size when shown on the brick */
 const aptDims=sn=>{ const e=aptFin(sn); return [Math.round(sn.RW*100)+e,Math.round(sn.RL*100)+e]; };
@@ -1516,7 +1553,7 @@ async function aptResize(r,axis,net,fromStart){ // net = new clear size in cm ac
   if(fromStart){ if(along) r.rel.off=off0-dl; else if(!r.rel){ if(axis==="x") r.x-=dl; else r.z-=dl; } }
   if(along&&dl) for(const o of APT.rooms) if(o!==r&&o.rel&&o.rel.to===r.rel.to&&o.rel.side===r.rel.side){ const oo=o.rel.off||0; if(!fromStart&&oo>off0) o.rel.off=oo+dl; if(fromStart&&oo<off0) o.rel.off=oo-dl; }
   aptRecalc(); await saveApt(); renderApt(); }
-async function loadApt(){ const a=await stGet("kapt:main"); if(a) APT={...APT,...a}; }
+async function loadApt(){ const rd=await stRead("kapt:"+APT_ID); if(rd.v) APT={...aptDef(),...rd.v}; else if(APT_LOADED!==APT_ID) APT=aptDef(); APT_LOADED=APT_ID; }
 function projName(id){ const p=projIndex.find(x=>x.id===id); return id===PROJ.id?PROJ.name:(p?p.name:"؟"); }
 function snapQ(c){ const q={...(QTY||{})}; q.pts={}; for(const p of POINTS) q.pts[p.type]=(q.pts[p.type]||0)+1; q.fix={}; q.app={}; q.furn={}; q.wardrobes=[];
   for(const u of UNITS){ if(u.bt){ const n=u.label||KN[u.bt]; q.fix[n]=(q.fix[n]||0)+1; } if(["sink","stove","fridge","washer","dish","hood"].includes(u.kind)&&c.roomType!=="bath"){ const n={sink:"حوض مطبخ",stove:c.stoveType==="built"?"مسطح وفرن بلت إن":"بوتاجاز",fridge:"تلاجة",washer:"غسالة",dish:"غسالة أطباق",hood:"شفاط"}[u.kind]; q.app[n]=(q.app[n]||0)+1; }
@@ -1638,10 +1675,50 @@ function aptPlanSVG(){
 }
 let APT_SVC=null, aptDrag=null, aptRsz=null;
 async function openApt(){ await saveNow(); await loadApt(); document.getElementById("apt").style.display="flex"; document.getElementById("aptBody").innerHTML="<div class='note'>بحضّر الشقة…</div>";
-  if(!APT.rooms.length){ APT.rooms=[{id:PROJ.id,x:0,z:0,rot:0}]; } APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; try{ await refreshSnaps(); APT_LAST=JSON.stringify(APT); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); renderApt(); }
+  if(!APT.rooms.length){ let id=PROJ.id; if(aptOtherRooms().has(id)){ id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:"طرقة",cfg:newCfg("h_hall")}); projIndex.push({id,name:"طرقة",t:Date.now()}); await stSet("kproj:index",projIndex); } APT.rooms=[{id,x:0,z:0,rot:0}]; } APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; try{ await refreshSnaps(); APT_LAST=JSON.stringify(APT); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); await aptIndexSync(true); renderApt(); }
 function closeApt(){ document.getElementById("apt").style.display="none"; saveApt(); }
+function aptTitle(){ const t=document.getElementById("aptTitle"); if(t) t.textContent="🏢 "+aptNameOf(APT); }
+const newAptId=()=>"a"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+async function openAptId(id){ APT_ID=id; APT_LOADED=null; aptSel=null; aptPlace=null; aptTab="المسقط"; await openApt(); }
+// a new apartment from the start screen: its own rooms (never the room open now), then the kitchen or first room opens behind it
+async function createApt(name,T){ await saveNow(); APT_ID=newAptId(); APT=aptDef(); APT.name=cleanName(name)||"شقة جديدة"; APT_LOADED=APT_ID; APT_SVC=null;
+  APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; aptSel=null; aptPlace=null; aptTab="المسقط"; document.getElementById("apt").style.display="flex"; aptTitle();
+  await applyAptTpl({...T,fresh:true}); APT_UNDO=[]; APT_SVC=aptServices();
+  const kind=k=>APT.rooms.find(r=>SNAP[r.id]&&SNAP[r.id].roomType===k), first=kind("kitchen")||kind("room")||APT.rooms[0];
+  if(first&&first.id!==PROJ.id) await openProject(first.id); renderApt(); hint(`✓ «${APT.name}» جاهزة. دوس على أي أوضة في المسقط عشان تعدّل مقاسها أو تصممها`,5000); }
+async function renameApt(id,name){ const nm=cleanName(name); if(!nm) return; const e=APTS.find(a=>a.id===id);
+  if(id===APT_ID&&APT_LOADED===id){ APT.name=nm; await saveApt(); aptTitle(); return; }
+  const rd=await stRead("kapt:"+id); if(rd.err||!rd.v){ hint("مقدرتش أقرا الشقة دي من الحفظ، جرّب تاني",4000); return; } rd.v.name=nm; await stSet("kapt:"+id,rd.v); if(e){ e.name=nm; if(!APTS_BAD) await stSet("kapt:index",APTS); } }
+async function copyApt(id){ await saveNow(); const src=id===APT_ID&&APT_LOADED===id?clone(APT):await stGet("kapt:"+id); if(!src){ hint("مقدرتش أقرا الشقة دي من الحفظ، جرّب تاني",4000); return; }
+  let txt=JSON.stringify(src); for(const r of src.rooms||[]){ const d=await stGet("kproj:"+r.id); if(!d) continue; const rid="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await stSet("kproj:"+rid,{name:d.name,cfg:d.cfg}); projIndex.push({id:rid,name:d.name,t:Date.now()}); txt=txt.split(JSON.stringify(r.id)).join(JSON.stringify(rid)); } /* room ids are unique, so swapping them in the text moves every link and door too */
+  await stSet("kproj:index",projIndex); const a=JSON.parse(txt), nid=newAptId(); a.name=aptNameOf(src)+" (نسخة)"; await stSet("kapt:"+nid,a);
+  APTS.push({id:nid,name:a.name,rooms:(a.rooms||[]).map(r=>r.id),t:Date.now()}); if(!APTS_BAD) await stSet("kapt:index",APTS); }
+// withRooms: its rooms go too (they were made for it); otherwise they stay in "my projects"
+async function deleteApt(id,withRooms){ const e=APTS.find(a=>a.id===id); const rooms=id===APT_ID&&APT_LOADED===id?APT.rooms.map(r=>r.id):(e&&e.rooms)||[];
+  if(withRooms){ const oth=new Set(APTS.filter(a=>a.id!==id).flatMap(a=>a.rooms||[])), gone=rooms.filter(r=>!oth.has(r));
+    for(const rid of gone){ DELETED.add(rid); if(rid===PROJ.id) clearTimeout(saveT); await stDel("kproj:"+rid); } projIndex=projIndex.filter(p=>!gone.includes(p.id)); await stSet("kproj:index",projIndex);
+    if(gone.includes(PROJ.id)){ const nx=[...projIndex].sort((a,b)=>b.t-a.t)[0]; if(nx) await openProject(nx.id); if(gone.includes(PROJ.id)){ PROJ={id:"p"+Date.now().toString(36),name:"مطبخي"}; cfg=newCfg("L"); clearHist(); SEL=null; updProjName(); build(); renderControls(); } } }
+  await stDel("kapt:"+id); APTS=APTS.filter(a=>a.id!==id); if(!APTS_BAD) await stSet("kapt:index",APTS);
+  if(id===APT_ID){ const nx=[...APTS].sort((a,b)=>b.t-a.t)[0]; APT_ID=nx?nx.id:newAptId(); APT_LOADED=null; await loadApt(); } }
+const aptOfRoom=id=>APTS.find(a=>(a.id===APT_ID&&APT_LOADED===a.id?APT.rooms.map(r=>r.id):a.rooms||[]).includes(id));
+// the list of apartments (start screen and "my projects"): open, rename, copy, delete
+function aptListUI(el,after){ const list=[...APTS].sort((a,b)=>b.t-a.t); const redo=()=>{ if(after) after(); };
+  for(const a of list){ const n=(a.id===APT_ID&&APT_LOADED===a.id?APT.rooms:a.rooms||[]).length, card=document.createElement("div"); card.className="card acard"+(a.id===APT_ID?" cur":""); /* not .sel: that marks the open design */
+    card.innerHTML=`<div class="ch"><b>🏢 ${esc(a.name)}</b><small>${n} ${n>=3&&n<=10?"أماكن":"مكان"}${a.t>1?" • "+new Date(a.t).toLocaleDateString("ar-EG"):""}</small></div>`;
+    const act=document.createElement("div"); act.className="act"; const mk=(t,fn,main)=>{ const b=document.createElement("button"); b.className="btn"+(main?" main":""); b.textContent=t; b.onclick=fn; act.appendChild(b); return b; };
+    mk("افتح",()=>{ closeSheet(); if(typeof closeHome==="function") closeHome(); openAptId(a.id); },true);
+    mk("✏️ اسم",()=>{ const inp=document.createElement("input"); inp.value=a.name; inp.className="txt"; inp.setAttribute("aria-label","اسم الشقة"); const ok=document.createElement("button"); ok.className="btn main"; ok.textContent="حفظ";
+      act.innerHTML=""; act.append(inp,ok); inp.focus(); ok.onclick=async()=>{ await renameApt(a.id,inp.value); redo(); }; });
+    mk("📄 نسخة",async()=>{ await copyApt(a.id); hint("✓ اتعملت نسخة من الشقة بأوضها"); redo(); });
+    mk("🗑",()=>{ act.innerHTML=""; const q=document.createElement("div"); q.className="note"; q.style.flex="1 1 100%"; q.textContent=`تمسح «${a.name}»؟ لو مسحت الأوض كمان مش هترجع.`;
+      const b1=document.createElement("button"); b1.className="btn main"; b1.style.cssText="background:var(--clay);border-color:var(--clay)"; b1.textContent="امسح الشقة وأوضها";
+      const b2=document.createElement("button"); b2.className="btn"; b2.textContent="امسح الشقة بس"; const c=document.createElement("button"); c.className="btn"; c.textContent="لأ";
+      b1.onclick=async()=>{ await deleteApt(a.id,true); redo(); }; b2.onclick=async()=>{ await deleteApt(a.id,false); redo(); }; c.onclick=redo; act.append(q,b1,b2,c); });
+    card.appendChild(act); el.appendChild(card); }
+  return list.length; }
 let aptBig=false;
-function renderApt(){
+function renderApt(){ aptTitle();
   const body=document.getElementById("aptBody"), old=body.querySelector(".aptctl"), keep=old?old.scrollTop:0; body.innerHTML="";
   const withPlan=["المسقط","السباكة والكهربا","المناسيب","الإجمالي"].includes(aptTab), ov=document.getElementById("apt"); if(!withPlan) aptBig=false; ov.classList.toggle("split",withPlan); ov.classList.toggle("big",aptBig);
   const tabs=document.createElement("div"); tabs.className="tabs apttabs"; tabs.style.cssText="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none";
@@ -1766,19 +1843,29 @@ const APT_TPLS=[
   {n:"أوضة وصالة",sub:"نوم وصالة ومطبخ وحمام وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"]],bot:[["r_living","صالة"],["r_master","أوضة نوم"]]},
   {n:"أوضتين وصالة",sub:"نوم رئيسية وأطفال وصالة ومطبخ وحمام وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"]]},
   {n:"3 أوض وصالة",sub:"3 نوم وصالة ومطبخ وحمامين وبلكونة",balc:true,top:[["k","مطبخ"],["b_std","حمام"],["r_kids","أوضة أطفال"],["b_std","حمام ضيوف"]],bot:[["r_living","صالة"],["r_master","أوضة نوم رئيسية"],["r_kids","أوضة نوم 3"]]}];
+// a window that becomes the balcony door: slide the door off big furniture, then move loose pieces (armchairs, side tables) out of its way
+function clearDoorway(c,dr){ const W=c.roomW-6, big=[], loose=["arm","side","plant","lamp","coffee"], zone=p=>[p,p+dr.w,0,62]; /* the apartment check looks 55 cm in front of a door */
+  const rect=it=>{ const w=it.w,d=it.d,o=it.off||0,p=it.pos||0; if(it.snap==="W") return [p,p+w,o,o+d]; if(it.snap==="D") return [p,p+w,c.roomL-6-o-d,c.roomL-6-o]; if(it.snap==="L") return [o,o+d,p,p+w]; if(it.snap==="RT") return [W-o-d,W-o,p,p+w];
+    const r=((it.rot||0)%180)?[d,w]:[w,d]; return [it.x-r[0]/2,it.x+r[0]/2,it.z-r[1]/2,it.z+r[1]/2]; };
+  const hit=(r,q)=>Math.min(r[1],q[1])-Math.max(r[0],q[0])>1&&Math.min(r[3],q[3])-Math.max(r[2],q[2])>1, solid=it=>FURN[it.type]&&!FURN[it.type].wall&&it.type!=="rug";
+  for(const it of c.furn||[]) if(it.type==="rug"||(solid(it)&&(it.snap||!loose.includes(it.type)))) big.push(rect(it));
+  const c0=dr.pos, ps=[c0]; for(let k=10;k<W;k+=10) ps.push(c0+k,c0-k); dr.pos=ps.find(p=>p>=10&&p+dr.w<=W-4&&!big.some(r=>hit(r,zone(p))))??c0;
+  const z=zone(dr.pos); for(const it of [...(c.furn||[])]){ if(!solid(it)||it.snap||!loose.includes(it.type)) continue; const r=rect(it); if(!hit(r,z)) continue;
+    const hw=(r[1]-r[0])/2, oth=c.furn.filter(o=>o!==it&&solid(o)).map(rect), xs=[]; for(let x=hw+5;x<=W-hw-5;x+=5) xs.push(x); xs.sort((a,b)=>Math.abs(a-it.x)-Math.abs(b-it.x));
+    const nx=xs.find(x=>{ const q=[x-hw,x+hw,r[2],r[3]]; return !hit(q,z)&&!oth.some(o=>hit(o,q)); }); if(nx!=null) it.x=nx; else c.furn=c.furn.filter(o=>o!==it); } }
 async function applyAptTpl(T){
   if(APT.rooms.length>1&&!confirm("ترتيب الشقة الحالي هيتشال ويتعمل ترتيب جديد من القالب. الأوض القديمة هتفضل محفوظة في مشاريعك. نكمّل؟")) return;
   await saveNow(); document.getElementById("aptBody").innerHTML="<div class='note'>بجهّز الشقة…</div>";
-  let reuse=true; const kindOf=key=>key==="k"?"kitchen":BTEMPLATES[key]?"bath":"room";
+  let reuse=!T.fresh&&!aptOtherRooms().has(PROJ.id); const kindOf=key=>key==="k"?"kitchen":BTEMPLATES[key]?"bath":"room";
   const mk=async(key,nm,c)=>{ // the room open now takes the first slot of its kind
     if(reuse&&!c&&cfg.template!=="r_balcony"&&cfg.roomType===kindOf(key)&&(key==="k"||cfg.roomType==="bath"||(RTEMPLATES[key]&&RTEMPLATES[key].rtype===cfg.rtype))){ reuse=false; return PROJ.id; }
     const id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); await stSet("kproj:"+id,{name:nm,cfg:c||newCfg(key==="k"?"L":key)}); projIndex.push({id,name:nm,t:Date.now()}); return id; };
   const hc=newCfg("h_hall"); hc.roomW=600; hc.roomL=140; hc.feats=[{id:"en",type:"door",wall:"RT",pos:25,w:90,y:0,h:210,d:0}];
   const hall=await mk("h_hall","طرقة",hc), tops=[], bots=[];
   for(const [k,nm] of T.top) tops.push({id:await mk(k,nm),x:0,z:0,rot:0,rel:{to:hall,side:"top",off:0}});
-  const lc=newCfg("r_living"), ww=lc.feats.find(f=>f.id==="win"); if(T.balc&&ww) Object.assign(ww,{type:"door",w:120,pos:Math.round((lc.roomW-120)/2),y:0,h:220,d:0});
-  for(const [k,nm] of T.bot) bots.push({id:await mk(k,nm,T.balc&&k==="r_living"?lc:null),x:0,z:0,rot:180,rel:{to:hall,side:"bottom",off:0}});
-  const extra=[]; if(T.balc){ const bc=newCfg("r_balcony"); bc.roomW=lc.roomW; applyTemplate(bc,"r_balcony",true); bc.feats=bc.feats.filter(f=>f.type!=="door"); /* its door is the living room's */
+  const lk=(T.bot[0]||["r_living"])[0], lc=newCfg(lk), ww=lc.feats.find(f=>f.id==="win"); if(T.balc&&ww){ Object.assign(ww,{type:"door",wall:"W",w:120,pos:Math.round((lc.roomW-120)/2),y:0,h:220,d:0}); clearDoorway(lc,ww); }
+  for(const [i,[k,nm]] of T.bot.entries()) bots.push({id:await mk(k,nm,T.balc&&i===0?lc:null),x:0,z:0,rot:180,rel:{to:hall,side:"bottom",off:0}});
+  const extra=[]; if(T.balc){ const bc=newCfg("r_balcony"); bc.roomW=lc.roomW; applyTemplate(bc,"r_balcony",true); bc.feats=bc.feats.filter(f=>f.type!=="door"); /* its door is the living room's */ for(const f of bc.furn) if(!f.snap&&["arm","side"].includes(f.type)) f.z=Math.round(f.d/2)+8; /* seats by the railing, clear of the door */
     extra.push({id:await mk("r_balcony","بلكونة",bc),x:0,z:0,rot:180,rel:{to:bots[0].id,side:"bottom",off:0}}); }
   await stSet("kproj:index",projIndex);
   APT.rooms=[{id:hall,x:0,z:0,rot:0,rel:null},...tops,...bots,...extra]; APT.doors=[]; for(const k of ["riser","riser2","water","panel","heaterAt"]) APT[k]=null;
@@ -1793,13 +1880,15 @@ let aptTplOpen=false;
 function arrangeUI(box){
   const rs=APT.rooms.filter(r=>SNAP[r.id]); if(aptSel&&!rs.some(r=>r.id===aptSel)) aptSel=null;
   const head=t=>{ const h=document.createElement("div"); h.className="head"; h.textContent=t; box.appendChild(h); }, note=t=>{ const n=document.createElement("div"); n.className="note"; n.textContent=t; box.appendChild(n); return n; };
+  const nm=document.createElement("input"); nm.className="txt"; nm.value=aptNameOf(APT); nm.setAttribute("aria-label","اسم الشقة"); nm.placeholder="اسم الشقة";
+  nm.onchange=async()=>{ const v=cleanName(nm.value); if(!v){ nm.value=aptNameOf(APT); return; } APT.name=v; aptTitle(); await saveApt(); }; fieldRow(box,"اسم الشقة",nm);
   const tplGrid=()=>{ const g=document.createElement("div"); g.className="tplgrid"; for(const T of APT_TPLS){ const b=document.createElement("button"); b.className="btn tpl"; b.innerHTML=`<b>${T.n}</b><small style="color:var(--muted)">${T.sub}</small>`; b.onclick=()=>applyAptTpl(T); g.appendChild(b); } box.appendChild(g); };
   fieldRow(box,"المقاسات",choice([["net","صافي بعد التشطيب"],["brick","على الطوب"]],APT.dimMode==="brick"?"brick":"net",async v=>{ APT.dimMode=v; await saveApt(); renderApt(); },"المقاسات"));
   if(rs.length<=1){ head("🏢 ابدأ بقالب شقة"); note("اختار شكل قريب من شقتك: طرقة في النص والأوض حواليها بأبوابها. بعد كده عدّل مقاس كل أوضة ومكانها."); tplGrid(); head("أو ابني الشقة أوضة أوضة"); }
   else { note("دوس على أوضة في المسقط عشان تعدّلها، أو اسحبها بصباعك. الخط الأخضر المتقطع = حيطة مشتركة ممكن تحط فيها باب، والبرتقاني = باب لبرة.");
     const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=roomIco(sn)+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
   const ar=document.createElement("div"); ar.className="addrow"; const ps=document.createElement("select");
-  const free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
+  const oth=aptOtherRooms(), free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)&&!oth.has(p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
   ps.innerHTML=free.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option><option value="__balc">🌿 بلكونة جديدة</option>`;
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
   ab.onclick=async()=>{ let id=ps.value; if(id.startsWith("__")){ const MAPK={__hall:["h_hall","طرقة"],__bath:["b_std","حمام"],__living:["r_living","صالة"],__master:["r_master","أوضة نوم"],__kids:["r_kids","أوضة أطفال"],__balc:["r_balcony","بلكونة"]}[id]; const key=MAPK[0], nm=MAPK[1]+(APT.rooms.length?" "+(APT.rooms.length+1):""); id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:nm,cfg:newCfg(key)}); projIndex.push({id,name:nm,t:Date.now()}); await stSet("kproj:index",projIndex); }
@@ -1993,7 +2082,15 @@ const FURN={
   clothes:{n:"منشر غسيل",cat:"تكييف وديكور",w:120,d:50,h:110,lim:[60,200,30,80]},
   rug:{n:"سجادة",cat:"تكييف وديكور",w:200,d:300,h:1,lim:[80,400,60,500]},
   lamp:{n:"لمبادير",cat:"تكييف وديكور",w:40,d:40,h:165,lim:[30,50,30,50]},
-  plant:{n:"زرعة",cat:"تكييف وديكور",w:45,d:45,h:120,lim:[25,70,25,70]}
+  plant:{n:"زرعة",cat:"تكييف وديكور",w:45,d:45,h:120,lim:[25,70,25,70]},
+  counter:{n:"كاونتر (كاشير / بار)",cat:"محلات ومكاتب",w:160,d:60,h:105,lim:[80,500,40,90],col:"wood",var:[["cash","كاشير"],["bar","بار بكراسي عالية"]]},
+  wallshelf:{n:"أرفف عرض على الحيطة",cat:"محلات ومكاتب",w:200,d:45,h:220,lim:[60,800,25,60],col:"white",tall:true},
+  gondola:{n:"استاند أرفف في النص (بوشين)",cat:"محلات ومكاتب",w:240,d:80,h:160,lim:[60,600,40,120],col:"white"},
+  vitrine:{n:"فاترينة إزاز",cat:"محلات ومكاتب",w:120,d:55,h:100,lim:[60,300,40,80],col:"wood"},
+  rack:{n:"استاند هدوم (شماعة)",cat:"محلات ومكاتب",w:120,d:50,h:160,lim:[60,240,35,70]},
+  fitting:{n:"كابينة قياس",cat:"محلات ومكاتب",w:110,d:110,h:220,lim:[80,200,80,200],col:"white",tall:true},
+  fridge:{n:"تلاجة عرض (مشروبات)",cat:"محلات ومكاتب",w:70,d:70,h:200,lim:[55,200,55,85],tall:true,var:[["1","باب واحد"],["2","بابين"]]},
+  cafe:{n:"ترابيزة كافيه وكراسي",cat:"محلات ومكاتب",w:70,d:70,h:75,lim:[50,120,50,120],col:"wood",var:[["2","كرسيين"],["4","4 كراسي"]]}
 };
 const RTEMPLATES={
   r_living:{name:"صالة",dims:[400,500],rtype:"living",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"win",type:"window",wall:"W",pos:Math.round((W-150)/2),w:150,y:90,h:140},{id:"door",type:"opening",wall:"D",pos:30,w:100,y:0,h:220,d:0}],
@@ -2011,8 +2108,32 @@ const RTEMPLATES={
   r_balcony:{name:"بلكونة",dims:[350,160],rtype:"living",ceil:"flat",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"rail",type:"railing",wall:"W",pos:0,w:W,h:110},{id:"door",type:"door",wall:"D",pos:Math.round((W-90)/2),w:90,y:0,h:220,d:0}],
     furn:[{id:"f1",type:"arm",x:55,z:80,rot:180,w:85,d:85},{id:"f2",type:"side",x:125,z:80,rot:0,w:50,d:50},{id:"f3",type:"arm",x:195,z:80,rot:180,w:85,d:85},{id:"f4",type:"plant",x:w-25,z:30,rot:0,w:45,d:45},{id:"f5",type:"acout",snap:"RT",pos:60,w:80,d:30}]}; }},
   r_guest:{name:"أوضة ضيوف / مكتب",dims:[300,350],rtype:"bed",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"win",type:"window",wall:"W",pos:Math.round((W-100)/2),w:100,y:100,h:130},{id:"door",type:"door",wall:"D",pos:W-100,w:80,y:0,h:210,d:80}],
-    furn:[{id:"f1",type:"bed1",x:w-60,z:160,rot:0,w:120,d:205},{id:"f2",type:"desk",snap:"W",pos:50,w:120,d:55},{id:"f3",type:"shelf",snap:"L",pos:125,w:80,d:35},{id:"f4",type:"wardrobe",var:"hinged",snap:"D",pos:20,w:120,d:60},{id:"f5",type:"ac",var:"1.5",snap:"L",pos:40,w:90,d:25,y:220}]}; }}
+    furn:[{id:"f1",type:"bed1",x:w-60,z:160,rot:0,w:120,d:205},{id:"f2",type:"desk",snap:"W",pos:50,w:120,d:55},{id:"f3",type:"shelf",snap:"L",pos:125,w:80,d:35},{id:"f4",type:"wardrobe",var:"hinged",snap:"D",pos:20,w:120,d:60},{id:"f5",type:"ac",var:"1.5",snap:"L",pos:40,w:90,d:25,y:220}]}; }},
+  // shops and offices: roomType "room" with rtype "shop"; the shop front is a wide opening in the front wall (D)
+  s_market:{name:"سوبر ماركت / بقالة",dims:[600,800],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-280)/2),w:280,y:0,h:240,d:0}],
+    furn:[{id:"f1",type:"wallshelf",snap:"W",pos:0,w:Math.min(800,w),d:45},{id:"f2",type:"wallshelf",snap:"L",pos:45,w:Math.max(60,l-345),d:45},{id:"f3",type:"wallshelf",snap:"RT",pos:45,w:Math.max(60,l-395),d:45},
+      {id:"f4",type:"fridge",var:"2",snap:"RT",pos:Math.max(0,l-335),w:140,d:70},{id:"f5",type:"counter",var:"cash",x:140,z:l-185,rot:90,w:160,d:60},
+      {id:"f6",type:"gondola",x:Math.round(w/3),z:Math.round((l-150)/2),rot:90,w:300,d:80},{id:"f7",type:"gondola",x:Math.round(w*2/3),z:Math.round((l-150)/2),rot:90,w:300,d:80},{id:"f8",type:"ac",var:"3",snap:"L",pos:Math.max(0,l-240),w:100,d:25,y:230}]}; }},
+  s_clothes:{name:"محل هدوم",dims:[500,700],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-200)/2),w:200,y:0,h:240,d:0},{id:"win1",type:"window",wall:"D",pos:20,w:Math.max(60,Math.round((W-200)/2)-40),y:30,h:190},{id:"win2",type:"window",wall:"D",pos:Math.round((W+200)/2)+20,w:Math.max(60,Math.round((W-200)/2)-40),y:30,h:190}],
+    furn:[{id:"f1",type:"wallshelf",snap:"W",pos:0,w:Math.min(800,w),d:45},{id:"f2",type:"rack",snap:"L",pos:110,w:150,d:50,off:10},{id:"f3",type:"rack",snap:"L",pos:280,w:150,d:50,off:10},
+      {id:"f4",type:"fitting",snap:"RT",pos:110,w:110,d:110},{id:"f5",type:"fitting",snap:"RT",pos:225,w:110,d:110},{id:"f6",type:"console",snap:"RT",pos:345,w:100,d:40},
+      {id:"f7",type:"counter",var:"cash",x:w-100,z:l-180,rot:270,w:160,d:60},{id:"f8",type:"rack",x:Math.round(w/2)-30,z:Math.round(l/2)-20,rot:0,w:120,d:50},{id:"f9",type:"rack",x:Math.round(w/2)-30,z:Math.round(l/2)+130,rot:0,w:120,d:50},
+      {id:"f10",type:"ac",var:"2.25",snap:"L",pos:Math.max(0,l-200),w:90,d:25,y:230}]}; }},
+  s_cafe:{name:"كافيه",dims:[500,700],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-180)/2),w:180,y:0,h:240,d:0},{id:"win1",type:"window",wall:"D",pos:20,w:Math.max(60,Math.round((W-180)/2)-40),y:60,h:160},{id:"win2",type:"window",wall:"D",pos:Math.round((W+180)/2)+20,w:Math.max(60,Math.round((W-180)/2)-40),y:60,h:160}],
+    furn:[{id:"f1",type:"counter",var:"bar",x:60+Math.round(Math.min(280,w-160)/2),z:120,rot:0,w:Math.min(280,w-160),d:60},{id:"f2",type:"wallshelf",snap:"W",pos:60,w:Math.min(280,w-160),d:30},{id:"f3",type:"fridge",var:"1",snap:"W",pos:Math.min(w-70,Math.min(280,w-160)+80),w:70,d:70},
+      {id:"f4",type:"cafe",var:"4",x:110,z:Math.round(l*0.48),rot:0,w:70,d:70},{id:"f5",type:"cafe",var:"4",x:w-160,z:Math.round(l*0.48),rot:0,w:70,d:70},
+      {id:"f6",type:"cafe",var:"2",x:110,z:Math.round(l*0.75),rot:0,w:70,d:70},{id:"f7",type:"cafe",var:"2",x:w-160,z:Math.round(l*0.75),rot:0,w:70,d:70},
+      {id:"f8",type:"plant",x:w-30,z:l-60,rot:0,w:45,d:45},{id:"f9",type:"ac",var:"3",snap:"L",pos:Math.round(l/2)-50,w:100,d:25,y:230}]}; }},
+  s_pharm:{name:"صيدلية",dims:[400,550],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"door",type:"opening",wall:"D",pos:Math.round((W-200)/2),w:200,y:0,h:240,d:0}],
+    furn:[{id:"f1",type:"wallshelf",snap:"W",pos:0,w:Math.min(800,w),d:40},{id:"f2",type:"wallshelf",snap:"L",pos:40,w:200,d:40},{id:"f3",type:"wallshelf",snap:"RT",pos:40,w:200,d:40},
+      {id:"f4",type:"counter",var:"cash",x:Math.round(w/2),z:350,rot:0,w:Math.min(300,w-80),d:60},{id:"f5",type:"fridge",var:"1",snap:"RT",pos:250,w:60,d:60},
+      {id:"f6",type:"vitrine",snap:"L",pos:Math.min(l-150,400),w:120,d:50},{id:"f7",type:"ac",var:"2.25",snap:"L",pos:260,w:90,d:25,y:230}]}; }},
+  s_office:{name:"مكتب / عيادة",dims:[400,450],rtype:"shop",make:(W,L)=>{ const w=W-6,l=L-6; return {feats:[{id:"win",type:"window",wall:"W",pos:Math.round((W-140)/2),w:140,y:100,h:130},{id:"door",type:"door",wall:"D",pos:W-110,w:90,y:0,h:210,d:90}],
+    furn:[{id:"f1",type:"desk",x:Math.round(w/2),z:140,rot:180,w:140,d:70},{id:"f2",type:"arm",x:Math.round(w/2)-47,z:255,rot:180,w:85,d:85},{id:"f3",type:"arm",x:Math.round(w/2)+47,z:255,rot:180,w:85,d:85},
+      {id:"f4",type:"shelf",snap:"L",pos:40,w:90,d:35},{id:"f5",type:"shelf",snap:"L",pos:140,w:90,d:35},{id:"f6",type:"sofa2",snap:"RT",pos:90,w:160,d:90},
+      {id:"f7",type:"ac",var:"2.25",snap:"W",pos:20,w:90,d:25,y:220},{id:"f8",type:"plant",x:30,z:l-40,rot:0,w:45,d:45}]}; }}
 };
+const isShop=c=>!!c&&c.roomType==="room"&&c.rtype==="shop";
 let ROOMQ=null;
 const SECK=[["doors","ضلف"],["drawers","أدراج تحت + ضلف"],["hanging","علّاقة مفتوحة"],["open","أرفف مفتوحة"],["mirror","ضلفة مراية"],["gap","فراغ فاضي"],["desk","مكتب في الفراغ"],["tv","مكان تليفزيون"],["dresser","تسريحة في الفراغ"]];
 function effDims(it,T){ T=T||FURN[it.type]||{h:100}; let w=it.w; if(it.fillW==="1"&&it.snap&&W4.includes(it.snap)) w=Math.max(20,Math.round(wlen(it.snap)*100)-(it.pos||0)-(it.endGap||0));
@@ -2028,13 +2149,14 @@ function furnRect(it){ // world rect (m) of a furniture item using the current r
 }
 function buildRoom(warn){
   const q={}; const fab=M(cfg.cSofa||"#8a9aa8",{roughness:0.9}), wood=M(cfg.cWood,{roughness:0.55}), white=M("#f4f4f2",{roughness:0.4}), dark=MAT.dark, metal=MAT.steel;
-  const items=cfg.furn||[], recs=[];
+  const items=cfg.furn||[], recs=[], PM=["#c0392b","#2d5f7a","#e0b400","#557a45","#e67e22","#7d4e9e","#e8e4da"].map(c=>M(c,{roughness:0.8}));
   const order=[...items].sort((a,b)=>(a.type==="rug"?-1:0)-(b.type==="rug"?-1:0));
   for(const it of order){ const T=FURN[it.type]; if(!T) continue; const E=effDims(it,T), R=furnRect(it), rot=R.rot, w=(rot%180===0?R.x1-R.x0:R.z1-R.z0), d=it.d/100, cx=(R.x0+R.x1)/2, cz=(R.z0+R.z1)/2;
     const yo=T.wall?0:(it.y||0)/100, y0=T.wall?(it.y||T.y)/100:yo, H0=E.h/100, mcol=T.col==="fab"?fab:T.col==="white"?white:wood;
     const XZ=(lx,lz)=>rot===0?[cx+lx,cz+lz]:rot===90?[cx+lz,cz-lx]:rot===180?[cx-lx,cz-lz]:[cx-lz,cz+lx];
     const B=(lx0,lx1,lz0,lz1,ya,yb,mt)=>{ const [ax,az]=XZ(lx0,lz0), [bx,bz]=XZ(lx1,lz1); return box(Math.min(ax,bx),ya+yo,Math.min(az,bz),Math.max(ax,bx),yb+yo,Math.max(az,bz),mt); };
     const C=(lx,lz,y,r,h,mt)=>{ const [x,z]=XZ(lx,lz); return cyl(r,h,x,y+yo,z,mt); };
+    const prods=(x0,x1,z0,z1,y,hmax)=>{ let i=0; for(let x=x0;x<x1-0.06;x+=0.13,i++){ const hh=hmax*(0.55+((i*37)%5)/10); B(x,Math.min(x1,x+0.11),z0,z1,y,y+hh,PM[(i*3+Math.round(y*10))%PM.length]); } }; /* goods on a shelf */
     let modParts=null;
     const hw=w/2, hd=d/2; // local: x from -hw..hw along width, z from -hd (back) .. +hd (front)
     let near=null, nd=1e9; for(const wl of W4){ const dd=wl==="L"?R.x0:wl==="RT"?RW-R.x1:wl==="W"?R.z0:RL-R.z1; if(dd<nd){ nd=dd; near=wl; } }
@@ -2106,6 +2228,27 @@ function buildRoom(warn){
       case "rug": { B(-hw,hw,-hd,hd,0.001,0.012,M(cfg.cRug||"#b98d6a",{roughness:1})); B(-hw+0.12,hw-0.12,-hd+0.12,hd-0.12,0.012,0.014,M(shade(cfg.cRug||"#b98d6a",1.2),{roughness:1})); u.y1=0.012; break; }
       case "lamp": { C(0,0,0.02,0.16,0.03,dark); C(0,0,0.82,0.015,1.6,dark); C(0,0,1.55,0.2,0.28,M("#f3e7c9")); break; }
       case "plant": { C(0,0,0.18,0.16,0.36,M("#b5623f")); const lf=new THREE.Mesh(new THREE.SphereGeometry(Math.min(hw,hd)+0.05,14,10),M("#4f7a45",{roughness:0.9})); lf.position.set(cx,0.36+Math.min(hw,hd)+0.2,cz); lf.userData.uid=u.id; root.add(lf); break; }
+      // ---- shops and offices ----
+      case "counter": { B(-hw,hw,-hd,hd-0.03,0.08,H0-0.04,mcol); B(-hw+0.03,hw-0.03,-hd,hd-0.06,0,0.08,dark); B(-hw-0.01,hw+0.01,-hd,hd+0.02,H0-0.04,H0,MAT.counter);
+        if(it.var==="bar"){ const n=Math.max(1,Math.floor(w/0.55)); for(let i=0;i<n;i++){ const lx=-hw+(i+0.5)*w/n; C(lx,hd+0.35,0.02,0.18,0.04,dark); C(lx,hd+0.35,0.39,0.025,0.72,metal); C(lx,hd+0.35,0.77,0.18,0.05,fab); } }
+        else { B(-0.3,0.0,-hd+0.08,-hd+0.33,H0,H0+0.07,dark); B(-0.26,-0.04,-hd+0.1,-hd+0.12,H0+0.07,H0+0.3,M("#15171a",{roughness:0.2})); } break; }
+      case "wallshelf": { B(-hw,-hw+0.02,-hd,hd,0,H0,mcol); B(hw-0.02,hw,-hd,hd,0,H0,mcol); B(-hw,hw,-hd,-hd+0.015,0,H0,mcol); B(-hw,hw,-hd,hd,0,0.1,dark);
+        for(let y=0.1;y<H0-0.1;y+=0.4){ B(-hw,hw,-hd,hd,y,y+0.02,mcol); if(y+0.42<H0) prods(-hw+0.02,hw-0.02,-hd+0.03,hd-0.04,y+0.02,0.3); } B(-hw,hw,-hd,hd,H0-0.02,H0,mcol); break; }
+      case "gondola": { B(-hw,hw,-hd+0.05,hd-0.05,0,0.1,dark); B(-hw,hw,-0.015,0.015,0.1,H0,mcol); B(-hw,-hw+0.02,-hd,hd,0.1,H0-0.02,mcol); B(hw-0.02,hw,-hd,hd,0.1,H0-0.02,mcol);
+        for(let y=0.1;y<H0-0.1;y+=0.38){ B(-hw,hw,-hd,hd,y,y+0.02,mcol); prods(-hw+0.02,hw-0.02,-hd+0.02,-0.03,y+0.02,0.28); prods(-hw+0.02,hw-0.02,0.03,hd-0.02,y+0.02,0.28); } B(-hw,hw,-0.03,0.03,H0-0.02,H0,mcol); break; }
+      case "vitrine": { B(-hw,hw,-hd,hd,0,0.35,mcol); B(-hw+0.01,hw-0.01,-hd+0.01,hd-0.01,0.35,H0-0.02,MAT.glass); B(-hw,hw,-hd,hd,H0-0.02,H0,metal); B(-hw+0.02,hw-0.02,-hd+0.02,hd-0.02,0.35+(H0-0.37)/2,0.36+(H0-0.37)/2,MAT.glass);
+        prods(-hw+0.05,hw-0.05,-0.1,0.1,0.35,0.12); prods(-hw+0.05,hw-0.05,-0.1,0.1,0.36+(H0-0.37)/2,0.1); break; }
+      case "rack": { for(const lx of [-hw,hw-0.03]){ B(lx,lx+0.03,-0.015,0.015,0,H0,metal); B(lx-0.02,lx+0.05,-hd,hd,0,0.03,metal); } B(-hw,hw,-0.012,0.012,H0-0.03,H0,metal);
+        let i=0; for(let x=-hw+0.06;x<hw-0.07;x+=0.07,i++) B(x,x+0.035,-hd*0.8,hd*0.8,Math.max(0.15,H0-0.95),H0-0.06,PM[(i*3)%PM.length]); break; }
+      case "fitting": { B(-hw,hw,-hd,-hd+0.03,0,H0,mcol); B(-hw,-hw+0.03,-hd,hd,0,H0,mcol); B(hw-0.03,hw,-hd,hd,0,H0,mcol); B(-hw,hw,hd-0.03,hd,H0-0.04,H0,metal);
+        B(-hw+0.03,-hw+0.03+Math.max(0.2,w*0.35),hd-0.05,hd-0.02,0.15,H0-0.05,M("#8a5a44",{roughness:1})); B(-0.25,0.25,-hd+0.03,-hd+0.04,0.4,1.9,M("#dde6eb",{metalness:0.15,roughness:0.05})); B(hw-0.25,hw-0.03,-hd+0.03,-hd+0.3,0.45,0.49,mcol); break; }
+      case "fridge": { const sh=M("#e9ecef",{roughness:0.4}); B(-hw,hw,-hd,-hd+0.04,0,H0,sh); B(-hw,-hw+0.04,-hd,hd,0,H0,sh); B(hw-0.04,hw,-hd,hd,0,H0,sh); B(-hw,hw,-hd,hd,0,0.15,dark); B(-hw,hw,-hd,hd,H0-0.2,H0,M("#b23a2e",{roughness:0.5}));
+        B(-hw+0.04,hw-0.04,-hd+0.04,-hd+0.05,0.15,H0-0.2,MAT.led); for(let y=0.15;y<H0-0.35;y+=0.34){ B(-hw+0.04,hw-0.04,-hd+0.05,hd-0.04,y,y+0.01,MAT.glass); prods(-hw+0.06,hw-0.06,-hd+0.08,hd-0.1,y+0.01,0.24); }
+        B(-hw+0.04,hw-0.04,hd-0.02,hd,0.15,H0-0.2,MAT.glass); if(it.var==="2") B(-0.01,0.01,hd-0.02,hd+0.005,0.15,H0-0.2,dark); B(hw-0.1,hw-0.08,hd,hd+0.03,0.8,1.3,metal); if(it.var==="2") B(-0.1,-0.08,hd,hd+0.03,0.8,1.3,metal); break; }
+      case "cafe": { const r=Math.min(hw,hd); C(0,0,H0-0.02,r,0.04,mcol); C(0,0,(H0-0.04)/2,0.035,H0-0.04,dark); C(0,0,0.015,Math.min(0.25,r*0.7),0.03,dark);
+        const chair=(lx,lz,dx,dz)=>{ B(lx-0.2,lx+0.2,lz-0.2,lz+0.2,0.44,0.48,fab); if(dz) B(lx-0.2,lx+0.2,lz+dz*0.18-0.02,lz+dz*0.18+0.02,0.48,0.9,mcol); else B(lx+dx*0.18-0.02,lx+dx*0.18+0.02,lz-0.2,lz+0.2,0.48,0.9,mcol);
+          for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1]]) B(lx+a*0.17-0.015,lx+a*0.17+0.015,lz+b*0.17-0.015,lz+b*0.17+0.015,0,0.44,dark); };
+        chair(0,-hd-0.22,0,-1); chair(0,hd+0.22,0,1); if(it.var==="4"){ chair(-hw-0.22,0,-1,0); chair(hw+0.22,0,1,0); } break; }
     }
     curUid=null; curSide=null; curWall=null;
     let parts=modParts?modParts.filter(p=>p.y1>0.3||true):[R]; if(it.type==="corner"){ const rr=(lx0,lx1,lz0,lz1)=>{ const [ax,az]=XZ(lx0,lz0),[bx,bz]=XZ(lx1,lz1); return {x0:Math.min(ax,bx),x1:Math.max(ax,bx),z0:Math.min(az,bz),z1:Math.max(az,bz)}; }; parts=[rr(-hw,hw,-hd,-hd+0.9),rr(-hw,-hw+0.9,-hd+0.9,hd)]; }
@@ -2130,6 +2273,11 @@ function buildRoom(warn){
     if(t==="bed1"&&!sides(0.5).some(freeAt)) warn.push("السرير الفردي محتاج جنب واحد فاضي 50 سم على الأقل");
     if(t==="dining"){ const zz={x0:R.x0-0.75,x1:R.x1+0.75,z0:R.z0-0.75,z1:R.z1+0.75}; if(zz.x0<0||zz.z0<0||zz.x1>RW||zz.z1>RL||blockers(r).some(b=>inter({parts:[zz]},b))) warn.push("السفرة محتاجة 75 سم حواليها عشان الكراسي تتسحب"); }
     if((t==="dresser"||t==="desk")&&!freeAt(front(0.6))) warn.push(`مفيش مكان للكرسي قدام ${r.T.n}`);
+    if(t==="fitting"&&!freeAt(front(0.8))) warn.push("كابينة القياس محتاجة 80 سم فاضية قدامها");
+    if((t==="wallshelf"||t==="fridge")&&!freeAt((()=>{ const z=front(0.6), sw=R.rot%180===0?R.x1-R.x0:R.z1-R.z0, s=t==="fridge"?0:Math.min(0.5,sw*0.3); if(R.rot%180===0){ z.x0+=s; z.x1-=s; } else { z.z0+=s; z.z1-=s; } return z; })())) /* shelves meeting in a corner are fine */ warn.push(`مفيش 60 سم فاضية قدام ${r.T.n} عشان حد يقف ويختار`);
+    if(t==="gondola"){ const rot=R.rot, bk=rot===0?{x0:R.x0,x1:R.x1,z0:R.z0-0.8,z1:R.z0}:rot===180?{x0:R.x0,x1:R.x1,z0:R.z1,z1:R.z1+0.8}:rot===90?{x0:R.x0-0.8,x1:R.x0,z0:R.z0,z1:R.z1}:{x0:R.x1,x1:R.x1+0.8,z0:R.z0,z1:R.z1};
+      if(!freeAt(front(0.8))||!freeAt(bk)) warn.push("الاستاند اللي في النص محتاج ممر 80 سم على الناحيتين"); }
+    if(t==="cafe"){ const m=0.6, zz=r.it.var==="4"?{x0:R.x0-m,x1:R.x1+m,z0:R.z0-m,z1:R.z1+m}:(R.rot%180===0?{x0:R.x0,x1:R.x1,z0:R.z0-m,z1:R.z1+m}:{x0:R.x0-m,x1:R.x1+m,z0:R.z0,z1:R.z1}); if(zz.x0<0||zz.z0<0||zz.x1>RW||zz.z1>RL||blockers(r).some(b=>inter({parts:[zz]},b))) warn.push("ترابيزة الكافيه محتاجة 60 سم حواليها للكراسي"); }
   }
   const tv=recs.find(r=>r.it.type==="tv"), seat=recs.find(r=>["sofa3","sofa2","corner"].includes(r.it.type));
   if(tv&&seat){ const a=[(tv.R.x0+tv.R.x1)/2,(tv.R.z0+tv.R.z1)/2], b=[(seat.R.x0+seat.R.x1)/2,(seat.R.z0+seat.R.z1)/2], dist=Math.hypot(a[0]-b[0],a[1]-b[1]), diag=(+(tv.it.var||55))*0.0254;
@@ -2146,6 +2294,9 @@ function buildRoom(warn){
     if(t==="desk"){ addPt("socket",wl,a,0.9,"برايز المكتب + إنترنت"); addPt("data",wl,a+0.2,0.9,"نقطة إنترنت"); }
     if(t==="dresser"||t==="console") addPt("socket",wl,a+(R.x1-R.x0+R.z1-R.z0)/4,1.0,"بريزة التسريحة (سشوار)");
     if(t==="lamp") addPt("socket",wl,a,0.3,"بريزة اللمبادير");
+    if(t==="counter"){ if(r.it.var==="bar") addPt("socket",wl,a,1.15,"برايز البار (ماكينة القهوة على خط لوحده)"); else { addPt("socket",wl,a,0.5,"برايز الكاشير"); addPt("data",wl,a+0.2,0.5,"نقطة إنترنت لماكينة الكاشير والفيزا"); } }
+    if(t==="fridge") addPt("socket",wl,a,Math.min(H-0.1,(r.it.toCeil==="1"?H:effDims(r.it,r.T).h/100)+0.1),"بريزة تلاجة العرض على خط لوحده");
+    if(t==="vitrine") addPt("socket",wl,a,0.3,"بريزة إضاءة الفاترينة");
   }
   // general sockets every ~3 m where nothing tall blocks the wall
   for(const wl of W4){ const L=wlen(wl), n=Math.max(1,Math.round(L/3)); for(let i=0;i<n;i++){ const a=(i+0.5)*L/n; const [x,z]=aoToXZ(wl,a,0.05);
@@ -2160,7 +2311,10 @@ function buildRoom(warn){
   return {walk,counter:0};
 }
 function elecLoadsRoom(){
-  const rows=[], circuits=[]; for(const it of cfg.furn||[]){ if(it.type==="ac"||it.type==="acfloor"){ const hp=+(it.var||1.5), wt=Math.round(hp*800); rows.push({n:`تكييف ${hp} حصان`,w:wt}); circuits.push({n:`تكييف ${hp} حصان`,a:hp>=3?25:20,mm:hp>=3?"6":"4",why:"خط لوحده"}); } if(it.type==="tv") rows.push({n:"الشاشة",w:150}); }
+  const rows=[], circuits=[]; for(const it of cfg.furn||[]){ if(it.type==="ac"||it.type==="acfloor"){ const hp=+(it.var||1.5), wt=Math.round(hp*800); rows.push({n:`تكييف ${hp} حصان`,w:wt}); circuits.push({n:`تكييف ${hp} حصان`,a:hp>=3?25:20,mm:hp>=3?"6":"4",why:"خط لوحده"}); } if(it.type==="tv") rows.push({n:"الشاشة",w:150});
+    if(it.type==="fridge"){ rows.push({n:"تلاجة عرض",w:it.var==="2"?600:350}); circuits.push({n:"تلاجة العرض",a:16,mm:"2.5",why:"خط لوحده"}); }
+    if(it.type==="counter"){ if(it.var==="bar"){ rows.push({n:"ماكينة قهوة",w:2000}); circuits.push({n:"ماكينة القهوة",a:20,mm:"4",why:"خط لوحده"}); } else rows.push({n:"كاشير وماكينة فيزا",w:150}); }
+    if(it.type==="vitrine") rows.push({n:"إضاءة فاترينة",w:40}); }
   rows.push({n:"برايز عامة",w:1500},{n:"الإضاءة",w:120}); circuits.push({n:"برايز الأوضة",a:16,mm:"2.5",why:""},{n:"الإضاءة",a:10,mm:"1.5",why:""});
   const total=rows.reduce((x,r)=>x+r.w,0), demand=Math.round(total*0.7); return {rows,circuits,total,demand,amps:Math.round(demand/220)};
 }
@@ -2169,7 +2323,8 @@ function furnBox(el){
   const box=document.createElement("div"); box.className="adder"; box.innerHTML=`<div class="adder-l">اختار القطعة وضيفها، وبعدين اسحبها لمكانها في الـ3D:</div>`;
   const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select"); ts.setAttribute("aria-label","القطعة"); const cats={};
   for(const [k,v] of Object.entries(FURN)) (cats[v.cat]=cats[v.cat]||[]).push([k,v.n]);
-  ts.innerHTML=Object.entries(cats).map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("");
+  const SC="محلات ومكاتب", ce=Object.entries(cats).sort((a,b)=>isShop(cfg)?(b[0]===SC)-(a[0]===SC):(a[0]===SC)-(b[0]===SC)); /* shop pieces first in a shop, last at home */
+  ts.innerHTML=ce.map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("");
   const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
   ab.onclick=()=>{ pushHist(); const T=FURN[ts.value]; const it={id:"i"+Math.random().toString(36).slice(2,7),type:ts.value,w:T.w,d:T.d};
     if(T.var) it.var=T.var[0][0]; if(T.wall){ it.snap="W"; it.pos=Math.max(0,Math.round((RW*100-T.w)/2)); it.y=T.y; } else { it.x=Math.round(RW*50); it.z=Math.round(RL*50); it.rot=0; }
@@ -2249,9 +2404,9 @@ function cutWalls(mat,groups){ const T=0.1;
       box(L?-T:RW-k.a,0,F?k.b-T:RL-k.b,L?k.a:RW+T,H,F?k.b:RL-k.b+T,gH.userData.mat,gH);
       box(L?k.a-T:RW-k.a,0,F?-T:RL-k.b,L?k.a:RW-k.a+T,H,F?k.b:RL+T,gV.userData.mat,gV); } } }
 // =================== LIGHTING, CEILINGS, ACCENT WALLS, CURTAINS ===================
-const LUX={kitchen:300,bath:200,hall:100,room:150,bed:120,living:150};
+const LUX={kitchen:300,bath:200,hall:100,room:150,bed:120,living:150,shop:500};
 let LIGHTQ={n:0,lux:0};
-function lightPlan(){ const area=RW*RL-cutArea(), lux=cfg.roomType==="room"?(cfg.rtype==="bed"?LUX.bed:LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let n=Math.max(1,Math.ceil(area*lux/450)); if(cfg.chand&&cfg.roomType==="room") n=Math.max(1,Math.round(n*0.6));
+function lightPlan(){ const area=RW*RL-cutArea(), lux=cfg.roomType==="room"?(LUX[cfg.rtype]||LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let n=Math.max(1,Math.ceil(area*lux/450)); if(cfg.chand&&cfg.roomType==="room") n=Math.max(1,Math.round(n*0.6));
   const nx=Math.max(1,Math.round(Math.sqrt(n*RW/RL))), nz=Math.max(1,Math.ceil(n/nx)), pts=[]; for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const x=RW*(i+0.5)/nx, z=RL*(j+0.5)/nz; if(!inCut(x,z,0.15)) pts.push([x,z]); }
   LIGHTQ={n:pts.length,lux,pts,area}; return pts; }
 function finishesRender(){
@@ -2298,7 +2453,7 @@ function spotsGrid(poly,n,bb){ if(n<1) return []; const w=bb.x1-bb.x0, h=bb.z1-b
   for(let i=0;i<nx;i++) for(let j=0;j<nz;j++){ const x=bb.x0+w*(i+0.5)/nx, z=bb.z0+h*(j+0.5)/nz; if(inPoly(poly,x,z)&&out.length<n) out.push([x,z]); } return out; }
 function gypsumRender(){
   const top=walls.top, cm=top.userData.mat; cm.color=col(cfg.cCeil||"#fbfbfa"); cm.side=THREE.DoubleSide; const outer=roomPoly(RW,RL,CUTS), floorA=polyArea(outer)>0?polyArea(outer):-polyArea(outer), outerPer=polyPerim(outer);
-  const lux=cfg.roomType==="room"?(cfg.rtype==="bed"?LUX.bed:LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let autoN=Math.max(1,Math.ceil(floorA*lux/450)); if(cfg.chand&&cfg.roomType==="room") autoN=Math.max(1,Math.round(autoN*0.6));
+  const lux=cfg.roomType==="room"?(LUX[cfg.rtype]||LUX.living):(LUX[cfg.roomType||"kitchen"]||150); let autoN=Math.max(1,Math.ceil(floorA*lux/450)); if(cfg.chand&&cfg.roomType==="room") autoN=Math.max(1,Math.round(autoN*0.6));
   const type=cfg.gbType||"tray", drop=Math.max(0.03,(cfg.gbDrop||12)/100), ledC={warm:0xffd9a0,white:0xfff4e0,cool:0xe6f2ff}[cfg.gbLedCol||"warm"];
   let spots=[], spotY=H-0.004, inner=null, q={type,floorA,outerPer,drop};
   if(type!=="hide") top.add(polyMesh(outer,H+0.001,cm));
@@ -2360,7 +2515,9 @@ function ceilBox(){
 // =================== BACKUP ===================
 async function backupData(){ await saveNow(); const projects=[], missing=[]; for(const p of projIndex){ const d=p.id===PROJ.id?{name:PROJ.name,cfg}:await stGet("kproj:"+p.id); if(d) projects.push({id:p.id,name:d.name||p.name,cfg:d.cfg}); else missing.push(p.name); }
   if(!projects.some(p=>p.id===PROJ.id)) projects.push({id:PROJ.id,name:PROJ.name,cfg}); const pr=await stRead("kprices"), prices=pr.err?{...PRICE_DEF}:cleanPrices(pr.v);
-  const out={app:"kitchen-3d",v:1,date:new Date().toISOString(),projects,apt:APT,prices,current:PROJ.id};
+  const apts=[]; for(const a of APTS){ const d=a.id===APT_ID&&APT_LOADED===a.id?APT:await stGet("kapt:"+a.id); if(d) apts.push({id:a.id,name:a.name,apt:d}); else missing.push(a.name); }
+  if(APT.rooms.length&&!apts.some(a=>a.id===APT_ID)) apts.push({id:APT_ID,name:aptNameOf(APT),apt:APT});
+  const out={app:"kitchen-3d",v:2,date:new Date().toISOString(),projects,apt:APT,apts,prices,current:PROJ.id,currentApt:APT_ID}; /* apt = the open apartment, for files read by older copies */
   Object.defineProperty(out,"missing",{value:missing,enumerable:false}); return out; } // missing = projects that couldn't be read (not written into the file)
 const backupMsg=(d,ok)=>(ok?`✓ اتنزّلت (${d.projects.length} مشروع).`:`✓ ${d.projects.length} مشروع.`)+(d.missing&&d.missing.length?` ⚠ مقدرتش أقرا: ${d.missing.join("، ")}، النسخة من غيرهم.`:"");
 function downloadText(name,text,type){ try{ const blob=new Blob([text],{type:type||"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000); return true; }catch(e){ return false; } }
@@ -2369,23 +2526,27 @@ async function restoreData(obj){ if(!obj||typeof obj!=="object"||!Array.isArray(
   const okId=id=>typeof id==="string"&&/^[\w-]{1,40}$/.test(id);
   const ps=obj.projects.filter(p=>p&&typeof p==="object"&&okId(p.id)&&p.cfg&&typeof p.cfg==="object"&&!Array.isArray(p.cfg)).map(p=>({id:p.id,name:cleanName(p.name)||"مشروع",cfg:cleanDeep(p.cfg)}));
   if(!ps.length) throw new Error("bad");
-  let apt=null; if(obj.apt&&typeof obj.apt==="object"&&!Array.isArray(obj.apt)){ apt=cleanDeep(obj.apt); apt.rooms=(Array.isArray(apt.rooms)?apt.rooms:[]).filter(r=>r&&typeof r==="object"&&okId(r.id)); apt.doors=(Array.isArray(apt.doors)?apt.doors:[]).filter(d=>d&&typeof d==="object"&&okId(d.a)&&okId(d.b)); }
+  const isObj=o=>o&&typeof o==="object"&&!Array.isArray(o), cleanApt=o=>{ const a=cleanDeep(o); a.rooms=(Array.isArray(a.rooms)?a.rooms:[]).filter(r=>r&&typeof r==="object"&&okId(r.id)); a.doors=(Array.isArray(a.doors)?a.doors:[]).filter(d=>d&&typeof d==="object"&&okId(d.a)&&okId(d.b)); return a; };
+  const apts=Array.isArray(obj.apts)?obj.apts.filter(a=>isObj(a)&&okId(a.id)&&isObj(a.apt)).map(a=>{ const ap=cleanApt(a.apt); ap.name=cleanName(a.name)||aptNameOf(ap); return {id:a.id,apt:ap}; }):[];
+  let apt=null; if(!apts.length&&isObj(obj.apt)) apt=cleanApt(obj.apt); /* a file from before there were several apartments */
   const prices=cleanPrices(obj.prices); /* like apt: only known price keys holding numbers >= 0, anything else is dropped */
   migrate(clone(ps.find(p=>p.id===obj.current)||ps[0]).cfg); // throws before anything is written if the design can't load
   clearTimeout(saveT); for(const p of ps){ DELETED.delete(p.id); await stSet("kproj:"+p.id,{name:p.name,cfg:p.cfg}); const i=projIndex.findIndex(x=>x.id===p.id); const e={id:p.id,name:p.name,t:Date.now()}; if(i>=0) projIndex[i]=e; else projIndex.push(e); }
   await stSet("kproj:index",projIndex); if(apt){ APT={...APT,...apt}; await saveApt(); }
+  for(const a of apts){ await stSet("kapt:"+a.id,a.apt); const e={id:a.id,name:aptNameOf(a.apt),rooms:a.apt.rooms.map(r=>r.id),t:Date.now()}, i=APTS.findIndex(x=>x.id===a.id); if(i>=0) APTS[i]=e; else APTS.push(e); }
+  if(apts.length){ if(!APTS_BAD) await stSet("kapt:index",APTS); const cur=apts.find(a=>a.id===obj.currentApt)||apts[0]; APT_ID=cur.id; APT_LOADED=null; await loadApt(); }
   if(Object.keys(prices).length){ PRICE_DEF={...PRICE_DEF,...prices}; await stSet("kprices",PRICE_DEF); }
   const cur=ps.find(p=>p.id===obj.current)||ps[0]; PROJ={id:cur.id,name:cur.name}; cfg=migrate(cur.cfg); clearHist(); SEL=null; updProjName(); build(); renderControls(); return ps.length; }
 function backupUI(el){
-  const h=document.createElement("div"); h.className="head"; h.textContent="💾 نسخة احتياطية للشقة كلها"; el.appendChild(h);
-  const n=document.createElement("div"); n.className="note"; n.textContent="ملف واحد فيه كل المطابخ والحمامات والأوض والشقة. نزّله واحتفظ بيه في مكان آمن (درايف أو واتساب لنفسك)، وتقدر ترجّعه في أي وقت أو على أي جهاز."; el.appendChild(n);
+  const h=document.createElement("div"); h.className="head"; h.textContent="💾 نسخة احتياطية لكل شغلك"; el.appendChild(h);
+  const n=document.createElement("div"); n.className="note"; n.textContent="ملف واحد فيه كل تصميماتك وكل الشقق. نزّله واحتفظ بيه في مكان آمن (درايف أو واتساب لنفسك)، وتقدر ترجّعه في أي وقت أو على أي جهاز."; el.appendChild(n);
   const st=document.createElement("div"); st.className="note"; const act=document.createElement("div"); act.className="act";
   const mk=(t,fn,main)=>{ const b=document.createElement("button"); b.className="btn"+(main?" main":""); b.textContent=t; b.onclick=fn; act.appendChild(b); };
   const ta=document.createElement("textarea"); ta.placeholder="لو التنزيل مش شغال، انسخ النص ده واحتفظ بيه، أو الصق نسخة هنا ودوس «رجّع من النص»"; ta.style.display="none";
-  mk("⬇ نزّل النسخة",async()=>{ const d=await backupData(), txt=JSON.stringify(d); ta.value=txt; ta.style.display="block"; const ok=downloadText(`شقتي-${new Date().toISOString().slice(0,10)}.json`,txt); st.textContent=ok?backupMsg(d,true)+" لو مظهرتش في التنزيلات، انسخ النص اللي تحت.":"التنزيل مش متاح هنا، انسخ النص اللي تحت. "+backupMsg(d,false); },true);
+  mk("⬇ نزّل النسخة",async()=>{ const d=await backupData(), txt=JSON.stringify(d); ta.value=txt; ta.style.display="block"; const ok=downloadText(`تصميماتي-${new Date().toISOString().slice(0,10)}.json`,txt); st.textContent=ok?backupMsg(d,true)+" لو مظهرتش في التنزيلات، انسخ النص اللي تحت.":"التنزيل مش متاح هنا، انسخ النص اللي تحت. "+backupMsg(d,false); },true);
   mk("📋 انسخها كنص",async()=>{ const d=await backupData(); ta.value=JSON.stringify(d); ta.style.display="block"; ta.select(); try{ await navigator.clipboard.writeText(ta.value); st.textContent="✓ اتنسخت، الصقها في رسالة لنفسك. "+backupMsg(d,false); }catch(e){ document.execCommand&&document.execCommand("copy"); st.textContent="اتعلّمت، انسخها من المربع"; } });
   const fi=document.createElement("input"); fi.type="file"; fi.accept=".json,application/json,text/plain"; fi.style.display="none";
-  fi.onchange=async()=>{ const f=fi.files[0]; if(!f) return; try{ const obj=JSON.parse(await f.text()); const n=await restoreData(obj); st.textContent=`✓ اترجعت ${n} مشروع`+(obj.apt?" والشقة":""); refreshSheet(); }catch(e){ st.textContent="الملف ده مش نسخة من الأداة"; } };
+  fi.onchange=async()=>{ const f=fi.files[0]; if(!f) return; try{ const obj=JSON.parse(await f.text()); const n=await restoreData(obj); st.textContent=`✓ اترجعت ${n} مشروع`+(Array.isArray(obj.apts)&&obj.apts.length?` و${obj.apts.length} شقة`:obj.apt?" والشقة":""); refreshSheet(); }catch(e){ st.textContent="الملف ده مش نسخة من الأداة"; } };
   mk("⬆ رجّع من ملف",()=>fi.click());
   mk("رجّع من النص",async()=>{ ta.style.display="block"; if(!ta.value.trim()){ st.textContent="الصق النسخة في المربع الأول"; ta.focus(); return; } try{ const obj=JSON.parse(ta.value); const n=await restoreData(obj); st.textContent=`✓ اترجعت ${n} مشروع`; refreshSheet(); }catch(e){ st.textContent="النص الملصوق مش نسخة صحيحة"; } });
   el.append(act,fi,ta,st);
@@ -3058,7 +3219,7 @@ addEventListener("keydown",e=>{ const tg=e.target, typing=tg&&(tg.tagName==="TEX
   if((e.ctrlKey||e.metaKey)&&(e.code==="KeyZ"||e.code==="KeyY")&&!typing&&!WIZ&&!APT3D&&document.getElementById("apt").style.display!=="flex"){ e.preventDefault(); document.getElementById(e.code==="KeyY"||e.shiftKey?"redo":"undo").click(); return; }
   if(e.key!=="Escape") return; const vis=id=>document.getElementById(id).style.display==="flex";
   if(vis("shot")) document.getElementById("shot").style.display="none"; else if(vis("draw")) document.getElementById("dclose").click();
-  else if(vis("sheet")) closeSheet(); else if(vis("apt")) closeApt(); else if(!WIZ&&panelOpen&&!MQ.desk.matches) setPanel(false); });
+  else if(vis("home")) closeHome(); else if(vis("sheet")) closeSheet(); else if(vis("apt")) closeApt(); else if(!WIZ&&panelOpen&&!MQ.desk.matches) setPanel(false); });
 document.getElementById("wizClose").onclick=()=>closeWizard(false);
 document.getElementById("wizBack").onclick=()=>{ if(WIZ&&WIZ.step>0){ WIZ.step--; renderWiz(); } };
 document.getElementById("wizNext").onclick=()=>{ if(!WIZ) return; if(WIZ.step<WSTEPS.length-1){ WIZ.step++; renderWiz(); document.getElementById("wizBody").scrollTop=0; } else closeWizard(true); };
@@ -3426,8 +3587,8 @@ function planSVG(edit){
 function roomBox(){
   const top=document.createElement("div"); top.innerHTML=`<div class="sum" id="roomSum"></div><div id="roomPlan" class="planbox"></div>`; ctlEl.insertBefore(top,ctlEl.firstChild);
   const act=document.createElement("div"); act.className="act"; const b1=document.createElement("button"); b1.className="btn main"; b1.textContent="🧭 المعالج خطوة بخطوة"; b1.onclick=()=>openWizard(false);
-  const b2=document.createElement("select"); b2.setAttribute("aria-label","غيّر شكل المطبخ"); b2.innerHTML=`<option value="">🔁 غيّر القالب…</option>`+Object.entries(cfg.roomType==="bath"?BTEMPLATES:cfg.roomType==="hall"?HTEMPLATES:cfg.roomType==="room"?RTEMPLATES:TEMPLATES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("");
-  b2.onchange=()=>{ if(!b2.value) return; pushHist(); applyTemplate(cfg,b2.value,b2.value!=="mine"); build(); renderControls(); hint("اتغير شكل المطبخ ✓"); };
+  const b2=document.createElement("select"); b2.setAttribute("aria-label","غيّر القالب"); b2.innerHTML=`<option value="">🔁 غيّر القالب…</option>`+Object.entries(cfg.roomType==="bath"?BTEMPLATES:cfg.roomType==="hall"?HTEMPLATES:cfg.roomType==="room"?RTEMPLATES:TEMPLATES).filter(([k,v])=>cfg.roomType!=="room"||(v.rtype==="shop")===isShop(cfg)).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("");
+  b2.onchange=()=>{ if(!b2.value) return; pushHist(); applyTemplate(cfg,b2.value,b2.value!=="mine"); build(); renderControls(); hint("اتغير القالب ✓"); };
   act.append(b1,b2); top.appendChild(act);
   const h=document.createElement("div"); h.className="head"; h.textContent="🧱 الشبابيك والأبواب والبروزات"; ctlEl.appendChild(h);
   const n=document.createElement("div"); n.className="note"; n.textContent="أول الحيطة: الحيطة القدامية واللي ورا بتتقاس من ناحية الشمال، والحيطة الشمال واليمين بتتقاس من ناحية القدامية."; ctlEl.appendChild(n);
@@ -3528,6 +3689,7 @@ function locOpts(cls){
 }
 // ======== projects ========
 let PROJ={id:"p"+Date.now().toString(36),name:"مطبخي"}, projIndex=[], saveT=null, loadingP=true, storageOK=null;
+let DRAFT=null; /* the starter design on a first visit: saved only once it changes, so picking something else on the start screen leaves no stray kitchen behind */
 const MEMS={}, PENDING=new Set(), DELETED=new Set(); let retryT=null, lastSaved={};
 // backend: window.storage (Claude artifacts) if it exists, else localStorage behind the same async get/set/delete, else null (MEMS only)
 let LSTORE;
@@ -3545,24 +3707,26 @@ async function stDel(k){ delete MEMS[k]; delete lastSaved[k]; PENDING.delete(k);
 // the timer waits while another room's cfg is swapped in (apartment snapshots / 3D / compare)
 function autosave(){ if(loadingP||WIZ) return; clearTimeout(saveT); saveT=setTimeout(function tick(){ if(loadingP||APT_BUILD||APT3D){ saveT=setTimeout(tick,1000); return; } saveNow(); },2500); }
 async function saveNow(){ clearTimeout(saveT); if(loadingP||APT_BUILD||APT3D||DELETED.has(PROJ.id)) return;
+  if(DRAFT!=null){ if(DRAFT===JSON.stringify(cfg)&&!projIndex.some(p=>p.id===PROJ.id)) return; DRAFT=null; }
   const e={id:PROJ.id,name:PROJ.name,t:Date.now()}; const i=projIndex.findIndex(p=>p.id===PROJ.id); if(i>=0) projIndex[i]=e; else projIndex.push(e);
   await stSet("kproj:"+PROJ.id,{name:PROJ.name,cfg}); await stSet("kproj:index",projIndex); }
 function updProjName(){ document.getElementById("projName").textContent=PROJ.name; }
 async function initProjects(){
-  projIndex=((await stGet("kproj:index"))||[]).filter(p=>p&&p.id).map(p=>({...p,name:cleanName(p.name)})); await loadApt(); PRICE_DEF=cleanPrices(await stGet("kprices"));
-  if(!projIndex.length) Object.assign(cfg,PRICE_DEF); /* the first design was made before the saved prices were read */
+  projIndex=((await stGet("kproj:index"))||[]).filter(p=>p&&p.id).map(p=>({...p,name:cleanName(p.name)})); await loadAptIndex(); await loadApt(); PRICE_DEF=cleanPrices(await stGet("kprices"));
+  if(!projIndex.length){ Object.assign(cfg,PRICE_DEF); /* the first design was made before the saved prices were read */ DRAFT=JSON.stringify(cfg); }
   if(projIndex.length){ const last=[...projIndex].sort((a,b)=>b.t-a.t)[0]; const d=await stGet("kproj:"+last.id); if(d&&d.cfg){ PROJ={id:last.id,name:cleanName(d.name)||last.name}; cfg=migrate(d.cfg); } }
-  loadingP=false; updProjName(); build(); renderControls(); autosave();
+  loadingP=false; updProjName(); build(); renderControls(); autosave(); openHome();
 }
 async function openProject(id){ const rd=await stRead("kproj:"+id); let d=rd.v; if(rd.err){ hint("مقدرتش أقرا المشروع ده من الحفظ دلوقتي، جرّب تاني كمان شوية",4000); return; } if(!d){ const nm=projName(id); d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":"L")}; await stSet("kproj:"+id,d); hint("المشروع ده ماكانش اتحفظ، فتحته من جديد بالشكل الافتراضي",4000); } await saveNow(); PROJ={id,name:cleanName(d.name)||projName(id)}; cfg=migrate(d.cfg); clearHist(); SEL=null; updProjName(); build(); renderControls(); closeSheet(); setView("out"); hint(`اتفتح "${PROJ.name}"`); }
 function projectsBox(){ renderProjects(ctlEl); }
 function renderProjects(el){
-  const n=document.createElement("div"); n.className="note"; n.textContent=storageOK===false?"⚠ الحفظ الدايم متعطل دلوقتي، وبحاول تاني لوحدي كل شوية. شغلك محفوظ طول ما الصفحة مفتوحة، ولو هتقفلها انسخ الإعدادات من تحت.":"كل مطبخ بيتحفظ لوحده تلقائي. تقدر تعمل أكتر من مطبخ وتقارن بينهم."; el.appendChild(n);
-  const ab=document.createElement("button"); ab.className="btn wide"; ab.style.marginBottom="8px"; ab.innerHTML="🏢 <b>الشقة</b>: اربط المطبخ والحمامات والطرقة"; ab.onclick=()=>{ closeSheet(); openApt(); }; el.appendChild(ab);
-  const nb=document.createElement("button"); nb.className="btn main wide"; nb.textContent="➕ مطبخ أو حمام أو أوضة جديدة (بالمعالج)"; nb.onclick=()=>{ closeSheet(); openWizard(true); }; el.appendChild(nb);
+  const n=document.createElement("div"); n.className="note"; n.textContent=storageOK===false?"⚠ الحفظ الدايم متعطل دلوقتي، وبحاول تاني لوحدي كل شوية. شغلك محفوظ طول ما الصفحة مفتوحة، ولو هتقفلها انسخ الإعدادات من تحت.":"كل تصميم وكل شقة بيتحفظوا لوحدهم تلقائي على الجهاز ده. تقدر تعمل أكتر من شقة وأكتر من تصميم وتقارن بينهم."; el.appendChild(n);
+  const nb=document.createElement("button"); nb.className="btn main wide"; nb.textContent="➕ ابدأ حاجة جديدة (شقة، مطبخ، حمام، أوضة، محل)"; nb.onclick=()=>{ closeSheet(); openHome(); }; el.appendChild(nb);
+  if(APTS.length){ const h=document.createElement("div"); h.className="head"; h.textContent="🏢 شققك"; el.appendChild(h); aptListUI(el,refreshSheet); }
+  const ph=document.createElement("div"); ph.className="head"; ph.textContent="🧩 كل التصميمات"; el.appendChild(ph);
   const list=[...projIndex]; if(!list.some(p=>p.id===PROJ.id)) list.push({id:PROJ.id,name:PROJ.name,t:Date.now()});
   list.sort((a,b)=>b.t-a.t).forEach(p=>{ const card=document.createElement("div"); card.className="card"+(p.id===PROJ.id?" sel":"");
-    card.innerHTML=`<div class="ch"><b>${p.id===PROJ.id?"✓ ":""}${esc(p.name)}</b><small>${new Date(p.t).toLocaleDateString("ar-EG")}</small></div>`;
+    const ap=aptOfRoom(p.id); card.innerHTML=`<div class="ch"><b>${p.id===PROJ.id?"✓ ":""}${esc(p.name)}</b><small>${ap?"🏢 "+esc(ap.name)+" • ":""}${new Date(p.t).toLocaleDateString("ar-EG")}</small></div>`;
     const act=document.createElement("div"); act.className="act";
     const mk=(t,fn)=>{ const b=document.createElement("button"); b.className="btn"; b.textContent=t; b.onclick=fn; act.appendChild(b); };
     if(p.id!==PROJ.id) mk("فتح",()=>openProject(p.id));
@@ -3579,15 +3743,19 @@ function renderProjects(el){
   const ta=document.createElement("textarea"); ta.value=JSON.stringify(cfg);
   const st=document.createElement("div"); st.className="note";
   const a2=document.createElement("div"); a2.className="act";
-  const cp=document.createElement("button"); cp.className="btn"; cp.textContent="نسخ إعدادات المطبخ ده"; cp.onclick=async()=>{ ta.select(); try{ await navigator.clipboard.writeText(ta.value); st.textContent="اتنسخت، ابعتها لأي حد"; }catch(e){ document.execCommand&&document.execCommand("copy"); st.textContent="اتنسخت"; } };
-  const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كمطبخ جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); if(!v||typeof v!=="object"||Array.isArray(v)) throw new Error("bad"); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"مطبخ ملصوق"}; cfg=migrate(v); clearHist(); SEL=null; build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
+  const cp=document.createElement("button"); cp.className="btn"; cp.textContent="نسخ إعدادات التصميم ده"; cp.onclick=async()=>{ ta.select(); try{ await navigator.clipboard.writeText(ta.value); st.textContent="اتنسخت، ابعتها لأي حد"; }catch(e){ document.execCommand&&document.execCommand("copy"); st.textContent="اتنسخت"; } };
+  const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كتصميم جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); if(!v||typeof v!=="object"||Array.isArray(v)) throw new Error("bad"); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"تصميم ملصوق"}; cfg=migrate(v); clearHist(); SEL=null; build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
   a2.append(cp,ap); el.append(ta,a2,st);
 }
 function openSheet(){ const s=document.getElementById("sheet"); s.style.display="flex"; refreshSheet(); }
 function closeSheet(){ document.getElementById("sheet").style.display="none"; }
 function refreshSheet(){ const b=document.getElementById("sheetBody"); if(document.getElementById("sheet").style.display==="flex"){ b.innerHTML=""; renderProjects(b); } if(tab==="المشاريع") renderControls(); }
 // ======== wizard ========
-const WSTEPS=["شكل المطبخ","المقاسات","الأبواب والشبابيك","البروزات والأعمدة والتجاويف","مكان الأجهزة","جاهز"];
+// kinds of space: [first template, default name]. A shop is a furnished room (roomType "room") with rtype "shop".
+const KINDS={kitchen:["L","مطبخ جديد"],bath:["b_std","حمام جديد"],room:["r_living","أوضة جديدة"],shop:["s_market","محل جديد"],hall:["h_hall","طرقة جديدة"]};
+const spaceKind=c=>isShop(c)?"shop":(c.roomType||"kitchen");
+function wstepName(i){ if(i!==4) return WSTEPS[i]; return {bath:"الأجهزة الصحية",room:"الفرش",shop:"الفرش والأرفف",hall:"الأجهزة"}[spaceKind(cfg)]||WSTEPS[4]; }
+const WSTEPS=["النوع والشكل","المقاسات","الأبواب والشبابيك","البروزات والأعمدة والتجاويف","مكان الأجهزة","جاهز"];
 function tplIcon(k){ const r=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f||"#cfd8df"}"/>`; let b=`<svg viewBox="0 0 60 60" width="56" height="56"><rect x="4" y="4" width="52" height="52" fill="#fff" stroke="#30343a" stroke-width="3"/>`;
   if(k==="mine") b+=r(6,20,12,34)+r(18,6,36,10)+r(44,22,8,26)+`<rect x="6" y="6" width="12" height="14" fill="#b9b3a8"/>`;
   if(k==="one") b+=r(6,6,12,48);
@@ -3602,6 +3770,12 @@ function tplIcon(k){ const r=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" 
     if(k==="r_kids") b+=f(6,14,12,24,"#dfe3e6")+f(42,14,12,24,"#dfe3e6")+f(22,6,16,8,"#a57c52");
     if(k==="r_balcony") b+=`<rect x="6" y="6" width="48" height="3" fill="#6fb6e0"/>`+f(10,20,8,8,"#8a9aa8")+f(30,20,8,8,"#8a9aa8");
     if(k==="r_guest") b+=f(40,6,14,24,"#dfe3e6")+f(6,6,16,8,"#a57c52")+f(6,30,6,14,"#a57c52"); }
+  if(k.startsWith("s_")){ const f=(x,y,w,h,c)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}" stroke="#8a8f95" stroke-width="0.6"/>`, sh="#e3c9a0", ct="#a57c52";
+    if(k==="s_market") b+=f(6,6,48,7,sh)+f(6,13,7,26,sh)+f(47,13,7,22,sh)+f(20,18,6,20,sh)+f(34,18,6,20,sh)+f(10,42,12,6,ct);
+    if(k==="s_clothes") b+=f(6,6,48,7,sh)+f(8,18,3,20,"#8a9aa8")+f(22,26,16,3,"#8a9aa8")+f(22,38,16,3,"#8a9aa8")+f(44,16,10,10,"#dfe3e6")+f(44,28,10,10,"#dfe3e6")+f(40,42,6,12,ct);
+    if(k==="s_cafe") b+=f(12,14,26,6,ct)+`<circle cx="18" cy="34" r="5" fill="${ct}"/><circle cx="40" cy="34" r="5" fill="${ct}"/><circle cx="18" cy="48" r="4" fill="${ct}"/><circle cx="40" cy="48" r="4" fill="${ct}"/>`;
+    if(k==="s_pharm") b+=f(6,6,48,6,sh)+f(6,12,6,16,sh)+f(48,12,6,16,sh)+f(12,32,36,6,ct)+f(6,40,5,12,"#cfe3ee");
+    if(k==="s_office") b+=f(20,12,20,9,ct)+f(20,28,8,8,"#8a9aa8")+f(32,28,8,8,"#8a9aa8")+f(6,8,5,20,sh)+f(48,18,6,16,"#8a9aa8"); }
   if(k==="h_hall") b+=`<rect x="22" y="6" width="16" height="48" fill="#f4f1ec"/>`;
   if(k.startsWith("b_")){ const o=(cx,cy,rx,ry)=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#e6edf1" stroke="#8a9aa5"/>`;
     if(k==="b_guest") b+=o(30,14,6,8)+r(6,30,8,12,"#cfe3ee");
@@ -3611,25 +3785,25 @@ function tplIcon(k){ const r=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" 
     if(k==="b_laundry") b+=r(6,6,12,12,"#e3e5e7")+r(20,6,12,12,"#e3e5e7")+r(46,30,8,10,"#cfe3ee");
     if(k==="b_master") b+=r(6,6,32,12,"#d4ebf3")+r(40,6,14,16,"#c8e2ec")+o(12,30,6,5)+r(46,28,8,18,"#cfe3ee"); }
   return b+"</svg>"; }
-function openWizard(isNew){ saveNow(); WIZ={step:0,isNew,backup:clone(cfg),backupProj:{...PROJ},backupHist:hist.slice(),backupRedo:redo.slice(),name:isNew?"مطبخ جديد":PROJ.name}; tabsEl.dataset.rt=""; if(isNew) cfg=newCfg("L"); UI_REFRESH=renderWiz; document.getElementById("wiz").style.display="flex"; build(); renderWiz(); }
+function openWizard(isNew,kind,fromHome){ saveNow(); kind=KINDS[kind]?kind:"kitchen"; WIZ={step:0,isNew,fromHome:!!fromHome,backup:clone(cfg),backupProj:{...PROJ},backupHist:hist.slice(),backupRedo:redo.slice(),name:isNew?KINDS[kind][1]:PROJ.name}; tabsEl.dataset.rt=""; if(isNew) cfg=newCfg(KINDS[kind][0]); UI_REFRESH=renderWiz; document.getElementById("wiz").style.display="flex"; build(); renderWiz(); }
 function closeWizard(apply){ const w=WIZ; WIZ=null; UI_REFRESH=()=>renderControls(); document.getElementById("wiz").style.display="none";
   if(!apply){ cfg=w.backup; PROJ=w.backupProj; hist.length=0; hist.push(...w.backupHist); redo.length=0; redo.push(...w.backupRedo); histBtns(); }
-  else if(w.isNew){ PROJ={id:"p"+Date.now().toString(36),name:cleanName(w.name)||"مطبخ جديد"}; clearHist(); }
+  else if(w.isNew){ PROJ={id:"p"+Date.now().toString(36),name:cleanName(w.name)||KINDS[spaceKind(cfg)][1]}; clearHist(); }
   else PROJ.name=cleanName(w.name)||PROJ.name;
-  updProjName(); build(); renderControls(); setView("out"); if(apply){ saveNow(); hint("✓ المطبخ جاهز، عدّل أي حاجة من ⚙ التحكم",4000); } }
+  updProjName(); build(); renderControls(); setView("out"); if(apply){ saveNow(); hint(`✓ «${PROJ.name}» جاهز، عدّل أي حاجة من ⚙ التحكم`,4000); } else if(w.fromHome) openHome(); }
 function updWizPreview(){ drawPlan(document.getElementById("wizPlan")); const s=document.getElementById("wizWarn"); if(s) s.innerHTML=(STATS.warn||[]).slice(0,3).map(w=>`<div>⚠ ${esc(w)}</div>`).join(""); }
 function renderWiz(){
   if(!WIZ) return; const body=document.getElementById("wizBody"); body.innerHTML="";
-  document.getElementById("wizTitle").textContent=`${WIZ.step+1}/${WSTEPS.length} • ${WSTEPS[WIZ.step]}`;
+  document.getElementById("wizTitle").textContent=`${WIZ.step+1}/${WSTEPS.length} • ${wstepName(WIZ.step)}`;
   document.getElementById("wizBar").style.width=((WIZ.step+1)/WSTEPS.length*100)+"%";
   const pv=document.createElement("div"); pv.innerHTML=`<div id="wizPlan" class="planbox"></div><div id="wizWarn" class="note" style="color:var(--clay)"></div>`; body.appendChild(pv); bindPlan(document.getElementById("wizPlan"));
   const hostEl=document.createElement("div"); body.appendChild(hostEl); const saveCtl=ctlEl; ctlEl=hostEl;
   const st=WIZ.step;
-  if(st===0){ const inp=document.createElement("input"); inp.value=WIZ.name; inp.placeholder="اسم المطبخ"; inp.className="txt big"; inp.setAttribute("aria-label","الاسم");
+  if(st===0){ const inp=document.createElement("input"); inp.value=WIZ.name; inp.placeholder="الاسم (مثلاً: مطبخ شقة المعادي)"; inp.className="txt big"; inp.setAttribute("aria-label","الاسم");
     inp.oninput=()=>{ WIZ.name=inp.value; }; hostEl.appendChild(inp);
-    const tg=document.createElement("div"); tg.className="rtypes"; for(const [rt,lb,def] of [["kitchen","🍳 مطبخ","L"],["bath","🚿 حمام","b_std"],["hall","🚪 طرقة","h_hall"],["room","🛋 أوضة / صالة","r_living"]]){ const bb=document.createElement("button"); bb.className="btn"+(cfg.roomType===rt?" on":""); bb.textContent=lb; bb.onclick=()=>{ if(cfg.roomType===rt) return; pushHist(); applyTemplate(cfg,def,false); if(["مطبخ جديد","حمام جديد","طرقة جديدة","أوضة جديدة"].includes(WIZ.name)) WIZ.name=rt==="bath"?"حمام جديد":rt==="hall"?"طرقة جديدة":rt==="room"?"أوضة جديدة":"مطبخ جديد"; build(); renderWiz(); }; tg.appendChild(bb); } hostEl.appendChild(tg);
+    const tg=document.createElement("div"); tg.className="rtypes"; for(const [rt,lb] of [["kitchen","🍳 مطبخ"],["bath","🚿 حمام"],["room","🛋 أوضة / صالة"],["shop","🏪 محل / مكتب"],["hall","🚪 طرقة"]]){ const bb=document.createElement("button"); bb.className="btn"+(spaceKind(cfg)===rt?" on":""); bb.textContent=lb; bb.onclick=()=>{ if(spaceKind(cfg)===rt) return; pushHist(); applyTemplate(cfg,KINDS[rt][0],false); if(Object.values(KINDS).some(v=>v[1]===WIZ.name)) WIZ.name=KINDS[rt][1]; build(); renderWiz(); }; tg.appendChild(bb); } hostEl.appendChild(tg);
     const g=document.createElement("div"); g.className="tplgrid";
-    for(const [k,v] of Object.entries(cfg.roomType==="bath"?BTEMPLATES:cfg.roomType==="hall"?HTEMPLATES:cfg.roomType==="room"?RTEMPLATES:TEMPLATES)){ const b=document.createElement("button"); b.className="btn tpl"+(cfg.template===k?" on":"");
+    for(const [k,v] of Object.entries(cfg.roomType==="bath"?BTEMPLATES:cfg.roomType==="hall"?HTEMPLATES:cfg.roomType==="room"?RTEMPLATES:TEMPLATES)){ if(cfg.roomType==="room"&&(v.rtype==="shop")!==isShop(cfg)) continue; const b=document.createElement("button"); b.className="btn tpl"+(cfg.template===k?" on":"");
       b.innerHTML=tplIcon(k)+`<span>${v.name}</span>`; b.onclick=()=>{ pushHist(); applyTemplate(cfg,k,false); build(); renderWiz(); }; g.appendChild(b); }
     hostEl.appendChild(g); }
   if(st===1){ for(const c of SCHEMA["الأوضة"].filter(x=>x.t!=="head")) schemaRow(hostEl,c); schemaRow(hostEl,SCHEMA["الارتفاعات"][0]); }
@@ -3730,6 +3904,72 @@ let camKey="";
 (function loop(){ flushLive(); if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
   const k=[sph.theta,sph.phi,sph.r,target.x,target.y,target.z,FP.on,FP.x,FP.z,FP.yaw,FP.pitch,camera.aspect].join(); /* catches camera moves from held buttons and code */
   if(DIRTY>0||k!==camKey||drag){ camKey=k; updateCam(); renderer.render(scene,camera); emptyTrash(); if(DIRTY>0) DIRTY--; } requestAnimationFrame(loop); })();
+
+// =================== START SCREEN (what do you want to design?) ===================
+// Opens on every visit: a whole apartment, one space by the wizard, or back to what you were doing.
+let HOME=null; /* {view:"pick"|"apt", spec} */
+const HOME_KINDS=[
+  ["apt","🏢","شقة كاملة","سمّيها وحدد فيها كام أوضة وحمام، وبعدين صمّم كل مكان فيها لوحده"],
+  ["kitchen","🍳","مطبخ","دواليب ورخامة وأجهزة، ومعاها السباكة والكهربا"],
+  ["bath","🚿","حمام","الأجهزة الصحية والسيراميك والصرف"],
+  ["room","🛋","أوضة أو صالة","نوم أو معيشة أو ريسبشن، بالفرش"],
+  ["shop","🏪","محل أو مكتب","سوبر ماركت، هدوم، كافيه، صيدلية، عيادة"]];
+const APT_PRESETS=[["استوديو",{beds:0,baths:1,living:"living",kitchen:true,balc:false}],["أوضة وصالة",{beds:1,baths:1,living:"living",kitchen:true,balc:true}],
+  ["أوضتين وصالة",{beds:2,baths:1,living:"living",kitchen:true,balc:true}],["3 أوض وصالة",{beds:3,baths:2,living:"living",kitchen:true,balc:true}],["4 أوض وريسبشن",{beds:4,baths:3,living:"both",kitchen:true,balc:true}]];
+const cnt=(n,one,two,many)=>n===1?one:n===2?two:`${n} ${many}`;
+function openHome(){ closeSheet(); HOME={view:"pick",spec:null}; document.getElementById("home").style.display="flex"; renderHome(); }
+function closeHome(){ HOME=null; document.getElementById("home").style.display="none"; }
+// the rooms of a new apartment, as an APT_TPLS-style layout: a hall in the middle, the kitchen and baths on one side, the living room on the other
+function specToT(s){ const W=k=>k==="k"?300:((RTEMPLATES[k]||BTEMPLATES[k]||{}).dims||[300])[0], len=a=>a.reduce((x,[k])=>x+W(k),0), top=[], bot=[];
+  if(s.living==="living"||s.living==="both") bot.push(["r_living","صالة"]); if(s.living==="recep"||s.living==="both") bot.push(["r_recep","ريسبشن وسفرة"]);
+  if(s.kitchen) top.push(["k","مطبخ"]);
+  const rest=[]; for(let i=0;i<s.baths;i++) rest.push(["b_std",s.baths>1?`حمام ${i+1}`:"حمام"]); for(let i=0;i<s.beds;i++) rest.push([i?"r_kids":"r_master",i?`أوضة نوم ${i+1}`:(s.beds>1?"أوضة نوم رئيسية":"أوضة نوم")]);
+  for(const r of rest) (len(top)<=len(bot)?top:bot).push(r);
+  if(!bot.length&&top.length>1) bot.push(top.pop()); if(!top.length&&bot.length>1) top.push(bot.pop());
+  return {n:s.name||"شقة",top,bot,balc:!!s.balc&&bot.length>0&&["r_living","r_recep"].includes(bot[0][0])}; }
+function aptSpecText(s){ const a=[]; if(s.living==="living"||s.living==="both") a.push("صالة"); if(s.living==="recep"||s.living==="both") a.push("ريسبشن"); if(s.kitchen) a.push("مطبخ");
+  a.push(cnt(s.baths,"حمام","حمامين","حمامات")); if(s.beds) a.push(cnt(s.beds,"أوضة نوم","أوضتين نوم","أوض نوم")); if(s.balc) a.push("بلكونة"); return a.join("، ")+"، وطرقة بتربطهم"; }
+function renderHome(){ if(!HOME) return; const b=document.getElementById("homeBody"); b.innerHTML=""; b.scrollTop=0;
+  const head=t=>{ const h=document.createElement("div"); h.className="head"; h.textContent=t; b.appendChild(h); };
+  if(HOME.view==="apt"){ document.getElementById("homeTitle").textContent="🏢 شقة جديدة"; newAptUI(b); return; }
+  document.getElementById("homeTitle").textContent="ابدأ من هنا";
+  const hero=document.createElement("div"); hero.className="hhero"; hero.innerHTML=`<h1>عايز تصمّم إيه؟</h1><p>اختار وهنمشي معاك خطوة بخطوة، وتقدر تغيّر أي حاجة بعدين.</p>`; b.appendChild(hero);
+  if(projIndex.some(p=>p.id===PROJ.id)){ const c=document.createElement("button"); c.className="hcont"; c.id="homeCont";
+    const ap=aptOfRoom(PROJ.id); c.innerHTML=`<span class="hico">↩</span><span><small>كمّل آخر شغلك</small><b>${esc(PROJ.name)}</b>${ap?`<small>في ${esc(ap.name)}</small>`:""}</span>`; c.onclick=closeHome; b.appendChild(c); }
+  const g=document.createElement("div"); g.className="hgrid";
+  for(const [k,i,n,d] of HOME_KINDS){ const c=document.createElement("button"); c.className="hcard"+(k==="apt"?" wide":""); c.dataset.k=k; c.innerHTML=`<span class="hico">${i}</span><b>${n}</b><small>${d}</small>`;
+    c.onclick=()=>{ if(k==="apt"){ HOME.view="apt"; HOME.spec={name:"",...APT_PRESETS[2][1]}; renderHome(); return; } closeHome(); openWizard(true,k,true); }; g.appendChild(c); }
+  b.appendChild(g);
+  if(APTS.length){ head("🏢 شققك"); aptListUI(b,renderHome); }
+  const rec=[...projIndex].sort((x,y)=>y.t-x.t).slice(0,6);
+  if(rec.length){ head("🕘 آخر تصميماتك"); const ch=document.createElement("div"); ch.className="chips";
+    for(const p of rec){ const c=document.createElement("button"); c.className="chipbtn"+(p.id===PROJ.id?" on":""); const ap=aptOfRoom(p.id); c.textContent=p.name+(ap?` • ${ap.name}`:"");
+      c.onclick=async()=>{ closeHome(); if(p.id!==PROJ.id) await openProject(p.id); }; ch.appendChild(c); }
+    b.appendChild(ch); const all=document.createElement("button"); all.className="btn wide"; all.style.marginTop="10px"; all.textContent="📂 كل التصميمات والنسخة الاحتياطية"; all.onclick=()=>{ closeHome(); openSheet(); }; b.appendChild(all); }
+  const n=document.createElement("div"); n.className="note"; n.style.marginTop="14px";
+  n.textContent="🔒 شغلك بيتحفظ لوحده على الجهاز ده بس، ومحدش غيرك بيشوفه. تقدر تعمل أكتر من شقة وأكتر من تصميم. عشان تنقلهم لجهاز تاني نزّل نسخة احتياطية من «كل التصميمات» ورجّعها هناك."; b.appendChild(n); }
+function newAptUI(b){ const s=HOME.spec;
+  const back=document.createElement("button"); back.className="btn"; back.textContent="→ رجوع"; back.onclick=()=>{ HOME.view="pick"; renderHome(); }; b.appendChild(back);
+  const nm=document.createElement("input"); nm.className="txt big"; nm.id="aptNewName"; nm.value=s.name; nm.placeholder="اسم الشقة (مثلاً: شقة المعادي)"; nm.setAttribute("aria-label","اسم الشقة"); nm.oninput=()=>{ s.name=nm.value; };
+  const nh=document.createElement("div"); nh.className="head"; nh.textContent="1. سمّي الشقة"; b.append(nh,nm);
+  const ph=document.createElement("div"); ph.className="head"; ph.textContent="2. إيه اللي جوّاها؟"; b.appendChild(ph);
+  const pn=document.createElement("div"); pn.className="note"; pn.textContent="اختار شكل قريب، وبعدين زوّد أو قلّل:"; b.appendChild(pn);
+  const ch=document.createElement("div"); ch.className="chips";
+  for(const [t,v] of APT_PRESETS){ const c=document.createElement("button"); c.className="chipbtn"+(["beds","baths","living","kitchen","balc"].every(k=>s[k]===v[k])?" on":""); c.textContent=t; c.onclick=()=>{ Object.assign(s,v); renderHome(); }; ch.appendChild(c); }
+  b.appendChild(ch);
+  const box=document.createElement("div"); b.appendChild(box);
+  const step=(label,k,min,max)=>{ const w=document.createElement("div"); w.className="numw"; const mk=(ic,d,l)=>{ const x=document.createElement("button"); x.type="button"; x.className="stb"; x.innerHTML=ico(ic,18); x.setAttribute("aria-label",l+" "+label);
+      x.disabled=d<0?s[k]<=min:s[k]>=max; x.onclick=()=>{ s[k]=Math.max(min,Math.min(max,s[k]+d)); renderHome(); }; return x; };
+    const v=document.createElement("input"); v.className="num"; v.readOnly=true; v.value=s[k]; v.setAttribute("aria-label",label); w.append(mk("plus",1,"زوّد"),v,mk("minus",-1,"قلّل")); fieldRow(box,label,w); };
+  step("أوض النوم","beds",0,6); step("الحمامات","baths",1,4);
+  fieldRow(box,"الصالة",choice([["living","صالة"],["recep","ريسبشن"],["both","الاتنين"],["none","مفيش"]],s.living,v=>{ s.living=v; renderHome(); },"الصالة"));
+  fieldRow(box,"مطبخ",choice([["1","أيوه"],["","لأ"]],s.kitchen?"1":"",v=>{ s.kitchen=!!v; renderHome(); },"مطبخ"));
+  fieldRow(box,"بلكونة",choice([["1","أيوه"],["","لأ"]],s.balc?"1":"",v=>{ s.balc=!!v; renderHome(); },"بلكونة"));
+  const sum=document.createElement("div"); sum.className="sum"; sum.innerHTML=`<b>الشقة فيها:</b> ${esc(aptSpecText(s))}.`; b.appendChild(sum);
+  const nx=document.createElement("div"); nx.className="note";
+  nx.innerHTML="<b>بعد كده:</b><br>1. هنرسم المسقط والأوض متوصلة ببعض.<br>2. تظبط مقاس كل أوضة ومكانها، أو تضيف وتشيل أماكن.<br>3. تصمّم كل مكان من جوّه: المطبخ والحمامات والفرش.<br>4. تطلع رسومات ومشتريات وميزانية الشقة كلها."; b.appendChild(nx);
+  const go=document.createElement("button"); go.className="btn main wide"; go.id="aptCreate"; go.textContent="✓ اعمل الشقة";
+  go.onclick=async()=>{ go.disabled=true; const T=specToT({...s,name:cleanName(s.name)}); closeHome(); await createApt(s.name,T); }; b.appendChild(go); }
 </script>
 </body>
 </html>
