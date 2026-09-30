@@ -14,7 +14,7 @@ function room(){
     if(a<L+ext) boxAO(w,a,L+ext,0,-T,0,H,mat,g);
     for(const f of FEATS.filter(x=>x.wall===w)){
       const {a0,a1,y0,y1,dep}=f;
-      if(f.type==="window"){ boxAO(w,a0,a1,-0.055,-0.065,y0,y1,new THREE.MeshBasicMaterial({color:cfg.night?0x1d2a3a:0xcfe8f5}),g).userData.wf=true;
+      if(f.type==="window"){ Object.assign(boxAO(w,a0,a1,-0.055,-0.065,y0,y1,new THREE.MeshBasicMaterial({color:cfg.night?0x1d2a3a:0xcfe8f5}),g).userData,{wf:true,glass:true});
         const mc=(a0+a1)/2; boxAO(w,a0,a0+0.03,-0.03,-0.07,y0,y1,fr,g).userData.wf=true; boxAO(w,a1-0.03,a1,-0.03,-0.07,y0,y1,fr,g).userData.wf=true; boxAO(w,mc-0.015,mc+0.015,-0.03,-0.07,y0,y1,fr,g).userData.wf=true;
         boxAO(w,a0,a1,-0.03,-0.07,y1-0.03,y1,fr,g).userData.wf=true; boxAO(w,a0,a1,-0.03,-0.07,y0,y0+0.03,fr,g).userData.wf=true; }
       if(f.type==="door"){ boxAO(w,a0-0.02,a0,0.02,-0.12,0,y1+0.02,fm,g).userData.wf=true; boxAO(w,a1,a1+0.02,0.02,-0.12,0,y1+0.02,fm,g).userData.wf=true; boxAO(w,a0-0.02,a1+0.02,0.02,-0.12,y1,y1+0.02,fm,g).userData.wf=true;

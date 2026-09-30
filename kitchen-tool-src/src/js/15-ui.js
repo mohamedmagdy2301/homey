@@ -726,6 +726,6 @@ function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canva
   try{ const a=document.createElement("a"); a.href=url; a.download="kitchen.png"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
 document.getElementById("shotClose").onclick=()=>document.getElementById("shot").style.display="none";
 let camKey="";
-(function loop(){ flushLive(); if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
+(function loop(){ flushLive(); walkTick(); if(cfg.autoRot && pts.size===0) sph.theta+=0.004;
   const k=[sph.theta,sph.phi,sph.r,target.x,target.y,target.z,FP.on,FP.x,FP.z,FP.yaw,FP.pitch,camera.aspect].join(); /* catches camera moves from held buttons and code */
   if(DIRTY>0||k!==camKey||drag){ camKey=k; updateCam(); renderer.render(scene,camera); emptyTrash(); if(DIRTY>0) DIRTY--; } requestAnimationFrame(loop); })();

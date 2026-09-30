@@ -12,5 +12,6 @@
 12-shopping-list-budget-apartment.js
 13-build.js
 14-camera.js
+14-walk-mode.js
 15-ui.js
 16-home.js

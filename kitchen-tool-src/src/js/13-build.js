@@ -17,7 +17,7 @@ function build(){
   FEATS=(cfg.feats||[]).filter(f=>f.type!=="cut").map(netFeat); netCuts(); WALLS=makeWalls();
   mats(); room();
   const warn=[]; const R=cfg.roomType==="bath"?buildBath(warn):cfg.roomType==="hall"?buildHall(warn):cfg.roomType==="room"?buildRoom(warn):buildKitchen(warn);
-  finishBuild(warn,R.walk,R.counter,cfg.uStart/100); poke();
+  finishBuild(warn,R.walk,R.counter,cfg.uStart/100); walkAfterBuild(); poke();
 }
 function buildKitchen(warn){
   const ch=CH(), US=cfg.uStart/100, uTop=cfg.upper==="ceiling"?H-0.01:Math.min(2.2,H-0.01), UD=cfg.uDepth/100;

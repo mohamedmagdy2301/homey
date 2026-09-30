@@ -505,9 +505,9 @@ function aptShopUI(box){
 }
 
 // ---------- phase 3: whole apartment in 3D ----------
-function aptFree(X,Z){
+function aptFree(X,Z,m){ const wm=m==null?0.15:m, um=m==null?0.12:m; /* m=0: the bare floor plan (walk-mode map), no body margins */
   for(const r of APT.rooms){ const sn=SNAP[r.id]; if(!sn) continue; const [x,z]=toLocal(r,sn,X,Z);
-    if(x>0.15&&x<sn.RW-0.15&&z>0.15&&z<sn.RL-0.15){ for(const u of sn.units) if(x>u.x0-0.12&&x<u.x1+0.12&&z>u.z0-0.12&&z<u.z1+0.12) return false; return true; } }
+    if(x>wm&&x<sn.RW-wm&&z>wm&&z<sn.RL-wm){ for(const u of sn.units) if(x>u.x0-um&&x<u.x1+um&&z>u.z0-um&&z<u.z1+um) return false; return true; } }
   const g=APT.wallT/100; for(const L of APTLINKS){ if(!L.B) continue; const xs=[L.p0[0],L.p1[0],L.p0[0]+L.n[0]*(g+0.2),L.p1[0]-L.n[0]*0.2], zs=[L.p0[1],L.p1[1],L.p0[1]+L.n[1]*(g+0.2),L.p1[1]-L.n[1]*0.2];
     const alongX=Math.abs(L.p1[0]-L.p0[0])>Math.abs(L.p1[1]-L.p0[1]); let x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs); if(alongX){ x0+=0.08; x1-=0.08; } else { z0+=0.08; z1-=0.08; }
     if(X>x0&&X<x1&&Z>z0&&Z<z1) return true; }
@@ -537,7 +537,7 @@ function aptView(walk){
   if(walk){ FP.on=true; let st=null; const hall=APT.rooms.find(r=>SNAP[r.id]&&SNAP[r.id].roomType==="hall")||APT.rooms.find(r=>SNAP[r.id]);
     if(hall){ const R=roomRectW(hall), cx=(R.x0+R.x1)/2, cz=(R.z0+R.z1)/2; let bd=1e9; for(let i=1;i<10;i++) for(let j=1;j<10;j++){ const x=R.x0+(R.x1-R.x0)*i/10, z=R.z0+(R.z1-R.z0)*j/10; const dd=Math.hypot(x-cx,z-cz); if(aptFree(x,z)&&dd<bd){ bd=dd; st=[x,z]; } } }
     st=st||[(aptBox.X0+aptBox.X1)/2,(aptBox.Z0+aptBox.Z1)/2]; FP.x=st[0]; FP.z=st[1]; { const R=hall?roomRectW(hall):{x0:0,x1:1,z0:0,z1:2}; FP.yaw=(R.x1-R.x0)>(R.z1-R.z0)?Math.PI/2:0; } FP.pitch=-0.1; document.getElementById("pad").style.display="grid";
-    hint("🚶 اسحب تبص حواليك • الأسهم للمشي • عدّي من الأبواب بين الأوض",5000); }
+    hint("🚶 دوس على الأرض تروح هناك • 📍 تنقلك لأي أوضة • عدّي من الأبواب بين الأوض",5000); }
   else { FP.on=false; document.getElementById("pad").style.display="none"; const b=aptBox; target.set((b.X0+b.X1)/2,0,(b.Z0+b.Z1)/2); const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect);
     const half=Math.hypot(b.X1-b.X0,b.Z1-b.Z0)/2+0.6; /* the view is turned: on a narrow screen fit the diagonal across the width */
     sph={r:Math.max(((b.X1-b.X0)/2+0.8)/Math.tan(hf)*1.35,((b.Z1-b.Z0)/2+0.8)/Math.tan(vf)*1.35,half/Math.tan(hf)*0.8,5),theta:0.3,phi:0.62}; }

@@ -11,23 +11,24 @@ const VIEWS={
   niche:{name:"الفجوات والتجاويف",dyn:()=>{ const nf=FEATS.find(f=>f.type==="niche"||f.type==="corridor"); if(!nf) return {t:[RW/2,1,RL/2],s:{r:6,theta:0.3,phi:0.8}}; const m=(nf.a0+nf.a1)/2, [x,z]=aoToXZ(nf.wall,m,nf.type==="corridor"?-0.1-nf.dep/2:-nf.dep/2), [cx,cz]=aoToXZ(nf.wall,m,1.5); return {t:[x,1.2,z],s:{r:2.8,theta:Math.atan2(cx-x,cz-z)+0.35,phi:1.3}}; }}
 };
 VIEWS.walk={name:"🚶 امشي جوه المطبخ",fp:true};
-let view="out"; const FP={on:false,x:0.9,z:2,yaw:0,pitch:-0.1};
+let view="out"; const FP={on:false,x:0.9,z:2,yaw:0,pitch:-0.1,eye:1.6};
 function unitRect(u){ const dr=dirOf(u.f), b=u.back, e=u.back+dr*u.depth; return alongZ(u.f)?{x0:Math.min(b,e),x1:Math.max(b,e),z0:u.a0,z1:u.a1}:{x0:u.a0,x1:u.a1,z0:Math.min(b,e),z1:Math.max(b,e)}; }
-function fpFree(x,z){ if(APT3D) return aptFree(x,z); if(inCut(x,z,0.15)) return false; if(x<0.18||x>RW-0.18||z<0.18||z>RL-0.18) return false; for(const u of UNITS){ if(u.y0>1||!(W4.includes(u.wall)||u.wall==="IS"||(u.wall==="FR"&&u.ft!=="rug"))) continue; const r=unitRect(u); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } for(const f of FEATS) if(f.type==="column"||(f.type==="shaft"||f.type==="stack")){ const r=rectAO(f.wall,f.a0,f.a1,0,f.dep); if(x>r.x0-0.12&&x<r.x1+0.12&&z>r.z0-0.12&&z<r.z1+0.12) return false; } return true; }
-function fpMove(k){ const nx=FP.x+Math.sin(FP.yaw)*k, nz=FP.z+Math.cos(FP.yaw)*k; if(fpFree(nx,nz)||!fpFree(FP.x,FP.z)) /* started inside furniture: let them walk out */{ FP.x=nx; FP.z=nz; } else if(fpFree(nx,FP.z)) FP.x=nx; else if(fpFree(FP.x,nz)) FP.z=nz; }
+function fpFree(x,z,m,wm){ if(APT3D) return aptFree(x,z,m); m=m==null?0.12:m; if(inCut(x,z,wm==null?0.15:wm)) return false; wm=wm==null?0.18:wm; if(x<wm||x>RW-wm||z<wm||z>RL-wm) return false; for(const u of UNITS){ if(u.y0>1||!(W4.includes(u.wall)||u.wall==="IS"||(u.wall==="FR"&&u.ft!=="rug"))) continue; const r=unitRect(u); if(x>r.x0-m&&x<r.x1+m&&z>r.z0-m&&z<r.z1+m) return false; } for(const f of FEATS) if(f.type==="column"||(f.type==="shaft"||f.type==="stack")){ const r=rectAO(f.wall,f.a0,f.a1,0,f.dep); if(x>r.x0-m&&x<r.x1+m&&z>r.z0-m&&z<r.z1+m) return false; } return true; }
+function fpMove(k){ fpStep(Math.sin(FP.yaw)*k,Math.cos(FP.yaw)*k); }
+function fpStep(dx,dz){ const nx=FP.x+dx, nz=FP.z+dz; if(fpFree(nx,nz)||!fpFree(FP.x,FP.z)) /* started inside furniture: let them walk out */{ FP.x=nx; FP.z=nz; } else if(fpFree(nx,FP.z)) FP.x=nx; else if(fpFree(FP.x,nz)) FP.z=nz; }
 function enterWalk(){ view="walk"; FP.on=true; let x=RW/2, z=RL/2; const d=FEATS.find(f=>f.type==="door"||f.type==="opening");
   if(d){ for(let o=0.35;o<=2.5;o+=0.1){ const [px,pz]=aoToXZ(d.wall,(d.a0+d.a1)/2,o); if(fpFree(px,pz)){ x=px; z=pz; break; } } }
   else { let best=null; for(let i=1;i<10;i++) for(let j=1;j<10;j++){ const px=RW*i/10, pz=RL*j/10; if(fpFree(px,pz)){ const dd=Math.hypot(px-RW/2,pz-RL/2); if(!best||dd<best[2]) best=[px,pz,dd]; } } if(best){ x=best[0]; z=best[1]; } }
   FP.x=x; FP.z=z; const far=d?aoToXZ(d.wall,(d.a0+d.a1)/2,spanOf(d.wall)):[RW/2,RL/2]; FP.yaw=Math.atan2(far[0]-x,far[1]-z); FP.pitch=-0.12;
-  document.getElementById("pad").style.display="grid"; hint("🚶 اسحب بصباعك تبص حواليك • الأسهم تحت للمشي • صباعين للقدام وورا",5000); }
+  document.getElementById("pad").style.display="grid"; hint("🚶 دوس على الأرض تروح هناك • اسحب تبص حواليك • الدايرة تحت للمشي",5000); }
 function fitR(v){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect);
   return Math.max(v.s.r,(RW/2+1.5)/Math.tan(hf),(RL/2+1.4)/Math.tan(vf)); }
 let camTouched=false; /* user orbited/zoomed: resize() keeps their camera */
 function setView(k){ if(VIEWS[k].fp){ enterWalk(); return; } camTouched=false; if(FP.on){ FP.on=false; document.getElementById("pad").style.display=cfg.walkPad?"grid":"none"; } view=k; const v0=VIEWS[k]; const v=v0.dyn?{...v0,...v0.dyn()}:v0; target.set(...(typeof v.t==="function"?v.t():v.t)); sph={...v.s}; if(v.fit)sph.r=fitR(v); if(v.side){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(RL/2+0.1)/Math.tan(hf),1.6/Math.tan(vf)); } if(v.sideW){ const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect); sph.r=Math.max(v.s.r,(wlen(v.sideW)/2+0.15)/Math.tan(hf),1.6/Math.tan(vf)); } }
 function updateCam(){
   { const wf=FP.on?75:55; if(camera.fov!==wf){ camera.fov=wf; camera.updateProjectionMatrix(); } }
-  if(FP.on){ FP.pitch=Math.max(-1.2,Math.min(1.1,FP.pitch)); camera.position.set(FP.x,1.6,FP.z);
-    camera.lookAt(FP.x+Math.sin(FP.yaw)*Math.cos(FP.pitch),1.6+Math.sin(FP.pitch),FP.z+Math.cos(FP.yaw)*Math.cos(FP.pitch)); }
+  if(FP.on){ FP.pitch=Math.max(-1.2,Math.min(1.1,FP.pitch)); camera.position.set(FP.x,FP.eye,FP.z);
+    camera.lookAt(FP.x+Math.sin(FP.yaw)*Math.cos(FP.pitch),FP.eye+Math.sin(FP.pitch),FP.z+Math.cos(FP.yaw)*Math.cos(FP.pitch)); }
   else { sph.phi=Math.max(0.03,Math.min(1.62,sph.phi)); sph.r=Math.max(0.5,Math.min(APT3D?60:20,sph.r));
   camera.position.set(target.x+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta), target.y+sph.r*Math.cos(sph.phi), target.z+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta));
   camera.lookAt(target); }
@@ -55,10 +56,10 @@ function declutterLabels(){ lblN=0; lblKey=lblKeyNow(); lblRuns++;
 const pts=new Map(); let lastPinch=0, tapStart=null, drag=null;
 const ray=new THREE.Raycaster();
 let hintT=null; function hint(msg,ms){ const h=document.getElementById("hint"); h.textContent=msg; h.style.opacity=1; clearTimeout(hintT); if(ms!==0) hintT=setTimeout(()=>h.style.opacity=0,ms||2600); }
-function castAt(cx,cy){ const r=canvas.getBoundingClientRect(); ray.setFromCamera(new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1),camera); return ray.intersectObjects(root.children,true); }
+function castAt(cx,cy){ const r=canvas.getBoundingClientRect(); ray.setFromCamera(new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1),camera); return ray.intersectObjects(APT3D?[root,...aptRoots]:root.children,true); }
 function visibleHit(h){ let o=h.object; while(o&&o!==root){ if(!o.visible) return false; o=o.parent; } const m=h.object.material; if(h.object.userData.label||!h.object.isMesh) return false; if(m && m.transparent && m.opacity<0.3) return false; return true; }
 function hitUnit(cx,cy){ for(const h of castAt(cx,cy)){ if(!visibleHit(h)) continue; let o=h.object; while(o && !o.userData.uid && o.parent && o.parent!==root) o=o.parent; if(o && o.userData.uid) return {uid:o.userData.uid,point:h.point}; return null; } return null; }
-function pick(cx,cy){ if(APT3D) return; const h=hitUnit(cx,cy); if(h) selectUnit(h.uid,true); }
+function pick(cx,cy){ if(FP.on){ walkTap(cx,cy); return; } if(APT3D) return; const h=hitUnit(cx,cy); if(h) selectUnit(h.uid,true); }
 // ---- measure tape ----
 let measure=false, mPts=[]; const measureG=new THREE.Group(); scene.add(measureG);
 function spriteLabel(text,pos,color){ const c=document.createElement("canvas"), ctx=c.getContext("2d"); const fs=44; ctx.font=`bold ${fs}px Tahoma,Arial`; const w=ctx.measureText(text).width+40; c.width=w; c.height=fs+30;
@@ -110,7 +111,7 @@ canvas.addEventListener("pointerdown",e=>{ canvas.setPointerCapture(e.pointerId)
 canvas.addEventListener("pointermove",e=>{
   if(!pts.has(e.pointerId))return; const pr=pts.get(e.pointerId), c={x:e.clientX,y:e.clientY}; pts.set(e.pointerId,c);
   if(drag && pts.size===1){ moveDrag(e); return; }
-  if(pts.size===1){ if(FP.on){ FP.yaw+=(c.x-pr.x)*0.006; FP.pitch+=(c.y-pr.y)*0.005; } else { sph.theta-=(c.x-pr.x)*0.008; sph.phi-=(c.y-pr.y)*0.006; camTouched=true; } }
+  if(pts.size===1){ if(FP.on){ const dy=(c.x-pr.x)*0.006; FP.yaw+=dy; if(WALK.gyro&&WALK.gyro.off!=null) WALK.gyro.off+=dy; else FP.pitch+=(c.y-pr.y)*0.005; } else { sph.theta-=(c.x-pr.x)*0.008; sph.phi-=(c.y-pr.y)*0.006; camTouched=true; } }
   else if(pts.size===2){ const [a,b]=[...pts.values()]; const dd=Math.hypot(a.x-b.x,a.y-b.y); if(lastPinch){ if(FP.on) fpMove((dd-lastPinch)*0.01); else { sph.r*=lastPinch/dd; camTouched=true; } } lastPinch=dd; }
 });
 const up=e=>{

@@ -14,7 +14,8 @@ function finishesRender(){
   // curtains
   if(cfg.curtains) for(const f of FEATS.filter(x=>x.type==="window")){ const cm=M(cfg.cCurtain||"#d8cbb6",{roughness:1,transparent:true,opacity:0.92}); curSide=f.wall; const L=wlen(f.wall), top=Math.min(H-0.03,f.y1+0.25);
     boxAO(f.wall,Math.max(0,f.a0-0.3),Math.min(L,f.a1+0.3),0.1,0.12,top,top+0.02,MAT.steel);
-    for(const [s0,s1] of [[Math.max(0,f.a0-0.28),f.a0+0.12],[f.a1-0.12,Math.min(L,f.a1+0.28)]]) for(let x=s0;x<s1-0.01;x+=0.08){ boxAO(f.wall,x,x+0.05,0.06,0.1,0.02,top,cm); boxAO(f.wall,x+0.04,x+0.08,0.09,0.13,0.02,top,cm); } curSide=null; }
+    const shut=FP.on&&WALK.curtClosed; /* walk mode: tap the window to draw the curtains */
+    for(const [s0,s1] of shut?[[Math.max(0,f.a0-0.28),Math.min(L,f.a1+0.28)]]:[[Math.max(0,f.a0-0.28),f.a0+0.12],[f.a1-0.12,Math.min(L,f.a1+0.28)]]) for(let x=s0;x<s1-0.01;x+=0.08){ boxAO(f.wall,x,x+0.05,0.06,0.1,0.02,top,cm).userData.curt=true; boxAO(f.wall,x+0.04,x+0.08,0.09,0.13,0.02,top,cm).userData.curt=true; } curSide=null; }
   // chandelier
   if(cfg.chand&&cfg.roomType==="room"){ const cx=RW/2, cz=RL/2; cyl(0.01,0.5,cx,H-0.25,cz,MAT.dark); const sh=cyl(0.28,0.22,cx,H-0.6,cz,M("#f3e7c9",{emissive:0x332a10})); for(let i=0;i<6;i++){ const t=i*Math.PI/3; cyl(0.04,0.08,cx+Math.cos(t)*0.34,H-0.62,cz+Math.sin(t)*0.34,M("#fff6dc",{emissive:0x554422})); } }
 }

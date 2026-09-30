@@ -92,6 +92,27 @@
   body.panel-open #hint{bottom:30px}
   #pad{position:absolute;bottom:84px;left:14px;z-index:3;display:none;grid-template-columns:repeat(3,52px);gap:6px}
   #pad button{width:52px;height:52px;border-radius:var(--r-l);border:1px solid var(--line);background:rgba(255,255,255,.94);font-size:20px;color:var(--ink);box-shadow:var(--lift);touch-action:none}
+  /* walk mode extras (14-walk-mode.js) */
+  #wbar,#wmap,#joy,#wcard,#wplaces{display:none}
+  body.walking #wbar{display:flex} body.walking #wmap,body.walking #joy{display:block} body.walking #pad,body.walking #stats,body.wcard #joy{display:none!important}
+  body.walking #hint{bottom:156px}
+  #wbar{position:absolute;right:10px;top:calc(max(10px,env(safe-area-inset-top)) + 56px);z-index:3;flex-direction:column;gap:6px}
+  #wbar .btn{width:46px;height:46px;min-height:0;padding:0;flex-direction:column;gap:1px;border-radius:var(--r-l);background:rgba(255,255,255,.94);box-shadow:var(--lift);font-size:18px;line-height:1;position:relative}
+  #wbar .btn b{font-size:9.5px;font-weight:600;color:var(--ink-2)} #wbar .btn b:empty{display:none}
+  #wbar .btn.on{background:var(--pri-soft);border-color:var(--pri)}
+  #wbar [data-w=warn] b{position:absolute;top:-5px;left:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--clay);color:#fff;font-size:11px;line-height:18px}
+  #wmap{position:absolute;left:10px;top:calc(max(10px,env(safe-area-inset-top)) + 56px);width:120px;height:120px;z-index:3;background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--lift);touch-action:none;cursor:crosshair}
+  #joy{position:absolute;left:18px;bottom:max(24px,env(safe-area-inset-bottom));width:116px;height:116px;border-radius:50%;background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.95);box-shadow:var(--lift);z-index:3;touch-action:none}
+  #joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:var(--paper);border:1px solid var(--line);box-shadow:var(--lift-2);pointer-events:none}
+  #wcard{position:absolute;left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));z-index:4;max-width:420px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--lift-2);padding:6px 14px 10px}
+  #wcard.open{display:block}
+  #wcard .wch{display:flex;align-items:center;gap:8px} #wcard .wch b{flex:1;font-size:15px}
+  #wcard .wdim{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;padding-bottom:4px}
+  #wcard .wrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:4px 0;border-top:1px solid var(--line-soft);font-size:13.5px}
+  #wcard .wrow select{max-width:58%} #wcard .wrow input[type=color]{width:46px;height:34px;border:1px solid var(--line-2);border-radius:var(--r-s);padding:3px;background:var(--paper)}
+  #wcard .act{padding-bottom:0}
+  #wplaces{position:absolute;right:64px;top:calc(max(10px,env(safe-area-inset-top)) + 56px);z-index:4;flex-direction:column;gap:2px;min-width:170px;max-height:60vh;overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--lift-2);padding:4px}
+  #wplaces.open{display:flex} #wplaces .btn{justify-content:flex-start;border:0;background:none;width:100%} #wplaces .btn:hover{background:var(--paper-2)}
   #aptBar{position:absolute;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:5;background:var(--paper);padding:6px;border-radius:var(--r-l);box-shadow:var(--lift-2)}
 
   /* ---------- controls panel: bottom sheet on phones ---------- */
