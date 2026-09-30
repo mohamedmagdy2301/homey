@@ -140,6 +140,7 @@ function aptPlanSVG(){
   const rs=APT.rooms.filter(r=>SNAP[r.id]); if(!rs.length) return `<div class="note">ضيف أوض للشقة من تحت.</div>`;
   let X0=1e9,Z0=1e9,X1=-1e9,Z1=-1e9; for(const r of rs){ const R=roomRectW(r); X0=Math.min(X0,R.x0);Z0=Math.min(Z0,R.z0);X1=Math.max(X1,R.x1);Z1=Math.max(Z1,R.z1); }
   for(const k of ["riser","riser2","water","panel","heaterAt"]) if(APT[k]){ X0=Math.min(X0,APT[k].x/100);Z0=Math.min(Z0,APT[k].z/100);X1=Math.max(X1,APT[k].x/100);Z1=Math.max(Z1,APT[k].z/100); }
+  const bg=aptTab==="المسقط"&&aptBgBounds(); if(bg){ X0=Math.min(X0,bg.x0);Z0=Math.min(Z0,bg.z0);X1=Math.max(X1,bg.x1);Z1=Math.max(Z1,bg.z1); } /* the contractor's plan picture (17) */
   const pad=0.9; X0-=pad;Z0-=pad;X1+=pad;Z1+=pad; const S=100;
   let s=`<svg id="aptSvg" viewBox="${X0*S} ${Z0*S} ${(X1-X0)*S} ${(Z1-Z0)*S}" xmlns="http://www.w3.org/2000/svg" font-family="Tahoma,Arial" style="touch-action:none;background:#f6f7f8">`;
   s+=`<rect x="${X0*S}" y="${Z0*S}" width="${(X1-X0)*S}" height="${(Z1-Z0)*S}" fill="#f6f7f8" data-bg="1"/>`;
@@ -167,6 +168,7 @@ function aptPlanSVG(){
   const sv=APT_SVC; if(sv&&aptTab!=="المسقط"){ const P=v=>[v.x/100,v.z/100];
     const route=(src,colr)=>{ for(const r of rs){ const e=roomEntry(r,src); s+=`<polyline points="${src[0]*S},${src[1]*S} ${e[0]*S},${src[1]*S} ${e[0]*S},${e[1]*S}" fill="none" stroke="${colr}" stroke-width="4" stroke-dasharray="10 6" opacity="0.8"/>`; } };
     if(APT.riser) route(P(APT.riser),"#1b3a5c"); if(APT.riser2) route(P(APT.riser2),"#1b3a5c"); if(APT.water) route(P(APT.water),"#2a7fd4"); if(APT.panel) route(P(APT.panel),"#e07b00"); }
+  if(bg) s+=aptBgSVG(); /* over the rooms, multiplied: the paper turns see-through and only its lines show */
   s+=furLab; /* over the room labels */
   const hr=aptTab==="المسقط"&&aptSel&&rs.find(r=>r.id===aptSel); if(hr){ const R=roomRectW(hr), g=APT.wallT/200, mx=(R.x0+R.x1)/2, mz=(R.z0+R.z1)/2;
     for(const [h,x,z,c] of [["x0",R.x0-g,mz,"ew"],["x1",R.x1+g,mz,"ew"],["z0",mx,R.z0-g,"ns"],["z1",mx,R.z1+g,"ns"]]) s+=`<circle data-h="${h}" cx="${x*S}" cy="${z*S}" r="16" data-r="11" fill="#fff" stroke="#e07b00" stroke-width="3" vector-effect="non-scaling-stroke" style="cursor:${c}-resize"/>`; }
@@ -231,7 +233,7 @@ function renderApt(){ aptTitle();
     const rsA=APT.rooms.filter(r=>SNAP[r.id]); if(rsA.length>1){ const ar=document.createElement("div"); ar.className="aptarea"; ar.textContent=`📐 ${rsA.reduce((a,r)=>a+aptAreaM(SNAP[r.id]),0).toFixed(1)} م² ${aptDimWord()}`; pl.appendChild(ar); } }
   const box=document.createElement("div"); box.className="aptctl"; body.appendChild(box); const saveCtl=ctlEl; ctlEl=box;
   const sv=APT_SVC;
-  if(aptTab==="المسقط") arrangeUI(box);
+  if(aptTab==="المسقط"){ arrangeUI(box); aptBgUI(box); }
   if(aptTab==="الرسومات") aptDrawingsUI(box);
   if(aptTab==="المشتريات والميزانية") aptShopUI(box);
   if(aptTab==="السباكة والكهربا"){

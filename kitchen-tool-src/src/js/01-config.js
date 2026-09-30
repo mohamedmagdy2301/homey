@@ -11,7 +11,7 @@ function parseNum(s,unit,money){ let t=String(s??"").replace(/[٠-٩]/g,d=>d.cha
   if(suf&&suf!==String(unit||"").toLowerCase()){ const f=LEN_U[suf], to=LEN_U[unit]; if(!f||!to) return NaN; v=v*f/to; }
   return +v.toFixed(6); }
 // prices that can be saved once and used as the defaults for every new project
-const PRICE_KEYS=["pLower","pUpper","pTall","pMarble","pFloor","pPaint","pSkirt","pTile","pWP","pLabor"];
+const PRICE_KEYS=["pLower","pUpper","pTall","pMarble","pFloor","pPaint","pSkirt","pTile","pWP","pLabor","pSheet","pFrontSheet"];
 let PRICE_DEF={};
 const cleanPrices=o=>{ const r={}; if(o&&typeof o==="object"&&!Array.isArray(o)) for(const k of PRICE_KEYS){ const v=o[k]; if(typeof v==="number"&&isFinite(v)&&v>=0&&v<1e9) r[k]=v; } return r; };
 const W4=["W","RT","D","L"];
@@ -55,7 +55,8 @@ const DEFAULT = {
   fridgeW:70, fridgeD:70, fridgeH:180, fridgeGap:5, fridgeBack:10, washerW:60, washerD:60, washerH:85, washerGap:2, washerBack:2, appLabels:true,
   splash:"tiles", cSplash:"#e7e4de", floorType:"tiles", gloss:false, ceiling:"gypsum", doorLeaf:"open",
   decor:true, autoRot:false, walkPad:false,
-  pLower:0, pUpper:0, pTall:0, pMarble:0,
+  pLower:0, pUpper:0, pTall:0, pMarble:0, pSheet:0, pFrontSheet:0,
+  sunOn:false, facing:"0", season:"eq", sunHour:10, startDate:"", stepDays:{}, quotes:[],
   units:{}, openDoors:false, fridgeHinge:"a1",
   showPts:true, ptLabels:false, water:{wall:"L",pos:150,y:55}, drain:{wall:"L",pos:150},
   apps:[], custom:[], hiddenUnits:[], steps:{}, dragOn:true, showTri:true, openCab:false, roomType:"kitchen", bfix:[], furn:[], rtype:"", cSofa:"#8a9aa8", cRug:"#b98d6a", pFloor:0, pPaint:0, pSkirt:0, paintCoats:2, gyps:"cove", chand:false, curtains:false, cCurtain:"#d8cbb6", accent:"", accentT:"wood", cAccent:"#8a6a4a", corner:"door", gbType:"tray", gbDrop:12, gbBand:30, gbPerSide:"", gbCenter:0, gbLed:"", gbLedCol:"warm", gbSpots:0, gbSpotsAt:"band", pGbFlat:0, pGbCove:0, cCeil:"#fbfbfa", tileTop:"ceil", wallTile:"30x60", floorTile:"60x60", cTile:"#e9e6e1", wpUp:30, wpShower:200, waste:10, pTile:0, pWP:0, pLabor:0
@@ -133,6 +134,7 @@ const STYLES = {
 };
 let cfg = migrate({});
 
+const FACING=[["0","بحري (شمال)"],["45","بحري شرقي"],["90","شرقي"],["135","قبلي شرقي"],["180","قبلي (جنوب)"],["225","قبلي غربي"],["270","غربي"],["315","بحري غربي"]]; /* compass direction the front wall (W) looks out to */
 const SCHEMA = {
   "الأجهزة":[
     {t:"select",k:"stoveType",l:"البوتاجاز",o:[["free","بوتاجاز عادي بفرن"],["built","مسطح بلت إن + فرن تحت الرخامة"]]},
@@ -223,7 +225,12 @@ const SCHEMA = {
     {t:"toggle",k:"autoRot",l:"لف تلقائي"},
     {t:"toggle",k:"dragOn",l:"سحب الأجهزة والوحدات بالصباع"},
     {t:"toggle",k:"walkPad",l:"أزرار المشي جوه المطبخ"},
+    {t:"toggle",k:"sunOn",l:"☀️ الشمس حسب اتجاه المكان",re:true},
+    {t:"select",k:"facing",l:"الحيطة القدامية بتبص على",o:FACING,if:()=>cfg.sunOn},
+    {t:"select",k:"season",l:"الموسم",o:[["sum","صيف"],["eq","ربيع/خريف"],["win","شتا"]],if:()=>cfg.sunOn},
+    {t:"range",k:"sunHour",l:"الساعة",min:6,max:18.5,step:0.5,u:"",if:()=>cfg.sunOn},
     {t:"action",l:"📷 صورة للتصميم",fn:()=>takeShot()},
+    {t:"action",l:"🔗 شارك التصميم (واتساب ولينك)",fn:()=>shareDesign()},
     {t:"action",l:"📐 رسومات النجار والمقاسات",fn:()=>openDraw()}
   ],
   "المية والكهربا":[
@@ -236,7 +243,10 @@ const SCHEMA = {
     {t:"num",k:"pLower",l:"سعر متر الدواليب السفلية"},
     {t:"num",k:"pUpper",l:"سعر متر الدواليب العلوية"},
     {t:"num",k:"pTall",l:"سعر متر الدولاب الطول"},
-    {t:"num",k:"pMarble",l:"سعر متر الرخامة"}
+    {t:"num",k:"pMarble",l:"سعر متر الرخامة"},
+    {t:"head",l:"🪚 لو هتشتري الخشب بنفسك"},
+    {t:"num",k:"pSheet",l:"سعر لوح خشب الجسم"},
+    {t:"num",k:"pFrontSheet",l:"سعر لوح الوش (الضلف)"}
   ],
   "المشاريع":[],
   "الحمام":[],

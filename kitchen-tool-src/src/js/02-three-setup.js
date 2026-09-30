@@ -12,7 +12,10 @@ sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
 Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4,near:0.5,far:15});
 scene.add(sun,sun.target);
 // keep the sun's shadow box over the whole room (a fixed ±4 m box clipped shadows in big rooms / the apartment)
-function fitSun(cx,cz,s){ sun.target.position.set(cx,0,cz); sun.position.set(cx+0.5,4,cz-6); sun.target.updateMatrixWorld(); const c=sun.shadow.camera; c.left=c.bottom=-s; c.right=c.top=s; c.near=0.5; c.far=Math.hypot(0.5,4,6)+s+4; c.updateProjectionMatrix(); }
+function fitSun(cx,cz,s){ sun.target.position.set(cx,0,cz); sun.position.set(cx+0.5,4,cz-6); sun.target.updateMatrixWorld(); const c=sun.shadow.camera; c.left=c.bottom=-s; c.right=c.top=s; c.near=0.5; c.far=Math.hypot(0.5,4,6)+s+4; sun.color.set(0xfff4e0);
+  const d=typeof sunDir==="function"&&sunDir(); /* the real sun (17): from the direction the place faces, the season and the hour */
+  if(d){ const R=Math.max(8,s*2.5); sun.position.set(cx+d.x*R,Math.max(0.2,d.y*R),cz+d.z*R); c.far=R+s*2+4; if(!cfg.night) sun.intensity=d.e<=0?0.03:0.3+0.8*Math.min(1,d.e/35); if(d.e<15) sun.color.set(0xffc98f); }
+  c.updateProjectionMatrix(); }
 const bulb=new THREE.PointLight(0xfff1d6,0.45,7); bulb.position.set(0.9,2.6,2); scene.add(bulb);
 let root=new THREE.Group(); scene.add(root);
 // render on demand: the loop only draws while something changes (saves battery on phones)

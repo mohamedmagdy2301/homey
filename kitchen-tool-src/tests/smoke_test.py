@@ -328,6 +328,57 @@ with sync_playwright() as p:
       const p0=new Set(renderer.info.programs); for(let i=0;i<3;i++){ cfg.roomW+=5; build(); await raf(); await raf(); }
       return [renderer.info.programs.length, renderer.info.programs.filter(p=>!p0.has(p)).length, TRASH.length]; }""")
     check("rebuilds reuse the compiled shaders and free the old scene after drawing", r[0] > 0 and r[1] == 0 and r[2] == 0, r)
+    # --- share link, cut list, trade sheets, schedule, quotes, sun, quality, tour, backup reminder, plan picture ---
+    r = ev("""()=>{ cfg=newCfg('U'); build(); const C=cutList(), csv=cutCSV().trim().split('\\r\\n');
+      return [C.boxes, C.mats.body.sheets>0&&C.mats.front.sheets>0&&C.mats.back.sheets>0, C.hw.hinge>0&&C.hw.slide>0, C.list.every(p=>p.l>=p.w&&p.w>0&&p.n>0), csv.length===C.list.length+1]; }""")
+    check("cut list: boards, hardware and parts from the U kitchen's cabinets, CSV has every part", r[0] >= 10 and r[1:] == [True] * 4, r)
+    r = ev("""()=>{ openDraw(); const ok=[!!document.getElementById('sec-cut'), !!document.getElementById('sec-send'), document.querySelectorAll('#sec-send [data-send]').length];
+      const carp=tradeMsg('carp'), n=UNITS.filter(CARPK).length, lines=carp.split('\\n').filter(l=>/^\\d+\\) /.test(l)).length, el=tradeMsg('elec'), socks=POINTS.filter(p=>p.type==='socket').length;
+      let hid=[], shown=[]; const op=window.print; window.print=()=>{ hid=[...document.querySelectorAll('#dbody section.np')].map(x=>x.id); shown=[...document.querySelectorAll('#dbody section:not(.np)')].map(x=>x.id); };
+      try{ printOnly('elec'); } finally{ window.print=op; } dispatchEvent(new Event('afterprint'));
+      document.getElementById('dclose').click(); return [...ok, lines===n, (el.match(/• بريزة/g)||[]).length===socks, hid.includes('sec-cut')&&shown.includes('sec-pts')&&shown.includes('sec-elec'), document.querySelectorAll('#dbody section.np').length]; }""")
+    check("drawings: cut list and send-to-tradesman sections, one message per trade, print only the electrician's sheets", r == [True, True, 5, True, True, True, 0], r)
+    r = ev("""async()=>{ cfg=newCfg('L'); cfg.quotes=[{id:'q1',tr:'نجار',who:'x',amt:100,paid:0,pick:false}]; build(); const want=JSON.stringify(cfg), l=await designLink(), o=await unpackDesign(l.split('#d=')[1]);
+      const n0=projIndex.length; cfg=newCfg('b_std'); build(); location.hash=l.split('#')[1]; for(let i=0;i<30&&cfg.template!=='L';i++) await new Promise(r=>setTimeout(r,100));
+      const opened=[JSON.stringify(o.c)===want, cfg.template, cfg.quotes.length, projIndex.length===n0+1, location.hash, !!(await stGet('kproj:'+PROJ.id))];
+      const t=cfg.template; location.hash='#d=zAAAA'; await new Promise(r=>setTimeout(r,600)); return [...opened, cfg.template===t, /بايظ/.test(document.getElementById('hint').textContent)]; }""")
+    check("share link: the design survives the round trip and opens as a new saved project; a broken link changes nothing", r == [True, "L", 1, True, "", True, True, True], r)
+    r = ev("""()=>{ cfg=newCfg('U'); cfg.startDate='2026-10-01'; build(); tab='خطوات التنفيذ'; renderTabs(); renderControls(); const st=STEPS(), S=stepSched(st);
+      const noFri=S.rows.every(x=>x.d0.getDay()!==5&&x.d1.getDay()!==5), seq=S.rows.every((x,i)=>!i||x.d0>S.rows[i-1].d1);
+      const d0=S.rows[1].days; document.querySelectorAll('.sdur')[1].querySelectorAll('button')[1].click(); const d1=stepSched(STEPS()).rows[1].days;
+      return [document.querySelectorAll('.sdur').length===st.length, noFri, seq, d1===d0+1, cfg.stepDays[1]===d0+1, S.total===S.rows.reduce((a,x)=>a+x.days,0)]; }""")
+    check("schedule: working days per step skip Fridays, steps follow each other, + adds a day", r == [True] * 6, r)
+    r = ev("""()=>{ const add=(t,w,a)=>{ const [tr,who,amt,btn]=document.querySelector('.qadd').children; tr.value=t; who.value=w; amt.value=a; btn.click(); };
+      add('نجار','أ','٤٥٠٠٠'); add('نجار','ب','52000'); add('سباك','ج','8000'); add('نجار','د','كتير');
+      const tags=[...document.querySelectorAll('.qrow')].filter(x=>x.querySelector('.tag')).map(x=>x.querySelector('.qn').textContent.trim()[0]);
+      const s0=document.getElementById('quoteSum').textContent; document.querySelectorAll('.qrow')[1].querySelector('.btn.sm').click();
+      const pi=document.querySelectorAll('.qrow')[1].querySelector('.money input'); pi.value='20000'; pi.dispatchEvent(new Event('change')); const s1=document.getElementById('quoteSum').textContent;
+      return [cfg.quotes.length, tags, s0.includes('٥٣٬٠٠٠'), s1.includes('٦٠٬٠٠٠')&&s1.includes('٢٠٬٠٠٠')&&s1.includes('٤٠٬٠٠٠'), cfg.quotes.filter(q=>q.pick).length]; }""")
+    check("quotes: cheapest marked per trade, the picked one counts, paid and remaining add up, bad amounts refused", r == [3, ["أ"], True, True, 1], r)
+    r = ev("""()=>{ cfg=newCfg('U'); build(); tab='العرض'; renderTabs(); renderControls(); const off=!document.querySelector('#controls input[aria-label="الساعة"]'), p0=sun.position.toArray();
+      cfg.sunOn=true; cfg.facing='90'; cfg.season='sum'; cfg.sunHour=8; build(); renderControls(); const d=sunDir(), on=!!document.querySelector('#controls input[aria-label="الساعة"]');
+      const front=sun.position.z<0, morning=[d.e>25&&d.e<45, +sun.intensity.toFixed(2)>0.5];
+      cfg.season='win'; cfg.sunHour=6; build(); const night=[sunDir().e<0, sun.intensity<0.05]; cfg.sunOn=false; build();
+      return [off, on, front, ...morning, ...night, sun.position.toArray().join()===p0.join()]; }""")
+    check("sun: rows appear only when on; an east-facing front wall gets the summer morning sun; below the horizon it goes dark; off puts it back", r == [True] * 8, r)
+    r = ev("""()=>{ const pr=renderer.getPixelRatio(), w=canvas.width, u=shotURL(); return [u.startsWith('data:image/jpeg'), u.length>20000, renderer.getPixelRatio()===pr, canvas.width===w]; }""")
+    check("sharp picture: rendered larger as JPEG, the screen goes back to its own size", r == [True] * 4, r)
+    r = ev("""()=>{ tab='العرض'; renderControls(); const pick=t=>{ const row=[...document.querySelectorAll('#controls .ctl')].find(x=>x.querySelector('label')&&x.querySelector('label').textContent==='جودة العرض'), s=row.querySelector('select');
+        if(s){ s.value=({خفيفة:'low',عالية:'high',تلقائي:'auto'})[t]; s.dispatchEvent(new Event('change')); } else [...row.querySelectorAll('button')].find(x=>x.textContent.trim()===t).click(); };
+      pick('خفيفة'); const low=[renderer.getPixelRatio(), sun.castShadow, localStorage.getItem('kitchen3d/qual')]; pick('تلقائي'); const back=[sun.castShadow, QUAL]; localStorage.removeItem('kitchen3d/qual'); return [low, back]; }""")
+    check("display quality: light mode drops shadows and resolution, saved per device; auto brings them back", r == [[1, False, "low"], [True, "auto"]], r)
+    r = ev("""async()=>{ await stDel('ktour'); TOUR_DONE=null; startTour(); const o=document.getElementById('tour'), a=[o.style.display, document.getElementById('tourN').textContent];
+      for(let i=0;i<TOUR.length;i++) document.getElementById('tourNext').click(); await new Promise(r=>setTimeout(r,50)); return [...a, o.style.display, !!(await stGet('ktour'))]; }""")
+    check("tour: walks through every step and remembers it was seen", r == ["block", "1 من 5", "none", True], r)
+    r = ev("""async()=>{ const t=projIndex.map(p=>p.t); projIndex.forEach(p=>p.t=Date.now()-30*864e5); await stDel('kbak'); openHome(); await new Promise(r=>setTimeout(r,300)); const nag=!!document.getElementById('backupNag');
+      markBackup(); await new Promise(r=>setTimeout(r,50)); openHome(); await new Promise(r=>setTimeout(r,300)); const after=!!document.getElementById('backupNag'); closeHome(); projIndex.forEach((p,i)=>p.t=t[i]); return [nag, after]; }""")
+    check("backup reminder: shows after two weeks with no backup, gone once one is made", r == [True, False], r)
+    r = ev("""async()=>{ await openApt(); await new Promise(r=>setTimeout(r,800)); aptTab='المسقط'; renderApt(); const c=document.createElement('canvas'); c.width=400; c.height=200; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,400,200); x.fillStyle='#000'; x.fillRect(10,10,50,50);
+      const bl=await new Promise(r=>c.toBlob(r,'image/png')), dt=new DataTransfer(); dt.items.add(new File([bl],'p.png',{type:'image/png'})); const fi=document.querySelector('[data-key=aptbg] input[type=file]'); fi.files=dt.files; fi.dispatchEvent(new Event('change'));
+      for(let i=0;i<30&&!document.querySelector('#aptSvg image');i++) await new Promise(r=>setTimeout(r,100)); const im=document.querySelector('#aptSvg image'), v=await stGet('kaptbg:'+APT_ID), inApt=JSON.stringify(APT).includes('data:image');
+      const w=+im.getAttribute('width'), h=+im.getAttribute('height'); OPENC.add('aptbg'); renderApt(); [...document.querySelectorAll('[data-key=aptbg] button')].find(b=>b.textContent.includes('شيل')).click(); await new Promise(r=>setTimeout(r,300));
+      const gone=!document.querySelector('#aptSvg image')&&!(await stGet('kaptbg:'+APT_ID)); closeApt(); return [!!im, v&&v.src.startsWith('data:image/jpeg'), Math.abs(h/w-0.5)<0.01, inApt, gone]; }""")
+    check("apartment plan picture: image kept in its own key (not in the apartment), drawn on the plan, removable", r == [True, True, True, False, True], r)
     check("no JS errors during the whole run", not errs, errs[:3])
     b.close()
     # --- start screen, several apartments, shops ---

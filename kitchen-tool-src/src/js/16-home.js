@@ -11,7 +11,7 @@ const APT_PRESETS=[["استوديو",{beds:0,baths:1,living:"living",kitchen:tru
   ["أوضتين وصالة",{beds:2,baths:1,living:"living",kitchen:true,balc:true}],["3 أوض وصالة",{beds:3,baths:2,living:"living",kitchen:true,balc:true}],["4 أوض وريسبشن",{beds:4,baths:3,living:"both",kitchen:true,balc:true}]];
 const cnt=(n,one,two,many)=>n===1?one:n===2?two:`${n} ${many}`;
 function openHome(){ closeSheet(); HOME={view:"pick",spec:null}; document.getElementById("home").style.display="flex"; renderHome(); }
-function closeHome(){ HOME=null; document.getElementById("home").style.display="none"; }
+function closeHome(){ HOME=null; document.getElementById("home").style.display="none"; maybeTour(); }
 // the rooms of a new apartment, as an APT_TPLS-style layout: a hall in the middle, the kitchen and baths on one side, the living room on the other
 function specToT(s){ const W=k=>k==="k"?300:((RTEMPLATES[k]||BTEMPLATES[k]||{}).dims||[300])[0], len=a=>a.reduce((x,[k])=>x+W(k),0), top=[], bot=[];
   if(s.living==="living"||s.living==="both") bot.push(["r_living","صالة"]); if(s.living==="recep"||s.living==="both") bot.push(["r_recep","ريسبشن وسفرة"]);
@@ -29,6 +29,7 @@ function renderHome(){ if(!HOME) return; const b=document.getElementById("homeBo
   const hero=document.createElement("div"); hero.className="hhero"; hero.innerHTML=`<h1>عايز تصمّم إيه؟</h1><p>اختار وهنمشي معاك خطوة بخطوة، وتقدر تغيّر أي حاجة بعدين.</p>`; b.appendChild(hero);
   if(projIndex.some(p=>p.id===PROJ.id)){ const c=document.createElement("button"); c.className="hcont"; c.id="homeCont";
     const ap=aptOfRoom(PROJ.id); c.innerHTML=`<span class="hico">↩</span><span><small>كمّل آخر شغلك</small><b>${esc(PROJ.name)}</b>${ap?`<small>في ${esc(ap.name)}</small>`:""}</span>`; c.onclick=closeHome; b.appendChild(c); }
+  const nag=document.createElement("div"); b.appendChild(nag); backupNag(nag); /* filled in if the last backup is old */
   const g=document.createElement("div"); g.className="hgrid";
   for(const [k,i,n,d] of HOME_KINDS){ const c=document.createElement("button"); c.className="hcard"+(k==="apt"?" wide":""); c.dataset.k=k; c.innerHTML=`<span class="hico">${i}</span><b>${n}</b><small>${d}</small>`;
     c.onclick=()=>{ if(k==="apt"){ HOME.view="apt"; HOME.spec={name:"",...APT_PRESETS[2][1]}; renderHome(); return; } closeHome(); openWizard(true,k,true); }; g.appendChild(c); }

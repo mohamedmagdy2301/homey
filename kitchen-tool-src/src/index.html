@@ -346,7 +346,43 @@
   #dbody .sub{font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.7}
   .elev{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
   .elev svg{display:block;min-width:620px;width:100%;height:auto}
-  @media print{ body>*:not(#draw){display:none!important} #draw{position:static;display:block!important} #draw .dhead,.dtabs{display:none!important} .dwrap{display:block!important} #dbody{overflow:visible;padding:0!important} .elev svg{min-width:0} section{page-break-inside:avoid} }
+  /* share dialog, trade rows, schedule, quotes, backup reminder, tour (17) */
+  .shareimg{display:block;width:100%;max-height:42vh;object-fit:contain;border-radius:var(--r);background:var(--paper-3);margin-bottom:10px}
+  #share textarea{width:100%;min-height:120px}
+  #shareBody .act{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  #shareBody .act .btn{flex:1 1 150px}
+  .trow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line-soft)}
+  .trow b{flex:1 1 90px}
+  .trow .act{display:flex;gap:6px;flex-wrap:wrap}
+  .trow .btn{min-height:34px;padding:4px 10px;font-size:13px}
+  .sdur{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+  .sdur small{color:var(--muted)}
+  .stb.sm{min-width:30px;min-height:30px;padding:0;font-size:16px;line-height:1}
+  .btn.sm{min-height:34px;padding:4px 10px;font-size:13px}
+  .sched{margin:8px 0}
+  .sched input[type=date]{font:inherit;padding:6px 8px;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--paper);color:var(--ink)}
+  .qadd{flex-wrap:wrap}
+  .qadd .txt{flex:1 1 110px;min-width:0}
+  .qrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line-soft)}
+  .qrow .qn{flex:1 1 120px}
+  .qrow .act{flex:1 1 100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .qrow.pick .qa{color:var(--ok)}
+  .qrow .money{flex:1 1 110px;max-width:170px;width:auto;height:34px}
+  .qrow .money input{width:100%;min-width:0}
+  .qrow .act .btn{flex:0 0 auto}
+  .tag{font-style:normal;font-size:11px;padding:1px 6px;border-radius:99px;background:var(--pri-soft);color:var(--pri-ink)}
+  .tag.ok{background:#E5F3E9;color:var(--ok)}
+  .nag{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0;padding:12px;border-radius:var(--r);background:var(--brass-soft);color:var(--brass-ink);font-size:14px}
+  .nag span{flex:1 1 200px}
+  #tour{position:fixed;inset:0;z-index:40;display:none}
+  #tour .tring{position:fixed;border-radius:var(--r);box-shadow:0 0 0 3px var(--brass),0 0 0 9999px rgba(20,28,25,.55);pointer-events:none;transition:all .25s}
+  #tour .tring.off{left:50%!important;top:50%!important;width:0!important;height:0!important;box-shadow:0 0 0 9999px rgba(20,28,25,.55)}
+  #tour .tcard{position:fixed;background:var(--paper);color:var(--ink);border-radius:var(--r-l);box-shadow:var(--lift);padding:16px}
+  #tour .tcard p{margin:6px 0 12px;font-size:14px;line-height:1.7;color:var(--ink-2)}
+  #tour .tfoot{display:flex;align-items:center;gap:8px}
+  #tour #tourN{flex:1;font-size:12px;color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){ #tour .tring{transition:none} }
+  @media print{ body>*:not(#draw){display:none!important} #dbody section.np,.noprint{display:none!important} #draw{position:static;display:block!important} #draw .dhead,.dtabs{display:none!important} .dwrap{display:block!important} #dbody{overflow:visible;padding:0!important} .elev svg{min-width:0} section{page-break-inside:avoid} }
 
   /* ---------- tablet: docked side panel, dialogs ---------- */
   @media (min-width:760px){
@@ -414,6 +450,7 @@
     <button class="btn" id="projBtn" aria-label="المشاريع" title="مشاريعي"><span data-ico="home"></span><span id="projName">مطبخي</span><span data-ico="chev" data-s="16"></span></button>
     <label class="viewsel" title="زاوية العرض"><span data-ico="eye" data-s="18"></span><select id="view" aria-label="المنظر"></select></label>
     <span class="grow"></span>
+    <button class="btn icon" id="shareBtn" aria-label="شارك التصميم" title="شارك التصميم (واتساب، لينك، صورة)"><span data-ico="share"></span><span class="lbl">شارك</span></button>
     <button class="btn icon" id="measBtn" aria-label="شريط قياس" title="شريط قياس"><span data-ico="ruler"></span><span class="lbl">قياس</span></button>
     <button class="btn icon" id="drawBtn" aria-label="رسومات التنفيذ" title="رسومات ومقاسات للتنفيذ"><span data-ico="square"></span><span class="lbl">الرسومات</span></button>
     <button class="btn icon" id="aptBtn" aria-label="الشقة" title="الشقة كلها"><span data-ico="building"></span><span class="lbl">الشقة</span></button>

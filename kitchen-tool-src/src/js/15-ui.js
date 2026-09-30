@@ -11,7 +11,8 @@ const ICONS={home:"M3 10.5 12 3l9 7.5M5 9v11h14V9M10 20v-6h4v6",chev:"m6 9 6 6 6
   coins:"M12 4c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3ZM4 7v5c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5",
   folder:"M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z",bath:"M3 12h18v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 12V5a2 2 0 0 1 4 0M7 19l-1 2M17 19l1 2",
   lamp:"M3 4h18M6 4v3h12V4M12 7v4M9 14a3 3 0 0 0 6 0Z",sofa:"M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2M19 18v2",
-  roller:"M4 4h13v5H4zM17 6.5h3V12h-8v3M11 15h2v6h-2z",tiles:"M4 4h16v16H4zM4 10h16M4 15h16M10 4v6M14 10v5M9 15v5"};
+  roller:"M4 4h13v5H4zM17 6.5h3V12h-8v3M11 15h2v6h-2z",tiles:"M4 4h16v16H4zM4 10h16M4 15h16M10 4v6M14 10v5M9 15v5",
+  share:"M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"};
 function ico(n,s){ s=s||20; return `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"><path d="${ICONS[n]||ICONS.dot}"/></svg>`; }
 document.querySelectorAll("[data-ico]").forEach(el=>{ el.outerHTML=ico(el.dataset.ico,+el.dataset.s||20); });
 const TABICO={"الأجهزة":"stove","➕ أجهزة":"addbox","مقاسات الأجهزة":"dims","التخزين":"cabinet","الوحدات":"grid","الأوضة":"plan","الارتفاعات":"height","الشكل":"palette","العرض":"eye",
@@ -104,6 +105,7 @@ function renderControls(){
   ctlEl.innerHTML="";
   let acts=null;
   for(const c of SCHEMA[tab]){
+    if(c.if&&!c.if()) continue; /* rows that only make sense when another option is on */
     if(c.t!=="action") acts=null;
     if(c.t==="head"){ const h=document.createElement("div"); h.className="head"; h.textContent=c.l; ctlEl.appendChild(h); continue; }
     if(c.t==="range"){ const mn=(c.k==="roomW"||c.k==="roomL")?roomDimMin(c.k):c.min; rangeField(ctlEl,c.l,()=>cfg[c.k],v=>{ cfg[c.k]=v; },mn,c.max,c.step,c.u,()=>renderControls()); continue; }
@@ -113,7 +115,7 @@ function renderControls(){
       const b=document.createElement("button"); b.className="btn wide"; b.textContent=c.l; b.onclick=c.fn; acts.appendChild(b); continue; }
     let el;
     if(c.t==="toggle"){ el=document.createElement("label"); el.className="sw"; const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!cfg[c.k]; cb.setAttribute("aria-label",c.l);
-      cb.onchange=()=>{pushHist(); cfg[c.k]=cb.checked; build();}; el.append(cb,document.createElement("i")); }
+      cb.onchange=()=>{pushHist(); cfg[c.k]=cb.checked; build(); if(c.re) renderControls();}; el.append(cb,document.createElement("i")); }
     if(c.t==="color"){ el=document.createElement("input"); el.type="color"; el.value=cfg[c.k]; el.setAttribute("aria-label",c.l); el.addEventListener("click",pushHist); el.oninput=()=>{cfg[c.k]=el.value; build();}; }
     if(c.t==="num"){ el=document.createElement("label"); el.className="money"; const n=document.createElement("input"); n.type="text"; n.inputMode="decimal"; n.autocomplete="off"; n.placeholder="0"; n.value=cfg[c.k]||""; n.setAttribute("aria-label",c.l);
       n.onchange=()=>{ const v=n.value.trim()===""?0:parseNum(n.value,"جنيه",true); if(isNaN(v)){ n.value=cfg[c.k]||""; return; } pushHist(); cfg[c.k]=Math.max(0,v); renderControls(); }; const u=document.createElement("small"); u.textContent="جنيه"; el.append(n,u); }
@@ -121,9 +123,10 @@ function renderControls(){
   }
   if(SCHEMA[tab].some(c=>c.t==="num"&&PRICE_KEYS.includes(c.k))) priceDefBox();
   if(tab==="مقاسات الأجهزة"){ const n=document.createElement("div"); n.className="note"; n.textContent="المقاس = العرض × العمق. المسافات الجانبية بتتساب فاضية للتهوية والمواسير والسلوك، وبتتحسب من طول الرخامة."; ctlEl.insertBefore(n,ctlEl.firstChild); }
-  if(tab==="الوحدات"){ customBox(); unitsBox(); }
+  if(tab==="الوحدات"){ customBox(); unitsBox(); cutMini(); }
   if(tab==="➕ أجهزة") appsBox();
-  if(tab==="خطوات التنفيذ") stepsBox();
+  if(tab==="خطوات التنفيذ"){ stepsBox(); quotesBox(); }
+  if(tab==="العرض"){ sunNote(); qualBox(); }
   if(tab==="الأوضة") roomBox();
   if(tab==="الحمام") bathBox();
   if(tab==="السقف") ceilBox();
@@ -139,7 +142,7 @@ function renderControls(){
     const ws=(STATS.warn||[]).filter(w=>/تمديد|بعيدة/.test(w));
     d.innerHTML=`🔌 ${cnt("socket")} بريزة • 💧 ${cnt("water")} تغذية مية • 🕳 ${cnt("drain")} صرف • 🔥 ${cnt("gas")} غاز`+(ws.length?`<hr>${ws.join("<br>")}`:`<hr>كل الأجهزة قريبة من المخارج الموجودة ✓`);
     ctlEl.appendChild(d); waterBox(); }
-  if(tab==="التكلفة") ctlEl.appendChild(costBox());
+  if(tab==="التكلفة"){ ctlEl.appendChild(costBox()); cutMini(); }
 
 
 }
@@ -540,7 +543,7 @@ async function initProjects(){
   projIndex=((await stGet("kproj:index"))||[]).filter(p=>p&&p.id).map(p=>({...p,name:cleanName(p.name)})); await loadAptIndex(); await loadApt(); PRICE_DEF=cleanPrices(await stGet("kprices"));
   if(!projIndex.length){ Object.assign(cfg,PRICE_DEF); /* the first design was made before the saved prices were read */ DRAFT=JSON.stringify(cfg); }
   if(projIndex.length){ const last=[...projIndex].sort((a,b)=>b.t-a.t)[0]; const d=await stGet("kproj:"+last.id); if(d&&d.cfg){ PROJ={id:last.id,name:cleanName(d.name)||last.name}; cfg=migrate(d.cfg); } }
-  loadingP=false; updProjName(); build(); renderControls(); autosave(); openHome();
+  loadingP=false; updProjName(); build(); renderControls(); autosave(); openHome(); openSharedHash();
 }
 async function openProject(id){ const rd=await stRead("kproj:"+id); let d=rd.v; if(rd.err){ hint("مقدرتش أقرا المشروع ده من الحفظ دلوقتي، جرّب تاني كمان شوية",4000); return; } if(!d){ const nm=projName(id); d={name:nm,cfg:newCfg(nm.includes("طرقة")?"h_hall":nm.includes("حمام")?"b_std":"L")}; await stSet("kproj:"+id,d); hint("المشروع ده ماكانش اتحفظ، فتحته من جديد بالشكل الافتراضي",4000); } await saveNow(); PROJ={id,name:cleanName(d.name)||projName(id)}; cfg=migrate(d.cfg); clearHist(); SEL=null; updProjName(); build(); renderControls(); closeSheet(); setView("out"); hint(`اتفتح "${PROJ.name}"`); }
 function projectsBox(){ renderProjects(ctlEl); }
@@ -562,6 +565,7 @@ function renderProjects(el){
       act.append(q,y,c); c.onclick=refreshSheet; y.onclick=async()=>{ DELETED.add(p.id); if(p.id===PROJ.id) clearTimeout(saveT); await stDel("kproj:"+p.id); projIndex=projIndex.filter(x=>x.id!==p.id); await stSet("kproj:index",projIndex);
         if(p.id===PROJ.id){ const nx=projIndex[0]; if(nx) await openProject(nx.id); if(PROJ.id===p.id){ PROJ={id:"p"+Date.now().toString(36),name:PROJ.name}; clearHist(); updProjName(); await saveNow(); } } refreshSheet(); }; });
     card.appendChild(act); el.appendChild(card); });
+  shareUI(el);
   backupUI(el);
   compareUI(el);
   const h=document.createElement("div"); h.className="head"; h.textContent="📋 نسخ ومشاركة (مشروع واحد)"; el.appendChild(h);
@@ -571,6 +575,7 @@ function renderProjects(el){
   const cp=document.createElement("button"); cp.className="btn"; cp.textContent="نسخ إعدادات التصميم ده"; cp.onclick=async()=>{ ta.select(); try{ await navigator.clipboard.writeText(ta.value); st.textContent="اتنسخت، ابعتها لأي حد"; }catch(e){ document.execCommand&&document.execCommand("copy"); st.textContent="اتنسخت"; } };
   const ap=document.createElement("button"); ap.className="btn"; ap.textContent="افتح إعدادات ملصوقة كتصميم جديد"; ap.onclick=async()=>{ try{ const v=JSON.parse(ta.value); if(!v||typeof v!=="object"||Array.isArray(v)) throw new Error("bad"); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:"تصميم ملصوق"}; cfg=migrate(v); clearHist(); SEL=null; build(); updProjName(); await saveNow(); refreshSheet(); st.textContent="اتفتح ✓"; }catch(e){ st.textContent="الكلام الملصوق مش مظبوط"; } };
   a2.append(cp,ap); el.append(ta,a2,st);
+  const tb=document.createElement("button"); tb.className="btn wide"; tb.style.marginTop="14px"; tb.textContent="🎓 جولة سريعة في الأداة"; tb.onclick=()=>{ closeSheet(); setPanel(false); startTour(); }; el.appendChild(tb);
 }
 function openSheet(){ const s=document.getElementById("sheet"); s.style.display="flex"; refreshSheet(); }
 function closeSheet(){ document.getElementById("sheet").style.display="none"; }
@@ -677,8 +682,9 @@ function STEPS(){ if(cfg.roomType==="bath") return BSTEPS(); if(cfg.roomType==="
 function stepsBox(){
   const st=STEPS(), done=st.filter((_,i)=>cfg.steps[i]).length;
   const d=document.createElement("div"); d.className="sum"; d.innerHTML=`خلصت <b>${done}</b> من ${st.length} خطوة`; ctlEl.appendChild(d);
+  const {box,S}=schedHead(st); ctlEl.appendChild(box);
   st.forEach(([a,b],i)=>{ const r=document.createElement("label"); r.className="step"+(cfg.steps[i]?" done":""); const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!cfg.steps[i];
-    cb.onchange=()=>{ cfg.steps={...cfg.steps,[i]:cb.checked}; renderControls(); }; const tx=document.createElement("div"); tx.innerHTML=`<b>${i+1}. ${a}</b><br>${b}`; r.append(cb,tx); ctlEl.appendChild(r); });
+    cb.onchange=()=>{ cfg.steps={...cfg.steps,[i]:cb.checked}; renderControls(); }; const tx=document.createElement("div"); tx.innerHTML=`<b>${i+1}. ${a}</b><br>${b}`; tx.appendChild(stepDur(i,a,S.rows[i])); r.append(cb,tx); ctlEl.appendChild(r); });
 }
 // the prices on this tab can be saved once (kprices) and used by every new project, or pulled into an older one
 function priceDefBox(){ const ks=SCHEMA[tab].filter(c=>c.t==="num"&&PRICE_KEYS.includes(c.k)).map(c=>c.k);
@@ -721,9 +727,9 @@ document.querySelectorAll("#pad button").forEach(b=>{
   const start=e=>{ e.preventDefault(); clearInterval(t); step(); t=setInterval(step,40); }, stop=()=>{ clearInterval(t); t=null; };
   b.addEventListener("pointerdown",start); b.addEventListener("pointerup",stop); b.addEventListener("pointerleave",stop); b.addEventListener("pointercancel",stop);
 });
-function takeShot(){ updateCam(); renderer.render(scene,camera); const url=canvas.toDataURL("image/png");
+function takeShot(){ const url=shotURL(); /* rendered sharper than the screen */
   const sh=document.getElementById("shot"); sh.querySelector("img").src=url; sh.style.display="flex";
-  try{ const a=document.createElement("a"); a.href=url; a.download="kitchen.png"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
+  try{ const a=document.createElement("a"); a.href=url; a.download=(PROJ.name||"kitchen").replace(/[\/:*?"<>|]/g,"")+".jpg"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
 document.getElementById("shotClose").onclick=()=>document.getElementById("shot").style.display="none";
 let camKey="";
 (function loop(){ flushLive(); walkTick(); if(cfg.autoRot && pts.size===0) sph.theta+=0.004;

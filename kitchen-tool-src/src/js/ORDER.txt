@@ -13,5 +13,6 @@
 13-build.js
 14-camera.js
 14-walk-mode.js
+17-share-cutlist-schedule.js
 15-ui.js
 16-home.js
