@@ -1589,7 +1589,7 @@ function snapCurrent(c,name){ // build a room silently and capture what the apar
   else if((c.roomType==="room"||c.roomType==="hall")&&ROOMQ){ costs.tile=ROOMQ.floorA*1.1*(c.pFloor||0)+ROOMQ.skirt*(c.pSkirt||0); costs.paint=ROOMQ.paintA*(c.pPaint||0); }
   else if(c.roomType!=="hall"&&c.roomType!=="room") costs.kitchen=(a.lower||0)*c.pLower+(a.upper||0)*c.pUpper+(a.tall||0)*c.pTall+(a.marble||0)*c.pMarble;
   const cost=costs.kitchen+costs.tile+costs.wp+costs.paint;
-  return {name,roomType:c.roomType||"kitchen",RW,RL,H,feats:FEATS.map(f=>({...f})),units:UNITS.filter(u=>u.y0<1&&(W4.includes(u.wall)||u.wall==="IS"||u.wall==="FR")).map(u=>({...unitRect(u),kind:u.kind,label:u.label,ft:u.ft})),
+  return {name,roomType:c.roomType||"kitchen",RW,RL,H,feats:FEATS.map(f=>({...f})),units:UNITS.filter(u=>u.y0<1&&(W4.includes(u.wall)||u.wall==="IS"||u.wall==="FR")).map(u=>({...unitRect(u),kind:u.kind,label:u.label,ft:u.ft,furn:u.furn})),
     pts,warn:[...new Set(STATS.warn)],elec:elecLoads(),cost,costs,bath:BATH?{...BATH}:null,acc:{...a},hasToilet:UNITS.some(u=>u.kind==="toilet"),cfg:c,cuts:CUTS.map(k=>({...k})),q:snapQ(c),gb:GBQ?{...GBQ,outer:null,inner:null,spotPts:null}:null};
 }
 async function refreshSnaps(){
@@ -1667,16 +1667,19 @@ function aptPlanSVG(){
   const pad=0.9; X0-=pad;Z0-=pad;X1+=pad;Z1+=pad; const S=100;
   let s=`<svg id="aptSvg" viewBox="${X0*S} ${Z0*S} ${(X1-X0)*S} ${(Z1-Z0)*S}" xmlns="http://www.w3.org/2000/svg" font-family="Tahoma,Arial" style="touch-action:none;background:#f6f7f8">`;
   s+=`<rect x="${X0*S}" y="${Z0*S}" width="${(X1-X0)*S}" height="${(Z1-Z0)*S}" fill="#f6f7f8" data-bg="1"/>`;
-  const col={kitchen:"#fff6ea",bath:"#eaf5fa",hall:"#f4f1ec",room:"#f7f4ee"};
+  let furLab=""; const col={kitchen:"#fff6ea",bath:"#eaf5fa",hall:"#f4f1ec",room:"#f7f4ee"};
   for(const r of rs){ const sn=SNAP[r.id], R=roomRectW(r), sel=aptSel===r.id, g=APT.wallT;
     s+=`<g data-room="${r.id}" style="cursor:move">`;
     s+=`<rect x="${R.x0*S-g/2}" y="${R.z0*S-g/2}" width="${(R.x1-R.x0)*S+g}" height="${(R.z1-R.z0)*S+g}" fill="none" stroke="${sel?"#e07b00":"#30343a"}" stroke-width="${g}"/>`;
     s+=`<rect x="${R.x0*S}" y="${R.z0*S}" width="${(R.x1-R.x0)*S}" height="${(R.z1-R.z0)*S}" fill="${col[sn.roomType]||"#fff"}"/>`;
-    for(const u of [...sn.units].sort((a,b)=>(b.ft==="rug")-(a.ft==="rug"))){ const a=toWorld(r,sn,u.x0,u.z0), b=toWorld(r,sn,u.x1,u.z1); s+=`<rect x="${Math.min(a[0],b[0])*S}" y="${Math.min(a[1],b[1])*S}" width="${Math.abs(b[0]-a[0])*S}" height="${Math.abs(b[1]-a[1])*S}" fill="${UC[u.kind]||"#e5e5e5"}" stroke="#9aa0a6" stroke-width="1.5"/>`; }
+    for(const u of [...sn.units].sort((a,b)=>(b.ft==="rug")-(a.ft==="rug"))){ const a=toWorld(r,sn,u.x0,u.z0), b=toWorld(r,sn,u.x1,u.z1), fu=sel&&aptTab==="المسقط"&&u.furn, on=fu&&aptFur&&aptFur.r===r.id&&aptFur.id===u.furn; /* furniture in the selected room can be picked and dragged */
+      if(fu) s+=`<rect data-fu="${esc(u.furn)}" style="cursor:grab" x="${Math.min(a[0],b[0])*S}" y="${Math.min(a[1],b[1])*S}" width="${Math.abs(b[0]-a[0])*S}" height="${Math.abs(b[1]-a[1])*S}" fill="${on?"#f6d9b3":UC[u.kind]||"#e5e5e5"}" stroke="${on?"#e07b00":"#8a7a62"}" stroke-width="${on?3:1.5}" vector-effect="non-scaling-stroke"/>`; else s+=`<rect x="${Math.min(a[0],b[0])*S}" y="${Math.min(a[1],b[1])*S}" width="${Math.abs(b[0]-a[0])*S}" height="${Math.abs(b[1]-a[1])*S}" fill="${UC[u.kind]||"#e5e5e5"}" stroke="#9aa0a6" stroke-width="1.5"/>`; }
+    if(sel&&aptTab==="المسقط"&&aptFur&&aptFur.r===r.id){ const u=sn.units.find(x=>x.furn===aptFur.id), T=u&&FURN[u.ft]; if(T){ const a=toWorld(r,sn,u.x0,u.z0), b=toWorld(r,sn,u.x1,u.z1), ty=Math.min(a[1],b[1])*S; furLab=`<text x="${(a[0]+b[0])/2*S}" y="${ty}" data-cy="${ty}" text-anchor="middle" font-size="14" data-px="11" font-weight="bold" fill="#b35f00" stroke="#fff" stroke-width="4" paint-order="stroke" pointer-events="none">${esc(T.n)}</text>`; } }
     for(const f of sn.feats){ if(f.type!=="window") continue; const {p0,p1}=wallWorld(r,sn,f.wall,f.a0,f.a1); s+=`<line x1="${p0[0]*S}" y1="${p0[1]*S}" x2="${p1[0]*S}" y2="${p1[1]*S}" stroke="#6fb6e0" stroke-width="${g+2}"/>`; }
     const cx=(R.x0+R.x1)/2*S, cy=(R.z0+R.z1)/2*S, rw=(R.x1-R.x0)*S;
-    s+=`<rect class="lbg" x="${cx}" y="${cy}" width="0" height="0" rx="6" fill="#fff" fill-opacity=".82"/><text class="rn" x="${cx}" y="${cy}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="${Math.max(18,Math.min(34,rw/6))}" fill="#2d5f7a" font-weight="bold">${esc(sn.name)}</text>`;
-    s+=`<text class="rd" x="${cx}" y="${cy+28}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptDims(sn).join("×")}</text><text class="ra" x="${cx}" y="${cy+50}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptAreaM(sn).toFixed(1)} م²</text></g>`; }
+    const pe=sel&&aptTab==="المسقط"?' pointer-events="none"':""; /* in the selected room the labels let taps through to the furniture under them */
+    s+=`<rect class="lbg"${pe} x="${cx}" y="${cy}" width="0" height="0" rx="6" fill="#fff" fill-opacity=".82"/><text class="rn"${pe} x="${cx}" y="${cy}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="${Math.max(18,Math.min(34,rw/6))}" fill="#2d5f7a" font-weight="bold">${esc(sn.name)}</text>`;
+    s+=`<text class="rd"${pe} x="${cx}" y="${cy+28}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptDims(sn).join("×")}</text><text class="ra"${pe} x="${cx}" y="${cy+50}" data-cy="${cy}" data-fit="${rw}" text-anchor="middle" font-size="18" fill="#6b737c">${aptAreaM(sn).toFixed(1)} م²</text></g>`; }
   { let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const r of rs){ const R=roomRectW(r); a=Math.min(a,R.x0);b=Math.min(b,R.z0);c=Math.max(c,R.x1);d=Math.max(d,R.z1); } const g=APT.wallT/100; a-=g;b-=g;c+=g;d+=g; const o=0.32, t=0.1;
     const ln=(x1,y1,x2,y2)=>`<line x1="${x1*S}" y1="${y1*S}" x2="${x2*S}" y2="${y2*S}" stroke="#56606a" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
     s+=ln(a,b-o,c,b-o)+ln(a,b-o-t,a,b-o+t)+ln(c,b-o-t,c,b-o+t)+`<text x="${(a+c)/2*S}" y="${(b-o-0.06)*S}" text-anchor="middle" font-size="16" data-px="11" fill="#56606a">${(c-a).toFixed(2)} م</text>`;
@@ -1688,13 +1691,14 @@ function aptPlanSVG(){
   const sv=APT_SVC; if(sv&&aptTab!=="المسقط"){ const P=v=>[v.x/100,v.z/100];
     const route=(src,colr)=>{ for(const r of rs){ const e=roomEntry(r,src); s+=`<polyline points="${src[0]*S},${src[1]*S} ${e[0]*S},${src[1]*S} ${e[0]*S},${e[1]*S}" fill="none" stroke="${colr}" stroke-width="4" stroke-dasharray="10 6" opacity="0.8"/>`; } };
     if(APT.riser) route(P(APT.riser),"#1b3a5c"); if(APT.riser2) route(P(APT.riser2),"#1b3a5c"); if(APT.water) route(P(APT.water),"#2a7fd4"); if(APT.panel) route(P(APT.panel),"#e07b00"); }
+  s+=furLab; /* over the room labels */
   const hr=aptTab==="المسقط"&&aptSel&&rs.find(r=>r.id===aptSel); if(hr){ const R=roomRectW(hr), g=APT.wallT/200, mx=(R.x0+R.x1)/2, mz=(R.z0+R.z1)/2;
     for(const [h,x,z,c] of [["x0",R.x0-g,mz,"ew"],["x1",R.x1+g,mz,"ew"],["z0",mx,R.z0-g,"ns"],["z1",mx,R.z1+g,"ns"]]) s+=`<circle data-h="${h}" cx="${x*S}" cy="${z*S}" r="16" data-r="11" fill="#fff" stroke="#e07b00" stroke-width="3" vector-effect="non-scaling-stroke" style="cursor:${c}-resize"/>`; }
   const mk=(v,c,t)=>{ if(!v) return; s+=`<circle cx="${v.x}" cy="${v.z}" r="16" data-r="8" fill="${c}" stroke="#fff" stroke-width="3"/><text x="${v.x}" y="${v.z-22}" data-cy="${v.z}" text-anchor="middle" font-size="16" data-px="11" fill="${c}" font-weight="bold">${t}</text>`; };
   mk(APT.riser,"#1b3a5c","عمود الصرف"); mk(APT.riser2,"#1b3a5c","عمود صرف 2"); mk(APT.water,"#2a7fd4","دخول المية"); mk(APT.panel,"#e07b00","اللوحة"); if(APT.heaterMode==="shared") mk(APT.heaterAt,"#c0392b","السخان");
   return s+"</svg>";
 }
-let APT_SVC=null, aptDrag=null, aptRsz=null;
+let APT_SVC=null, aptDrag=null, aptRsz=null, aptFur=null, aptFDrag=null, aptFurGo=false; /* aptFur = {r: room id, id: furniture id} picked in the plan */
 async function openApt(){ await saveNow(); await loadApt(); document.getElementById("apt").style.display="flex"; document.getElementById("aptBody").innerHTML="<div class='note'>بحضّر الشقة…</div>";
   if(!APT.rooms.length){ let id=PROJ.id; if(aptOtherRooms().has(id)){ id="p"+Date.now().toString(36); await stSet("kproj:"+id,{name:"طرقة",cfg:newCfg("h_hall")}); projIndex.push({id,name:"طرقة",t:Date.now()}); await stSet("kproj:index",projIndex); } APT.rooms=[{id,x:0,z:0,rot:0}]; } APT_UNDO=[]; APT_ROOMS_PREV=null; APT_LAST=null; try{ await refreshSnaps(); APT_LAST=JSON.stringify(APT); }catch(e){ document.getElementById("aptBody").innerHTML="<div class='note'>⚠ مقدرتش أقرا كل أوض الشقة من الحفظ دلوقتي. اقفل وجرّب تاني كمان شوية، ومتقلقش التصميمات متلمستش.</div>"; return; } APT_SVC=aptServices(); await aptIndexSync(true); renderApt(); }
 function closeApt(){ document.getElementById("apt").style.display="none"; saveApt(); }
@@ -1805,13 +1809,56 @@ function bindAptSvg(){
       aptRsz={r:hr,edge:hd.dataset.h,R:roomRectW(hr),sx:pt.x,sy:pt.y,pv,tx}; aptRszMove(pt); svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
     const sh=e.target.closest("[data-sh]"), s=sh&&SHARED[+sh.dataset.sh]; if(s){ const len=Math.round((s.s1-s.s0)*100), at=(s.v?pt.y:pt.x)-s.s0*100; APT.doors=APT.doors||[];
       APT.doors.push({a:s.a,b:s.b,w:80,pos:Math.max(0,Math.min(Math.max(0,len-90),Math.round(at-40)))}); aptSel=s.a; aptRecalc(); saveApt(); renderApt(); hint("✓ اتحط باب. تقدر تزحلقه أو تشيله من كارت الأوضة",3500); return; }
-    const g=e.target.closest("[data-room]"); if(!g) return; const r=APT.rooms.find(x=>x.id===g.dataset.room); if(!r) return; if(APT.rooms[0]===r){ aptSel=r.id; renderApt(); return; }
+    const fu=e.target.closest("[data-fu]"), fr=fu&&APT.rooms.find(x=>x.id===aptSel), fit=fr&&(SNAP[fr.id].cfg.furn||[]).find(x=>x.id===fu.dataset.fu);
+    if(fit){ aptFurGo=!aptFur||aptFur.id!==fit.id; aptFur={r:fr.id,id:fit.id}; aptFDrag={r:fr,it:fit,el:fu,sx:pt.x,sy:pt.y,lx:0,lz:0,moved:false}; svg.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+    const g=e.target.closest("[data-room]"); if(!g) return; const r=APT.rooms.find(x=>x.id===g.dataset.room); if(!r) return; if(aptSel!==r.id) aptFur=null; if(APT.rooms[0]===r){ aptSel=r.id; renderApt(); return; }
     aptSel=r.id; aptDrag={r,g,sx:pt.x,sy:pt.y,ox:r.x,oz:r.z,moved:false}; svg.setPointerCapture(e.pointerId); e.preventDefault(); });
-  svg.addEventListener("pointermove",e=>{ if(aptRsz){ aptRszMove(svgPt(svg,e)); return; } if(!aptDrag) return; const pt=svgPt(svg,e), dx=pt.x-aptDrag.sx, dz=pt.y-aptDrag.sy; if(Math.hypot(dx,dz)>4) aptDrag.moved=true;
+  svg.addEventListener("pointermove",e=>{ if(aptRsz){ aptRszMove(svgPt(svg,e)); return; } if(aptFDrag){ aptFMove(svgPt(svg,e)); return; } if(!aptDrag) return; const pt=svgPt(svg,e), dx=pt.x-aptDrag.sx, dz=pt.y-aptDrag.sy; if(Math.hypot(dx,dz)>4) aptDrag.moved=true;
     const [nx,nz]=snapPos(aptDrag.r,aptDrag.ox+dx,aptDrag.oz+dz); aptDrag.g.setAttribute("transform",`translate(${nx-aptDrag.ox},${nz-aptDrag.oz})`); aptDrag.nx=nx; aptDrag.nz=nz; });
-  const up=async()=>{ if(aptRsz){ const z=aptRsz; aptRsz=null; z.pv.remove(); z.tx.remove(); if(z.net!=null&&Math.abs(z.net-z.old)>=1) await aptResize(z.r,z.edge[0],z.net,z.edge[1]==="0"); return; } if(!aptDrag) return; const d=aptDrag; aptDrag=null; if(d.moved&&d.nx!=null){ d.r.x=d.nx; d.r.z=d.nz; if(APT.rooms[0]!==d.r) d.r.rel=null; computeShared(); computeLinks(); APT_SVC=aptServices(); await saveApt(); } renderApt(); };
+  const up=async()=>{ if(aptFDrag){ const d=aptFDrag; aptFDrag=null; if(d.moved) await aptFurEdit(d.r,d.it.id,it=>aptFurShift(it,SNAP[d.r.id],d.lx,d.lz)); else renderApt(); return; } if(aptRsz){ const z=aptRsz; aptRsz=null; z.pv.remove(); z.tx.remove(); if(z.net!=null&&Math.abs(z.net-z.old)>=1) await aptResize(z.r,z.edge[0],z.net,z.edge[1]==="0"); return; } if(!aptDrag) return; const d=aptDrag; aptDrag=null; if(d.moved&&d.nx!=null){ d.r.x=d.nx; d.r.z=d.nz; if(APT.rooms[0]!==d.r) d.r.rel=null; computeShared(); computeLinks(); APT_SVC=aptServices(); await saveApt(); } renderApt(); };
   svg.addEventListener("pointerup",up); svg.addEventListener("pointercancel",up);
 }
+function aptFMove(pt){ // drag a piece of furniture: work in the room's own axes, a piece stuck to a wall only slides along it
+  const d=aptFDrag, sn=SNAP[d.r.id], p0=toLocal(d.r,sn,d.sx/100,d.sy/100), p1=toLocal(d.r,sn,pt.x/100,pt.y/100), sp=d.it.snap; let lx=Math.round((p1[0]-p0[0])*100), lz=Math.round((p1[1]-p0[1])*100);
+  if(sp==="W"||sp==="D") lz=0; else if(sp==="L"||sp==="RT") lx=0; if(Math.hypot(lx,lz)>3) d.moved=true; d.lx=lx; d.lz=lz;
+  const w0=toWorld(d.r,sn,...p0), w1=toWorld(d.r,sn,p0[0]+lx/100,p0[1]+lz/100); d.el.setAttribute("transform",`translate(${(w1[0]-w0[0])*100},${(w1[1]-w0[1])*100})`); }
+function aptFurShift(it,sn,lx,lz){ const W=Math.round(sn.RW*100), L=Math.round(sn.RL*100); /* move a piece by lx,lz cm in the room's axes and keep it inside the room */
+  if(it.snap){ const len=it.snap==="W"||it.snap==="D"?W:L; it.pos=Math.max(0,Math.min(Math.max(0,len-(it.w||0)),Math.round((it.pos||0)+(it.snap==="W"||it.snap==="D"?lx:lz)))); return; }
+  const r90=((it.rot||0)%180+180)%180===90, hw=Math.min((r90?it.d:it.w)/2,W/2), hd=Math.min((r90?it.w:it.d)/2,L/2);
+  it.x=Math.round(Math.max(hw,Math.min(W-hw,(it.x||0)+lx))); it.z=Math.round(Math.max(hd,Math.min(L-hd,(it.z||0)+lz))); }
+async function aptFurEdit(r,id,fn){ // change one piece (or the whole list when id is null) in a room's saved design, then redraw; ↶ takes it back
+  const ok=await aptEditRoom(r.id,d=>{ d.cfg.furn=(d.cfg.furn||[]).map(x=>({...x})); if(id==null) fn(d.cfg.furn); else { const it=d.cfg.furn.find(x=>x.id===id); if(it) fn(it); } });
+  if(ok) await saveApt(); renderApt(); }
+function aptFurnUI(box,r,sn){ // furniture and appliances of the selected room, right from the apartment plan
+  const h=document.createElement("div"); h.className="head"; h.textContent="🛋 الأثاث والأجهزة"; box.appendChild(h);
+  const note=t=>{ const n=document.createElement("div"); n.className="note"; n.textContent=t; box.appendChild(n); return n; };
+  if(sn.roomType!=="room"){ note(sn.roomType==="kitchen"?"أجهزة المطبخ ووحداته بتتعدل من «✏️ صمّمها» فوق.":sn.roomType==="bath"?"القاعدة والحوض والشاور بيتعدلوا من «✏️ صمّمها» فوق.":"الطرقة مفيهاش أثاث. تقدر تضيف أثاث في الأوض والصالة والبلكونة."); return; }
+  const F=(sn.cfg.furn||[]).filter(x=>FURN[x.type]); if(aptFur&&(aptFur.r!==r.id||!F.some(x=>x.id===aptFur.id))) aptFur=null;
+  note(F.length?"دوس على أي قطعة في المسقط عشان تختارها، واسحبها لمكانها. أو اختارها من هنا:":"الأوضة فاضية. ضيف أول قطعة من تحت.");
+  if(F.length){ const ch=document.createElement("div"); ch.className="chips"; for(const it of F){ const T=FURN[it.type], b=document.createElement("button"); b.className="chipbtn"+(aptFur&&aptFur.id===it.id?" on":""); b.textContent=T.n+(T.wall?" ⤒":"");
+      b.onclick=()=>{ aptFur=aptFur&&aptFur.id===it.id?null:{r:r.id,id:it.id}; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
+  const it=aptFur&&F.find(x=>x.id===aptFur.id), T=it&&FURN[it.type], W=Math.round(sn.RW*100), L=Math.round(sn.RL*100);
+  if(it){ const card=document.createElement("div"); card.className="card sel";
+    card.innerHTML=`<div class="ch"><b>${esc(T.n)}</b><small style="color:#66716C">${it.w}×${it.d}×${it.h||T.h} سم</small></div>`+(T.wall?`<div class="note">⤒ دي متعلقة على الحيطة، فمش باينة في المسقط.</div>`:"");
+    const ed=fn=>aptFurEdit(r,it.id,fn);
+    if(T.var) aSel(card,"النوع",T.var,it.var||T.var[0][0],v=>ed(x=>{ x.var=v; if(x.type==="tv") x.w=Math.round(+v*2.21); if(x.type==="bed2") x.w=+v; }));
+    aSel(card,"مكانها",T.wall?W4OPT():[["","حرة (في أي حتة)"],...W4.map(w=>[w,"لازقة في "+WNAME[w]])],it.snap||"",v=>ed(x=>{ x.snap=v; if(v) x.pos=Math.max(0,Math.round(((v==="W"||v==="D")?W:L)/2-x.w/2)); else { x.fillW=""; x.x=Math.round(W/2); x.z=Math.round(L/2); x.rot=x.rot||0; aptFurShift(x,sn,0,0); } }));
+    if(it.fillW!=="1"&&it.type!=="tv") aRange(card,"العرض",T.lim[0],T.lim[1],it.w,"سم",v=>ed(x=>{ x.w=v; aptFurShift(x,sn,0,0); }));
+    if(it.type!=="tv") aRange(card,"العمق",T.lim[2],T.lim[3],it.d,"سم",v=>ed(x=>{ x.d=v; aptFurShift(x,sn,0,0); }));
+    const act=document.createElement("div"); act.className="act"; const mk=(t,fn)=>{ const b=document.createElement("button"); b.className="btn"; b.textContent=t; b.onclick=fn; act.appendChild(b); return b; };
+    if(!it.snap) mk("↻ لف 90°",()=>ed(x=>{ x.rot=((x.rot||0)+90)%360; aptFurShift(x,sn,0,0); }));
+    mk("📄 نسخة",()=>{ const c=clone(it); c.id="i"+Math.random().toString(36).slice(2,7); c.fillW=""; if(c.snap) c.pos=(c.pos||0)+c.w+5; else { c.x=(c.x||0)+30; c.z=(c.z||0)+30; } aptFurShift(c,sn,0,0); aptFur={r:r.id,id:c.id}; aptFurEdit(r,null,list=>list.push(c)); });
+    mk("🗑 شيل",()=>{ aptFur=null; aptFurEdit(r,null,list=>{ const i=list.findIndex(x=>x.id===it.id); if(i>=0) list.splice(i,1); }); hint(`اتشال ${T.n} • ↶ تراجع لو غلطت`,3000); }).style.color="var(--clay)";
+    card.appendChild(act); box.appendChild(card); if(aptFurGo){ aptFurGo=false; requestAnimationFrame(()=>card.scrollIntoView({block:"nearest",behavior:"smooth"})); } } /* picked in the plan: bring its card into view */
+  const ar=document.createElement("div"); ar.className="addrow"; const ts=document.createElement("select"); ts.setAttribute("aria-label","القطعة"); const cats={};
+  for(const [k,v] of Object.entries(FURN)) (cats[v.cat]=cats[v.cat]||[]).push([k,v.n]);
+  const SC="محلات ومكاتب", ce=Object.entries(cats).sort((a,b)=>isShop(sn.cfg)?(b[0]===SC)-(a[0]===SC):(a[0]===SC)-(b[0]===SC)); /* shop pieces first in a shop, last at home */
+  ts.innerHTML=ce.map(([c,l])=>`<optgroup label="${c}">${l.map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("");
+  const ab=document.createElement("button"); ab.className="btn main"; ab.textContent="➕ ضيف";
+  ab.onclick=()=>{ const k=ts.value, T=FURN[k], nit={id:"i"+Math.random().toString(36).slice(2,7),type:k,w:T.w,d:T.d};
+    if(T.var) nit.var=T.var[0][0]; if(T.wall){ nit.snap="W"; nit.pos=Math.max(0,Math.round((W-T.w)/2)); nit.y=T.y; } else { nit.x=Math.round(W/2); nit.z=Math.round(L/2); nit.rot=0; aptFurShift(nit,sn,0,0); }
+    aptFur={r:r.id,id:nit.id}; aptFurEdit(r,null,list=>list.push(nit)); hint(`اتضاف ${T.n} في نص الأوضة، اسحبه في المسقط لمكانه ✓`,3500); };
+  ar.append(ts,ab); box.appendChild(ar); }
 function aptRszMove(pt){ // live preview while a handle is dragged: the moving edge snaps to other rooms' walls, else to 5 cm
   const z=aptRsz, ax=z.edge[0], st=z.edge[1]==="0", g=APT.wallT; let a0=(ax==="x"?z.R.x0:z.R.z0)*100, a1=(ax==="x"?z.R.x1:z.R.z1)*100; z.old=a1-a0;
   let m=(st?a0:a1)+(ax==="x"?pt.x-z.sx:pt.y-z.sy), best=12, snap=null;
@@ -1907,7 +1954,7 @@ function arrangeUI(box){
   fieldRow(box,"المقاسات",choice([["net","صافي بعد التشطيب"],["brick","على الطوب"]],APT.dimMode==="brick"?"brick":"net",async v=>{ APT.dimMode=v; await saveApt(); renderApt(); },"المقاسات"));
   if(rs.length<=1){ head("🏢 ابدأ بقالب شقة"); note("اختار شكل قريب من شقتك: طرقة في النص والأوض حواليها بأبوابها. بعد كده عدّل مقاس كل أوضة ومكانها."); tplGrid(); head("أو ابني الشقة أوضة أوضة"); }
   else { note("دوس على أوضة في المسقط عشان تعدّلها، أو اسحبها بصباعك. الخط الأخضر المتقطع = حيطة مشتركة ممكن تحط فيها باب، والبرتقاني = باب لبرة.");
-    const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=roomIco(sn)+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
+    const ch=document.createElement("div"); ch.className="chips"; for(const r of rs){ const sn=SNAP[r.id], b=document.createElement("button"); b.className="chipbtn"+(aptSel===r.id?" on":""); b.textContent=roomIco(sn)+" "+sn.name; b.onclick=()=>{ aptSel=aptSel===r.id?null:r.id; aptFur=null; renderApt(); }; ch.appendChild(b); } box.appendChild(ch); }
   const ar=document.createElement("div"); ar.className="addrow"; const ps=document.createElement("select");
   const oth=aptOtherRooms(), free=projIndex.filter(p=>!APT.rooms.some(r=>r.id===p.id)&&!oth.has(p.id)); if(!projIndex.some(p=>p.id===PROJ.id)&&!APT.rooms.some(r=>r.id===PROJ.id)) free.push({id:PROJ.id,name:PROJ.name});
   ps.innerHTML=free.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")+`<option value="__hall">🚪 طرقة جديدة</option><option value="__bath">🚿 حمام جديد</option><option value="__living">🛋 صالة جديدة</option><option value="__master">🛏 أوضة نوم جديدة</option><option value="__kids">🧸 أوضة أطفال جديدة</option><option value="__balc">🌿 بلكونة جديدة</option>`;
@@ -1940,7 +1987,7 @@ function arrangeUI(box){
       APT.rooms.push({id,x:0,z:0,rot:r.rot,rel:{to:r.id,side:"right",off:0}}); aptSel=id; try{ await refreshSnaps(); }catch(e){ hint("مقدرتش أقرا الأوض من الحفظ، جرّب تاني",4000); return; } aptRecalc(); await saveApt(); renderApt(); hint("✓ اتعملت نسخة جنبها، حطها في مكانها",3500); });
     mk("✏️ صمّمها",async()=>{ closeApt(); if(r.id!==PROJ.id) await openProject(r.id); setPanel(true); tab=cfg.roomType==="bath"?"الحمام":cfg.roomType==="room"?"الأثاث":"الأوضة"; renderTabs(); renderControls(); });
     mk("✕ شيل",async()=>{ APT.rooms=APT.rooms.filter(x=>x!==r); for(const o of APT.rooms) if(o.rel&&o.rel.to===r.id) o.rel={to:APT.rooms[0]?APT.rooms[0].id:null,side:"right",off:0}; aptSel=null; aptRecalc(); await saveApt(); renderApt(); });
-    card.appendChild(act); box.appendChild(card); });
+    card.appendChild(act); box.appendChild(card); aptFurnUI(box,r,sn); });
   // doors between the selected room and the rooms touching it
   const pairs=[]; if(aptSel) for(const s of SHARED) if((s.a===aptSel||s.b===aptSel)&&!pairs.some(p=>p.a===s.b&&p.b===s.a)) pairs.push(s);
   if(aptSel&&rs.length>1){ head("🚪 الأبواب بينها وبين اللي جنبها"); if(!pairs.length) note("مفيش أوضة لازقة فيها. حطها جنب أوضة تانية الأول."); }
@@ -2064,7 +2111,7 @@ function aptView(walk){
     hint("🚶 دوس على الأرض تروح هناك • 📍 تنقلك لأي أوضة • عدّي من الأبواب بين الأوض",5000); }
   else { FP.on=false; document.getElementById("pad").style.display="none"; const b=aptBox; target.set((b.X0+b.X1)/2,0,(b.Z0+b.Z1)/2); const vf=camera.fov*Math.PI/360, hf=Math.atan(Math.tan(vf)*camera.aspect);
     const half=Math.hypot(b.X1-b.X0,b.Z1-b.Z0)/2+0.6; /* the view is turned: on a narrow screen fit the diagonal across the width */
-    sph={r:Math.max(((b.X1-b.X0)/2+0.8)/Math.tan(hf)*1.35,((b.Z1-b.Z0)/2+0.8)/Math.tan(vf)*1.35,half/Math.tan(hf)*0.8,5),theta:0.3,phi:0.62}; }
+    sph={r:Math.max(((b.X1-b.X0)/2+0.8)/Math.tan(hf)*1.35,((b.Z1-b.Z0)/2+0.8)/Math.tan(vf)*1.35,half/Math.tan(hf)*0.8,5),theta:0.3,phi:0.62}; hint("👆 دوس على أي مكان في الشقة وتنزل تمشي فيه",4000); }
   document.getElementById("aptWalk").textContent=FP.on?"🧊 من فوق":"🚶 امشي";
 }
 function exitApt3D(){ for(const g of aptRoots){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); scene.remove(g); } aptRoots=[];
@@ -3132,7 +3179,7 @@ let hintT=null; function hint(msg,ms){ const h=document.getElementById("hint"); 
 function castAt(cx,cy){ const r=canvas.getBoundingClientRect(); ray.setFromCamera(new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1),camera); return ray.intersectObjects(APT3D?[root,...aptRoots]:root.children,true); }
 function visibleHit(h){ let o=h.object; while(o&&o!==root){ if(!o.visible) return false; o=o.parent; } const m=h.object.material; if(h.object.userData.label||!h.object.isMesh) return false; if(m && m.transparent && m.opacity<0.3) return false; return true; }
 function hitUnit(cx,cy){ for(const h of castAt(cx,cy)){ if(!visibleHit(h)) continue; let o=h.object; while(o && !o.userData.uid && o.parent && o.parent!==root) o=o.parent; if(o && o.userData.uid) return {uid:o.userData.uid,point:h.point}; return null; } return null; }
-function pick(cx,cy){ if(FP.on){ walkTap(cx,cy); return; } if(APT3D) return; const h=hitUnit(cx,cy); if(h) selectUnit(h.uid,true); }
+function pick(cx,cy){ if(FP.on){ walkTap(cx,cy); return; } if(APT3D){ aptTapWalk(cx,cy); return; } const h=hitUnit(cx,cy); if(h) selectUnit(h.uid,true); }
 // ---- measure tape ----
 let measure=false, mPts=[]; const measureG=new THREE.Group(); scene.add(measureG);
 function spriteLabel(text,pos,color){ const c=document.createElement("canvas"), ctx=c.getContext("2d"); const fs=44; ctx.font=`bold ${fs}px Tahoma,Arial`; const w=ctx.measureText(text).width+40; c.width=w; c.height=fs+30;
@@ -3261,6 +3308,12 @@ function walkTick(){ walkSync(); const now=performance.now(), dt=Math.min(0.05,(
   drawMap(); if(busy) poke(2); }
 const angDiff=(a,b)=>{ let d=(b-a)%(2*Math.PI); if(d>Math.PI) d-=2*Math.PI; if(d<-Math.PI) d+=2*Math.PI; return d; };
 function aptRoomAt(X,Z){ for(const r of APT.rooms){ const sn=SNAP[r.id]; if(!sn) continue; const [x,z]=toLocal(r,sn,X,Z); if(x>0&&x<sn.RW&&z>0&&z<sn.RL) return sn.name||"أوضة"; } return null; }
+
+/* apartment seen from above: tap a spot to drop into walk mode right there, facing the way the camera looks */
+function aptTapWalk(cx,cy){ const h=castAt(cx,cy).find(visibleHit); if(!h) return false; let x=h.point.x, z=h.point.z;
+  if(!aptFree(x,z)){ let best=null; for(let r=0.1;r<=1.2&&!best;r+=0.1) for(let k=0;k<16;k++){ const a=k*Math.PI/8, px=x+Math.cos(a)*r, pz=z+Math.sin(a)*r; if(aptFree(px,pz)&&(!best||aptRoomAt(px,pz)===aptRoomAt(x,z))){ best=[px,pz]; } } if(!best){ hint("دوس على أرضية أوضة عشان تمشي فيها"); return false; } [x,z]=best; }
+  const dx=target.x-camera.position.x, dz=target.z-camera.position.z, yaw=Math.atan2(dx,dz); aptView(true); hint("",1);
+  FP.x=x; FP.z=z; FP.yaw=yaw; FP.pitch=-0.1; WALK.room=null; const nm=aptRoomAt(x,z); if(nm) hint(`📍 ${nm} • دوس على الأرض تروح هناك`,3000); sfx("step"); poke(); return true; }
 
 // ---------- floor grid: 0 free, 1 furniture, 2 wall / outside, 3 low furniture (coffee table, rug: counts as free for passages) ----------
 function walkBounds(){ return APT3D?{X0:aptBox.X0,Z0:aptBox.Z0,X1:aptBox.X1,Z1:aptBox.Z1}:{X0:0,Z0:0,X1:RW,Z1:RL}; }

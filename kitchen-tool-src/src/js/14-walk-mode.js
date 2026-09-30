@@ -64,6 +64,12 @@ function walkTick(){ walkSync(); const now=performance.now(), dt=Math.min(0.05,(
 const angDiff=(a,b)=>{ let d=(b-a)%(2*Math.PI); if(d>Math.PI) d-=2*Math.PI; if(d<-Math.PI) d+=2*Math.PI; return d; };
 function aptRoomAt(X,Z){ for(const r of APT.rooms){ const sn=SNAP[r.id]; if(!sn) continue; const [x,z]=toLocal(r,sn,X,Z); if(x>0&&x<sn.RW&&z>0&&z<sn.RL) return sn.name||"أوضة"; } return null; }
 
+/* apartment seen from above: tap a spot to drop into walk mode right there, facing the way the camera looks */
+function aptTapWalk(cx,cy){ const h=castAt(cx,cy).find(visibleHit); if(!h) return false; let x=h.point.x, z=h.point.z;
+  if(!aptFree(x,z)){ let best=null; for(let r=0.1;r<=1.2&&!best;r+=0.1) for(let k=0;k<16;k++){ const a=k*Math.PI/8, px=x+Math.cos(a)*r, pz=z+Math.sin(a)*r; if(aptFree(px,pz)&&(!best||aptRoomAt(px,pz)===aptRoomAt(x,z))){ best=[px,pz]; } } if(!best){ hint("دوس على أرضية أوضة عشان تمشي فيها"); return false; } [x,z]=best; }
+  const dx=target.x-camera.position.x, dz=target.z-camera.position.z, yaw=Math.atan2(dx,dz); aptView(true); hint("",1);
+  FP.x=x; FP.z=z; FP.yaw=yaw; FP.pitch=-0.1; WALK.room=null; const nm=aptRoomAt(x,z); if(nm) hint(`📍 ${nm} • دوس على الأرض تروح هناك`,3000); sfx("step"); poke(); return true; }
+
 // ---------- floor grid: 0 free, 1 furniture, 2 wall / outside, 3 low furniture (coffee table, rug: counts as free for passages) ----------
 function walkBounds(){ return APT3D?{X0:aptBox.X0,Z0:aptBox.Z0,X1:aptBox.X1,Z1:aptBox.Z1}:{X0:0,Z0:0,X1:RW,Z1:RL}; }
 function walkGrid(){ const B=walkBounds(), res=APT3D?0.1:0.05, nx=Math.max(1,Math.ceil((B.X1-B.X0)/res)), nz=Math.max(1,Math.ceil((B.Z1-B.Z0)/res)), g=new Uint8Array(nx*nz);

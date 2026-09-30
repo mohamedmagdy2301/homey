@@ -59,7 +59,7 @@ let hintT=null; function hint(msg,ms){ const h=document.getElementById("hint"); 
 function castAt(cx,cy){ const r=canvas.getBoundingClientRect(); ray.setFromCamera(new THREE.Vector2(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1),camera); return ray.intersectObjects(APT3D?[root,...aptRoots]:root.children,true); }
 function visibleHit(h){ let o=h.object; while(o&&o!==root){ if(!o.visible) return false; o=o.parent; } const m=h.object.material; if(h.object.userData.label||!h.object.isMesh) return false; if(m && m.transparent && m.opacity<0.3) return false; return true; }
 function hitUnit(cx,cy){ for(const h of castAt(cx,cy)){ if(!visibleHit(h)) continue; let o=h.object; while(o && !o.userData.uid && o.parent && o.parent!==root) o=o.parent; if(o && o.userData.uid) return {uid:o.userData.uid,point:h.point}; return null; } return null; }
-function pick(cx,cy){ if(FP.on){ walkTap(cx,cy); return; } if(APT3D) return; const h=hitUnit(cx,cy); if(h) selectUnit(h.uid,true); }
+function pick(cx,cy){ if(FP.on){ walkTap(cx,cy); return; } if(APT3D){ aptTapWalk(cx,cy); return; } const h=hitUnit(cx,cy); if(h) selectUnit(h.uid,true); }
 // ---- measure tape ----
 let measure=false, mPts=[]; const measureG=new THREE.Group(); scene.add(measureG);
 function spriteLabel(text,pos,color){ const c=document.createElement("canvas"), ctx=c.getContext("2d"); const fs=44; ctx.font=`bold ${fs}px Tahoma,Arial`; const w=ctx.measureText(text).width+40; c.width=w; c.height=fs+30;

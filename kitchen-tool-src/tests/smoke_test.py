@@ -68,6 +68,8 @@ with sync_playwright() as p:
     check("apartment 3D + walk mode", r[0] and r[1] == 4, r)
     r = ev("()=>{ walkTick(); return [WALK.on, !!WALK.room, walkPlaces().length, !!WALK.mapImg]; }")
     check("apartment walk: knows which room you're in, one stand point per room, minimap", r[0] and r[1] and r[2] == 4 and r[3], r)
+    r = ev("()=>{ aptView(false); walkTick(); const r=APT.rooms[APT.rooms.length-1], R=roomRectW(r); updateCam(); camera.updateMatrixWorld(); const v=new THREE.Vector3((R.x0+R.x1)/2,0,(R.z0+R.z1)/2).project(camera), c=canvas.getBoundingClientRect(); const ok=aptTapWalk(c.left+(v.x+1)/2*c.width,c.top+(1-v.y)/2*c.height); return [ok, FP.on, aptRoomAt(FP.x,FP.z)===SNAP[r.id].name, aptFree(FP.x,FP.z)]; }")
+    check("apartment from above: tapping a room drops you into walk mode there", r == [True, True, True, True], r)
     ev("()=>exitApt3D()")
     r = ev("()=>{ const s=SHARED[0]; APT.doors=[{a:s.b,b:s.a,pos:20,w:80}]; const n=aptDoorLinks().length; const t=APT.wallT; APT.wallT=60; aptRecalc(); aptDoorLinks(); const kept=APT.doors.length; APT.wallT=t; aptRecalc(); return [n, kept]; }")
     check("apartment: door (either direction) survives rooms moving apart", r[0] == 1 and r[1] == 1, r)
@@ -343,6 +345,12 @@ with sync_playwright() as p:
     ev("async()=>{ closeApt(); }")
     r = ev("async(id)=>{ await openAptId(id); return [APT.name, APT.rooms.length, document.getElementById('aptTitle').textContent]; }", a1)
     check("switching apartments opens the right one", r == ["شقة المعادي", 9, "🏢 شقة المعادي"], r)
+    r = ev("""async()=>{ const r=APT.rooms.find(x=>SNAP[x.id].roomType==='room'&&(SNAP[x.id].cfg.furn||[]).some(f=>!f.snap)); aptSel=r.id; aptFur=null; aptTab='المسقط'; renderApt(); const pick=document.querySelectorAll('#aptSvg [data-fu]').length;
+      const f=SNAP[r.id].cfg.furn.find(x=>!x.snap), x0=f.x; await aptFurEdit(r,f.id,it=>aptFurShift(it,SNAP[r.id],-40,0)); const moved=SNAP[r.id].cfg.furn.find(x=>x.id===f.id).x;
+      const n=SNAP[r.id].cfg.furn.length; await aptFurEdit(r,null,l=>{ const t={id:'t1',type:'desk',w:120,d:60,x:9999,z:100,rot:0}; aptFurShift(t,SNAP[r.id],0,0); l.push(t); }); const d=SNAP[r.id].cfg.furn.find(x=>x.id==='t1');
+      await aptFurEdit(r,null,l=>l.splice(l.findIndex(x=>x.id==='t1'),1)); const gone=SNAP[r.id].cfg.furn.length===n; await aptUndo(); const back=SNAP[r.id].cfg.furn.some(x=>x.id==='t1'); await aptUndo(); await aptUndo();
+      return [pick>0, moved===Math.max(x0-40,0)||moved<x0, d.x<=Math.round(SNAP[r.id].RW*100)-60, gone, back, SNAP[r.id].cfg.furn.find(x=>x.id===f.id).x===x0]; }""")
+    check("apartment plan: pick, move, add (kept inside the room), delete and undo furniture", r == [True] * 6, r)
     r = ev("()=>{ const f=[...document.querySelectorAll('#aptBody .addrow option')].map(o=>o.value); return APTS.find(a=>a.id!==APT_ID).rooms.some(id=>f.includes(id)); }")
     check("the add-room list leaves out the other apartment's rooms", r is False, r)
     r = ev("async()=>{ closeApt(); const n=projIndex.length; await copyApt(APT_ID); const c=APTS[APTS.length-1], d=await stGet('kapt:'+c.id); return [APTS.length, c.name, projIndex.length-n, c.rooms.some(id=>APTS[0].rooms.includes(id)), d.rooms.every(r=>c.rooms.includes(r.id))]; }")
