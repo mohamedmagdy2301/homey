@@ -346,10 +346,10 @@ with sync_playwright() as p:
     r = ev("async(id)=>{ await openAptId(id); return [APT.name, APT.rooms.length, document.getElementById('aptTitle').textContent]; }", a1)
     check("switching apartments opens the right one", r == ["شقة المعادي", 9, "🏢 شقة المعادي"], r)
     r = ev("""async()=>{ const r=APT.rooms.find(x=>SNAP[x.id].roomType==='room'&&(SNAP[x.id].cfg.furn||[]).some(f=>!f.snap)); aptSel=r.id; aptFur=null; aptTab='المسقط'; renderApt(); const pick=document.querySelectorAll('#aptSvg [data-fu]').length;
-      const f=SNAP[r.id].cfg.furn.find(x=>!x.snap), x0=f.x; await aptFurEdit(r,f.id,it=>aptFurShift(it,SNAP[r.id],-40,0)); const moved=SNAP[r.id].cfg.furn.find(x=>x.id===f.id).x;
+      const f=SNAP[r.id].cfg.furn.find(x=>!x.snap), x0=f.x, lx=x0<SNAP[r.id].RW*50?40:-40; await aptFurEdit(r,f.id,it=>aptFurShift(it,SNAP[r.id],lx,0)); const moved=SNAP[r.id].cfg.furn.find(x=>x.id===f.id).x;
       const n=SNAP[r.id].cfg.furn.length; await aptFurEdit(r,null,l=>{ const t={id:'t1',type:'desk',w:120,d:60,x:9999,z:100,rot:0}; aptFurShift(t,SNAP[r.id],0,0); l.push(t); }); const d=SNAP[r.id].cfg.furn.find(x=>x.id==='t1');
       await aptFurEdit(r,null,l=>l.splice(l.findIndex(x=>x.id==='t1'),1)); const gone=SNAP[r.id].cfg.furn.length===n; await aptUndo(); const back=SNAP[r.id].cfg.furn.some(x=>x.id==='t1'); await aptUndo(); await aptUndo();
-      return [pick>0, moved===Math.max(x0-40,0)||moved<x0, d.x<=Math.round(SNAP[r.id].RW*100)-60, gone, back, SNAP[r.id].cfg.furn.find(x=>x.id===f.id).x===x0]; }""")
+      return [pick>0, moved===x0+lx, d.x<=Math.round(SNAP[r.id].RW*100)-60, gone, back, SNAP[r.id].cfg.furn.find(x=>x.id===f.id).x===x0]; }""")
     check("apartment plan: pick, move, add (kept inside the room), delete and undo furniture", r == [True] * 6, r)
     r = ev("()=>{ const f=[...document.querySelectorAll('#aptBody .addrow option')].map(o=>o.value); return APTS.find(a=>a.id!==APT_ID).rooms.some(id=>f.includes(id)); }")
     check("the add-room list leaves out the other apartment's rooms", r is False, r)
