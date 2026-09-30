@@ -458,7 +458,7 @@
   </div>
   <div id="stats"></div>
   <div id="pad"><span></span><button data-m="f" aria-label="قدام">▲</button><span></span><button data-m="l" aria-label="لف شمال">⟲</button><button data-m="b" aria-label="ورا">▼</button><button data-m="r" aria-label="لف يمين">⟳</button></div>
-  <div id="aptBar"><button class="btn" id="aptWalk" onclick="aptView(!FP.on)">🚶 امشي</button><button class="btn" onclick="exitApt3D(); openApt();">🏢 المسقط</button><button class="btn main" onclick="exitApt3D()">✕ رجوع</button></div>
+  <div id="aptBar"><button class="btn" id="aptWalk" onclick="aptView(!FP.on)">🚶 امشي</button><button class="btn" onclick="exitApt3D(); openApt();">🏢 المسقط</button><button class="btn" onclick="shareApt()" aria-label="شارك الشقة">🔗</button><button class="btn main" onclick="exitApt3D()">✕ رجوع</button></div>
   <div id="hint">اسحب عشان تلف، وصباعين للتقريب</div>
   <button class="btn main" id="fab"><span data-ico="sliders"></span><span>التحكم</span></button>
 </main>
@@ -471,7 +471,7 @@
 <div id="shot"><img alt="صورة التصميم"><p>دوس مطولًا على الصورة واختار حفظ</p><button class="btn" id="shotClose">قفل</button></div>
 <div id="draw"><div class="dhead"><b>📐 رسومات ومقاسات للتنفيذ</b><button class="btn" id="dprint"><span data-ico="print" data-s="18"></span><span>طباعة / PDF</span></button><button class="btn icon" id="dclose" aria-label="قفل"><span data-ico="x"></span></button></div><div class="dwrap"><nav class="dtabs" id="dtabs" aria-label="أجزاء المستند"></nav><div id="dbody"></div></div></div>
 <div id="sheet" class="ovl"><div class="dlg" role="dialog" aria-label="مشاريعي"><div class="ovh"><b>🏠 مشاريعي</b><button class="btn icon quiet" onclick="closeSheet()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="sheetBody" class="ovb"></div></div></div>
-<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-labelledby="aptTitle"><div class="ovh"><b id="aptTitle">🏢 الشقة</b><button class="btn quiet" id="aptSwitch" onclick="closeApt(); openHome();" title="شقة تانية أو حاجة جديدة">🔀 الشقق</button><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
+<div id="apt" class="ovl"><div class="dlg" role="dialog" aria-labelledby="aptTitle"><div class="ovh"><b id="aptTitle">🏢 الشقة</b><button class="btn quiet" id="aptSwitch" onclick="closeApt(); openHome();" title="شقة تانية أو حاجة جديدة">🔀 الشقق</button><button class="btn icon quiet" onclick="closeApt()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="aptBody" class="ovb"></div><div class="ovf"><button class="btn" id="aptShare" onclick="shareApt()">🔗 شارك</button><button class="btn" onclick="enterApt3D(false)">🧊 3D الشقة</button><button class="btn main" onclick="enterApt3D(true)">🚶 امشي في الشقة</button></div></div></div>
 <div id="wiz" class="ovl"><div class="dlg" role="dialog" aria-labelledby="wizTitle"><div class="ovh"><b id="wizTitle"></b><button class="btn icon quiet" id="wizClose" aria-label="إلغاء"><span data-ico="x"></span></button></div><div class="progress"><div id="wizBar"></div></div><div id="wizBody" class="ovb"></div><div class="ovf"><button class="btn" id="wizBack">→ رجوع</button><button class="btn main" id="wizNext">التالي ←</button></div></div></div>
 <div id="home" class="ovl"><div class="dlg" role="dialog" aria-labelledby="homeTitle"><div class="ovh"><b id="homeTitle">ابدأ من هنا</b><button class="btn icon quiet" onclick="closeHome()" aria-label="قفل"><span data-ico="x"></span></button></div><div id="homeBody" class="ovb"></div></div></div>
 
@@ -3611,17 +3611,67 @@ const b64u={enc:u8=>{ let s=""; for(let i=0;i<u8.length;i+=0x8000) s+=String.fro
   dec:t=>{ const s=atob(t.replace(/-/g,"+").replace(/_/g,"/")), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }};
 async function zpipe(u8,pack){ const st=new Blob([u8]).stream().pipeThrough(pack?new CompressionStream("deflate-raw"):new DecompressionStream("deflate-raw")); return new Uint8Array(await new Response(st).arrayBuffer()); }
 /* "z" = deflated JSON, "j" = plain JSON (browsers without CompressionStream) */
-async function packDesign(){ const raw=new TextEncoder().encode(JSON.stringify({n:PROJ.name,c:cfg})); if(typeof CompressionStream==="function"){ try{ return "z"+b64u.enc(await zpipe(raw,true)); }catch(e){} } return "j"+b64u.enc(raw); }
-async function unpackDesign(t){ const k=t[0], u=b64u.dec(t.slice(1)), raw=k==="z"?await zpipe(u,false):k==="j"?u:null; if(!raw) throw new Error("bad");
-  const o=JSON.parse(new TextDecoder().decode(raw)); if(!o||!o.c||typeof o.c!=="object"||Array.isArray(o.c)) throw new Error("bad"); return o; }
+async function packObj(o){ const raw=new TextEncoder().encode(JSON.stringify(o)); if(typeof CompressionStream==="function"){ try{ return "z"+b64u.enc(await zpipe(raw,true)); }catch(e){} } return "j"+b64u.enc(raw); }
+async function unpackObj(t){ const k=t[0], u=b64u.dec(t.slice(1)), raw=k==="z"?await zpipe(u,false):k==="j"?u:null; if(!raw) throw new Error("bad"); return JSON.parse(new TextDecoder().decode(raw)); }
+const packDesign=()=>packObj({n:PROJ.name,c:cfg});
+async function unpackDesign(t){ const o=await unpackObj(t); if(!o||!o.c||typeof o.c!=="object"||Array.isArray(o.c)) throw new Error("bad"); return o; }
 async function designLink(){ return location.href.split("#")[0]+"#d="+await packDesign(); }
 const linkWorksOutside=()=>/^https?:$/.test(location.protocol)&&!/^(localhost|127\.|\[::1\])/.test(location.hostname);
-async function openSharedHash(){ const m=/^#d=([\w-]+)$/.exec(location.hash||""); if(!m) return false;
+async function openSharedHash(){ const m=/^#([da])=([\w-]+)$/.exec(location.hash||""); if(!m) return false;
   try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
-  try{ const o=await unpackDesign(m[1]); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:cleanName(o.n)||"تصميم متبعتلي"}; cfg=migrate(o.c); DRAFT=null; clearHist(); SEL=null;
+  if(m[1]==="a") return openSharedApt(m[2]);
+  try{ const o=await unpackDesign(m[2]); await saveNow(); PROJ={id:"p"+Date.now().toString(36),name:cleanName(o.n)||"تصميم متبعتلي"}; cfg=migrate(o.c); DRAFT=null; clearHist(); SEL=null;
     build(); updProjName(); renderControls(); await saveNow(); closeHome(); setView("out"); hint(`✓ اتفتح التصميم اللي اتبعتلك «${PROJ.name}» واتحفظ عندك`,4500); return true; }
   catch(e){ hint("اللينك ده ناقص أو بايظ، اطلب من صاحبه يبعته تاني",4500); return false; } }
-addEventListener("hashchange",()=>{ if(/^#d=/.test(location.hash)) openSharedHash(); });
+addEventListener("hashchange",()=>{ if(/^#[da]=/.test(location.hash)) openSharedHash(); });
+
+// ---------- share a whole apartment as a link (#a=...) ----------
+/* every room rides along and the ids stay the same, so on a device that already has this apartment (your phone, or someone sending your own link back)
+   it offers to update that copy: the link also carries the work between your own devices. ksync:<aptId> keeps a hash of the last state sent or received,
+   which tells whether this copy was edited since, before anything is overwritten */
+async function aptContent(id){ const a=id===APT_ID&&APT_LOADED===id?APT:await stGet("kapt:"+id); if(!a||!Array.isArray(a.rooms)) throw new Error("apt"); const r={};
+  for(const x of a.rooms){ const d=x.id===PROJ.id?{name:PROJ.name,cfg:APT3D?aptSaved:cfg}:await stGet("kproj:"+x.id); if(!d||!d.cfg) throw new Error("room"); r[x.id]={n:d.name,c:d.cfg}; }
+  return {a,r}; }
+const strHash=s=>{ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); };
+const aptHash=o=>strHash(JSON.stringify([o.a,o.r]));
+async function aptLink(){ await saveNow(); if(APT_LOADED!==APT_ID) await loadApt(); const c=await aptContent(APT_ID); await stSet("ksync:"+APT_ID,aptHash(c));
+  return location.href.split("#")[0]+"#a="+await packObj({id:APT_ID,t:Date.now(),...c}); }
+function askDlg(title,msg,opts){ return new Promise(res=>{ let d=document.getElementById("ask"); if(!d){ d=document.createElement("div"); d.id="ask"; d.className="ovl"; document.body.appendChild(d); }
+  d.innerHTML=`<div class="dlg" role="dialog" aria-labelledby="askTitle"><div class="ovh"><b id="askTitle">${esc(title)}</b><button class="btn icon quiet" aria-label="قفل" data-x>${ico("x")}</button></div><div class="ovb"><div class="note">${msg}</div><div style="display:grid;gap:8px;margin-top:10px">${opts.map(([k,t,m])=>`<button class="btn wide${m?" main":""}" data-k="${k}">${esc(t)}</button>`).join("")}</div></div></div>`;
+  const done=k=>{ d.style.display="none"; res(k); }; d.querySelector("[data-x]").onclick=()=>done(null); d.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>done(b.dataset.k)); d.style.display="flex"; }); }
+async function openSharedApt(t){ let o;
+  try{ o=await unpackObj(t); if(!o||typeof o.id!=="string"||!/^[\w-]{1,40}$/.test(o.id)||!o.a||!Array.isArray(o.a.rooms)||!o.r||typeof o.r!=="object") throw 0;
+    o.a=cleanDeep(o.a); o.a.rooms=o.a.rooms.filter(x=>x&&typeof x.id==="string"&&/^[\w-]{1,40}$/.test(x.id)&&o.r[x.id]&&o.r[x.id].c&&typeof o.r[x.id].c==="object"&&!Array.isArray(o.r[x.id].c)); if(!o.a.rooms.length) throw 0; }
+  catch(e){ hint("اللينك ده ناقص أو بايظ، اطلب من صاحبه يبعته تاني",4500); return false; }
+  closeHome(); if(APT3D) exitApt3D(); document.getElementById("apt").style.display="none"; await saveNow();
+  const have=APTS.find(x=>x.id===o.id); let mode="new";
+  if(have){ let mine=null; try{ mine=aptHash(await aptContent(have.id)); }catch(e){}
+    if(mine===aptHash(o)) mode="keep";
+    else { const edited=!mine||mine!==await stGet("ksync:"+have.id);
+      mode=await askDlg("🏢 الشقة دي عندك",`«${esc(aptNameOf(have))}» موجودة على الجهاز ده، واللينك فيه نسخة تانية منها.`+(edited?"<br>⚠ نسختك اللي هنا فيها تعديلات مش في اللينك، لو حدّثتها هتروح. لو مش متأكد احفظ اللينك نسخة جديدة جنبها.":""),
+        [["update","⟳ حدّث نسختي باللي في اللينك",!edited],["copy","➕ احفظه نسخة جديدة جنبها",edited],["keep","👁 افتح نسختي زي ما هي"]]); if(!mode) return false; } }
+  let aid=have?have.id:o.id, nm=aptNameOf(o.a);
+  if(mode!=="keep"){ const used=new Set(projIndex.map(p=>p.id)), own=new Set(mode==="update"?have.rooms||[]:[]), map={}; if(mode==="copy"){ aid=newAptId(); nm+=" (نسخة)"; }
+    let txt=JSON.stringify(o.a); for(const x of o.a.rooms){ let id=x.id; if(mode==="copy"||(used.has(id)&&!own.has(id))){ id="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); txt=txt.split(JSON.stringify(x.id)).join(JSON.stringify(id)); } map[x.id]=id; } /* a room belongs to one apartment: an id already used elsewhere here gets a new one */
+    const a={...aptDef(),...JSON.parse(txt),name:nm}, now=Date.now();
+    for(const x of o.a.rooms){ const id=map[x.id], d={name:cleanName(o.r[x.id].n)||"أوضة",cfg:migrate(o.r[x.id].c)}; await stSet("kproj:"+id,d);
+      const i=projIndex.findIndex(p=>p.id===id), e={id,name:d.name,t:now}; if(i>=0) projIndex[i]=e; else projIndex.push(e);
+      if(id===PROJ.id){ PROJ.name=d.name; cfg=migrate(clone(d.cfg)); DRAFT=null; clearHist(); SEL=null; updProjName(); build(); renderControls(); } }
+    await stSet("kproj:index",projIndex); await stSet("kapt:"+aid,a); const e={id:aid,name:nm,rooms:a.rooms.map(r=>r.id),t:now}, i=APTS.findIndex(x=>x.id===aid); if(i>=0) APTS[i]=e; else APTS.push(e); if(!APTS_BAD) await stSet("kapt:index",APTS);
+    if(!a.rooms.some(r=>r.id===PROJ.id)) await openProject(a.rooms[0].id);
+    APT_ID=aid; APT_LOADED=null; await loadApt(); try{ await stSet("ksync:"+aid,aptHash(await aptContent(aid))); }catch(e){} }
+  await openAptId(aid); if(!APT.rooms.some(r=>SNAP[r.id])) return false; enterApt3D(true);
+  const nmA=aptNameOf(APT), tip="🚶 دوس على الأرض تروح هناك، و📍 تنقلك لأي أوضة";
+  hint(mode==="keep"?`اتفتحت «${nmA}» زي ما هي عندك. ${tip}`:mode==="update"?`✓ اتحدّثت «${nmA}» باللي في اللينك. ${tip}`:`✓ اتفتحت الشقة «${nmA}» واتحفظت عندك. ${tip}`,6000); return true; }
+async function shareApt(){ const d=shareDlg(), b=d.querySelector("#shareBody"); d.querySelector("#shareTitle").textContent="🔗 شارك الشقة"; b.innerHTML=`<div class="note">بجهّز اللينك…</div>`; d.style.display="flex";
+  let link="", url=""; if(APT3D){ const fp={...FP}; if(fp.on) aptView(false); try{ url=shotURL(); }catch(e){} if(fp.on){ aptView(true); Object.assign(FP,fp); } } /* the picture from above, then the walker back where they stood */
+  try{ link=await aptLink(); }catch(e){ b.innerHTML=`<div class="note">مقدرتش أقرا كل أوض الشقة من الحفظ، جرّب تاني كمان شوية.</div>`; return {}; }
+  const n=APT.rooms.length, area=APT.rooms.map(r=>SNAP[r.id]).filter(Boolean).reduce((s,sn)=>s+aptAreaM(sn),0);
+  const text=`🏢 ${aptNameOf(APT)}\n🚪 ${n} ${n>2&&n<11?"أوض":"أوضة"}${area?` • حوالي ${Math.round(area)} م²`:""}\n\n🔗 افتح الشقة وامشي فيها 3D:\n${link}`;
+  const st=shareBox(b,{url,link,text,fname:aptNameOf(APT).replace(/[\\/:*?"<>|]/g,"")+".jpg",title:aptNameOf(APT)});
+  const tip=document.createElement("div"); tip.className="note"; tip.textContent="📱💻 عايز تكمّل على جهازك التاني؟ ابعت اللينك لنفسك وافتحه هناك. لو الشقة موجودة عليه هيسألك تحدّثها، ولما تخلص ابعته من هناك وافتحه هنا بنفس الطريقة."; b.insertBefore(tip,st);
+  if(link.length>60000) st.textContent="⚠ الشقة كبيرة واللينك طويل جدًا، واتساب ممكن ميقبلوش في رسالة. انسخ اللينك بس وابعته لوحده، أو انقلها بالنسخة الاحتياطية.";
+  return {text,link}; }
 
 // ---------- a sharp picture: render at ~2400 px on the long side, then put the screen back ----------
 function shotURL(){ const w=canvas.clientWidth||innerWidth, h=canvas.clientHeight||innerHeight, pr=renderer.getPixelRatio(), max=Math.min(4096,renderer.capabilities.maxTextureSize||4096);
@@ -3642,21 +3692,24 @@ function designSummary(){ const s=STATS||{}, lines=[`🏠 ${PROJ.name} (${kindNa
 function shareDlg(){ let d=document.getElementById("share"); if(d) return d; d=document.createElement("div"); d.id="share"; d.className="ovl";
   d.innerHTML=`<div class="dlg" role="dialog" aria-labelledby="shareTitle"><div class="ovh"><b id="shareTitle">🔗 شارك التصميم</b><button class="btn icon quiet" aria-label="قفل" data-x>${ico("x")}</button></div><div class="ovb" id="shareBody"></div></div>`;
   d.querySelector("[data-x]").onclick=()=>{ d.style.display="none"; }; document.body.appendChild(d); return d; }
-async function shareDesign(){ const d=shareDlg(), b=d.querySelector("#shareBody"); b.innerHTML=`<div class="note">بجهّز الصورة واللينك…</div>`; d.style.display="flex";
+async function shareDesign(){ const d=shareDlg(), b=d.querySelector("#shareBody"); d.querySelector("#shareTitle").textContent="🔗 شارك التصميم"; b.innerHTML=`<div class="note">بجهّز الصورة واللينك…</div>`; d.style.display="flex";
   let link="", url=""; try{ url=shotURL(); }catch(e){} try{ link=await designLink(); }catch(e){}
   const text=designSummary()+(link?`\n\n🔗 افتح التصميم 3D وقلّب فيه:\n${link}`:""), fname=(PROJ.name||"تصميم").replace(/[\\/:*?"<>|]/g,"")+".jpg";
+  shareBox(b,{url,link,text,fname,title:PROJ.name}); return {text,link}; }
+/* the picture, the editable message and the buttons; returns the status line */
+function shareBox(b,{url,link,text,fname,title}){
   b.innerHTML=""; if(url){ const im=document.createElement("img"); im.src=url; im.alt="صورة التصميم"; im.className="shareimg"; b.appendChild(im); }
   const ta=document.createElement("textarea"); ta.value=text; ta.setAttribute("aria-label","الرسالة"); ta.rows=6; b.appendChild(ta);
   const st=document.createElement("div"); st.className="note";
   if(!linkWorksOutside()) st.textContent="⚠ الأداة مفتوحة من ملف على الجهاز، فاللينك مش هيفتح عند حد تاني. افتحها من النسخة اللي على النت وشارك من هناك، أو ابعت الصورة والرسالة بس.";
   else if(link.length>8000) st.textContent="اللينك طويل شوية لأن التصميم فيه تفاصيل كتير، بس بيشتغل عادي.";
   const act=document.createElement("div"); act.className="act"; const mk=(t,fn,main)=>{ const x=document.createElement("button"); x.className="btn"+(main?" main":""); x.textContent=t; x.onclick=fn; act.appendChild(x); return x; };
-  mk("📲 ابعت على واتساب",async()=>{ const msg=ta.value; try{ if(url&&navigator.canShare){ const f=new File([await (await fetch(url)).blob()],fname,{type:"image/jpeg"}); if(navigator.canShare({files:[f]})){ await navigator.share({files:[f],text:msg,title:PROJ.name}); return; } } }catch(e){ if(e&&e.name==="AbortError") return; }
+  mk("📲 ابعت على واتساب",async()=>{ const msg=ta.value; try{ if(url&&navigator.canShare){ const f=new File([await (await fetch(url)).blob()],fname,{type:"image/jpeg"}); if(navigator.canShare({files:[f]})){ await navigator.share({files:[f],text:msg,title}); return; } } }catch(e){ if(e&&e.name==="AbortError") return; }
     sendWA(msg); st.textContent="اتفتح واتساب بالرسالة واللينك. الصورة نزّلها من الزرار التاني وابعتها معاها."; },true);
   mk("📋 انسخ الرسالة",()=>copyText(ta.value,ok=>{ st.textContent=ok?"✓ اتنسخت، الصقها في أي شات":"انسخها من المربع"; }));
   if(link) mk("🔗 انسخ اللينك بس",()=>copyText(link,ok=>{ st.textContent=ok?"✓ اتنسخ اللينك":"مقدرتش أنسخ، انسخه من الرسالة"; }));
   if(url) mk("⬇ نزّل الصورة",()=>{ try{ const a=document.createElement("a"); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); st.textContent="✓ اتنزّلت الصورة"; }catch(e){ st.textContent="دوس مطولًا على الصورة واختار حفظ"; } });
-  b.append(act,st); return {text,link}; }
+  b.append(act,st); return st; }
 function sendWA(text){ const u="https://wa.me/?text="+encodeURIComponent(text); try{ const w=window.open(u,"_blank","noopener"); if(!w) location.href=u; }catch(e){ location.href=u; } }
 function shareUI(el){ const h=document.createElement("div"); h.className="head"; h.textContent="🔗 شارك التصميم ده بلينك"; el.appendChild(h);
   const n=document.createElement("div"); n.className="note"; n.textContent="لينك فيه التصميم كله، ومعاه صورة وملخص. اللي يفتحه يشوفه 3D ويتحفظ عنده نسخة، وتعديلاته مش بتأثر على نسختك."; el.appendChild(n);
